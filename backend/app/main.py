@@ -1,0 +1,25 @@
+from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
+
+from app.routes import analyze, presentation, professor, session, speech
+
+app = FastAPI(title="Faculty AI Live Feedback")
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["http://localhost:3000", "http://127.0.0.1:3000"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
+app.include_router(session.router)
+app.include_router(analyze.router)
+app.include_router(presentation.router)
+app.include_router(professor.router)
+app.include_router(speech.router)
+
+
+@app.get("/health")
+def health() -> dict[str, str]:
+    return {"status": "ok"}
