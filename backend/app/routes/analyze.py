@@ -145,6 +145,13 @@ def analyze_chunk(payload: AnalyzeChunkRequest) -> AnalyzeChunkResponse:
             inferredCurrentSlide=inferred_slide,
         )
 
+    if current_slide_number is not None and current_slide_number in session.get("asked_feedback_slide_numbers", []):
+        return AnalyzeChunkResponse(
+            trigger=False,
+            reason="This slide already received its one faculty question for this presentation.",
+            inferredCurrentSlide=inferred_slide,
+        )
+
     allowed, filter_reason = can_emit_feedback(session, candidate.message)
     if not allowed:
         return AnalyzeChunkResponse(trigger=False, reason=filter_reason, inferredCurrentSlide=inferred_slide)
@@ -152,6 +159,8 @@ def analyze_chunk(payload: AnalyzeChunkRequest) -> AnalyzeChunkResponse:
     session["feedback"].append(candidate)
     session["last_feedback_at"] = utc_now()
     session.setdefault("asked_feedback_messages", []).append(normalized_message)
+    if current_slide_number is not None:
+        session.setdefault("asked_feedback_slide_numbers", []).append(current_slide_number)
     session["awaiting_answer_until"] = utc_now() + timedelta(seconds=40)
     session["last_feedback_slide_number"] = current_slide_number
     state.save_session(payload.sessionId, session)
