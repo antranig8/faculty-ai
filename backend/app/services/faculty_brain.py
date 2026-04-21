@@ -35,7 +35,7 @@ def _created_at() -> str:
 
 
 def _load_prompt() -> str:
-    return load_prompt("faculty_brain_runtime.txt", _FALLBACK_PROMPT)
+    return load_prompt("faculty_brain_runtime.md", _FALLBACK_PROMPT)
 
 
 def _priority_rank(priority: str) -> int:

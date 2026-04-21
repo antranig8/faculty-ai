@@ -136,7 +136,7 @@ def _llm_prompt(project_context: ProjectContext, slides: list[Slide]) -> str:
     ]
 
     prompt_header = load_prompt(
-        "prepared_questions.txt",
+        "prepared_questions.md",
         (
             "You are preparing faculty-style questions for a student presentation.\n"
             "Use the rubric and slide content to generate specific, fair questions.\n"

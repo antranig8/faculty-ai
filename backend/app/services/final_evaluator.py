@@ -125,7 +125,7 @@ def _fallback_evaluation(session_id: str, project_title: str, config: ProfessorC
 
 def _prompt(config: ProfessorConfig, project_title: str, transcript: list[str], feedback: list[FeedbackItem]) -> str:
     prompt_header = load_prompt(
-        "final_evaluation.txt",
+        "final_evaluation.md",
         (
             "You are FacultyAI writing a final presentation evaluation.\n"
             "Use the professor rubric, transcript, and faculty feedback.\n"
