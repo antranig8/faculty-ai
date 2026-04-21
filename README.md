@@ -2,21 +2,22 @@
 
 ENES 104 AI faculty member.
 
-FacultyAI is a demo-safe presentation assistant. It accepts project context, sends transcript chunks to a backend, and surfaces faculty-style questions or critiques as visible alerts.
+FacultyAI is a live presentation critique assistant for ENES 104 style project demos. It listens to a presenter, matches speech against uploaded slides and rubric-aware concerns, and surfaces selective faculty-style questions plus a final rubric-based grade.
 
 ## Current Build
 
 - Next.js frontend in `frontend/`
 - FastAPI backend in `backend/`
-- Fake transcript demo mode
-- Rubric and slide outline preparation
-- Professor-owned rubric configuration
-- Student-only `.pptx` upload flow
+- Root `.env` configuration
+- `.pptx` upload and slide parsing
 - Slide-specific prepared faculty questions
-- Manual current-slide tracking
-- In-memory sessions and feedback history
-- Cooldown and duplicate filtering
-- Heuristic feedback engine that works without an LLM key
+- Live mic transcription through Deepgram
+- Transcript-driven slide inference
+- Structured faculty-question reasoning
+- SQLite persistence for sessions/results/cache
+- Final rubric-based grading
+- Demo transcript mode as fallback
+- Cooldown, dedupe, and one-question-per-slide enforcement
 
 ## Run Backend
 
@@ -44,19 +45,20 @@ Open `http://localhost:3000/present`.
 
 1. Start the backend.
 2. Start the frontend.
-3. Open presentation mode.
-4. Open professor setup at `http://localhost:3000/professor` and save the rubric.
-5. Open student presentation mode at `http://localhost:3000/present`.
-6. Upload a `.pptx`.
-7. Click `Start demo`.
-8. Advance slides manually while sending transcript chunks.
-9. When the `!` appears, click it to open the faculty feedback drawer.
+3. Open `http://localhost:3000/present`.
+4. Upload a `.pptx`.
+5. Click `Start live mic` for the real path or `Start demo` for fake transcript mode.
+6. Speak through the presentation.
+7. When a faculty question triggers, the drawer opens automatically.
+8. Click `Finalize grade` at the end.
+9. Review saved results at `http://localhost:3000/results`.
 
 ## Direction
 
-The current product direction is documented in:
+Current direction and carry-forward status are documented in:
 
 - `docs/slide_aware_faculty_examiner_direction.md`
+- `docs/project_update_2026-04-20.md`
 
 FacultyAI should behave like a selective faculty examiner, not a general helper. It should use rubric criteria, current slide context, and live transcript content to decide whether a faculty-style remark is warranted.
 
@@ -66,7 +68,7 @@ Speech provider direction is documented in:
 
 ## Next Good Steps
 
-1. Add browser speech recognition and transcript chunking.
-2. Replace the heuristic engine with an LLM service behind the same response contract.
-3. Add a cached demo mode with pre-generated feedback for class presentations.
-4. Persist sessions to a lightweight database.
+1. Keep tuning the live Nova-3 path for transcript quality and stability.
+2. Reduce Groq token usage further if TPM limits still disrupt live testing.
+3. Add answer-resolution handling so addressed faculty questions can turn green and dismiss cleanly.
+4. Continue improving transcript-based slide inference so manual slide controls become only a fallback.
