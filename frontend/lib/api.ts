@@ -1,5 +1,6 @@
 import type {
   AnalyzeResponse,
+  FinalEvaluation,
   FeedbackItem,
   PreparedQuestion,
   PresentationPreparation,
@@ -54,6 +55,7 @@ export async function analyzeChunk(params: {
   recentFeedback: string[];
   projectContext: ProjectContext;
   currentSlide?: Slide;
+  presentationSlides?: Slide[];
   preparedQuestions?: PreparedQuestion[];
 }): Promise<AnalyzeResponse> {
   const response = await fetch(`${API_BASE}/analyze-chunk`, {
@@ -137,6 +139,32 @@ export async function getFeedback(sessionId: string): Promise<FeedbackItem[]> {
 
   if (!response.ok) {
     throw new Error("Unable to load feedback history.");
+  }
+
+  return response.json();
+}
+
+export async function finalizeSession(sessionId: string): Promise<FinalEvaluation> {
+  const response = await fetch(`${API_BASE}/session/${sessionId}/finalize`, {
+    method: "POST",
+    headers: buildHeaders(),
+  });
+
+  if (!response.ok) {
+    const error = await response.json().catch(() => undefined);
+    throw new Error(error?.detail ?? "Unable to finalize presentation.");
+  }
+
+  return response.json();
+}
+
+export async function getResults(): Promise<FinalEvaluation[]> {
+  const response = await fetch(`${API_BASE}/session/results`, {
+    headers: buildHeaders(),
+  });
+
+  if (!response.ok) {
+    throw new Error("Unable to load presentation results.");
   }
 
   return response.json();

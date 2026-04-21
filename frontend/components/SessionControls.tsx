@@ -3,6 +3,7 @@ type Props = {
   liveConnected: boolean;
   liveConnecting?: boolean;
   liveStatus?: "idle" | "connecting" | "listening" | "silent" | "analyzing" | "error";
+  canFinalize?: boolean;
   sessionId?: string;
   disabled?: boolean;
   onStart: () => void;
@@ -11,6 +12,7 @@ type Props = {
   onNextChunk: () => void;
   onStartLive: () => void;
   onStopLive: () => void;
+  onFinalize: () => void;
 };
 
 export function SessionControls({
@@ -18,6 +20,7 @@ export function SessionControls({
   liveConnected,
   liveConnecting,
   liveStatus,
+  canFinalize,
   sessionId,
   disabled,
   onStart,
@@ -26,6 +29,7 @@ export function SessionControls({
   onNextChunk,
   onStartLive,
   onStopLive,
+  onFinalize,
 }: Props) {
   return (
     <section className="session-controls">
@@ -56,6 +60,9 @@ export function SessionControls({
         </button>
         <button className="secondary-button" disabled={!liveConnected} onClick={onStopLive} type="button">
           Stop live mic
+        </button>
+        <button className="secondary-button" disabled={disabled || !canFinalize} onClick={onFinalize} type="button">
+          Finalize grade
         </button>
         <button onClick={onReset} type="button">
           Reset

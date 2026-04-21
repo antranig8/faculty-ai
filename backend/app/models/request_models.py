@@ -25,6 +25,7 @@ class AnalyzeChunkRequest(BaseModel):
     recentFeedback: List[str] = Field(default_factory=list)
     projectContext: ProjectContext
     currentSlide: Optional[Slide] = None
+    presentationSlides: List[Slide] = Field(default_factory=list)
     preparedQuestions: List[PreparedQuestion] = Field(default_factory=list)
 
 

@@ -6,13 +6,15 @@ import sqlite3
 from typing import Any
 
 from app.models.request_models import ProjectContext
-from app.models.response_models import FeedbackItem, PresentationPrepareResponse, ProfessorConfig, Slide
+from app.models.response_models import FeedbackItem, FinalEvaluation, PresentationPrepareResponse, ProfessorConfig, Slide
+from app.services.rubric_loader import load_professor_config_from_template
 
 _DB_PATH = Path(__file__).resolve().parents[2] / "faculty_ai.db"
 
 sessions: dict[str, dict[str, Any]] = {}
 professor_config = ProfessorConfig()
 prepared_question_cache: dict[str, PresentationPrepareResponse] = {}
+presentation_results: dict[str, FinalEvaluation] = {}
 
 
 def _connection() -> sqlite3.Connection:
@@ -47,6 +49,14 @@ def _init_db() -> None:
             )
             """
         )
+        conn.execute(
+            """
+            CREATE TABLE IF NOT EXISTS presentation_results (
+              session_id TEXT PRIMARY KEY,
+              payload TEXT NOT NULL
+            )
+            """
+        )
 
 
 def _persist_value(table: str, key_column: str, key: str, payload: str) -> None:
@@ -67,6 +77,8 @@ def _serialize_session(session: dict[str, Any]) -> str:
             "last_feedback_at": session["last_feedback_at"].isoformat() if session["last_feedback_at"] else None,
             "last_transcript_chunk": session.get("last_transcript_chunk"),
             "asked_feedback_messages": list(session.get("asked_feedback_messages", [])),
+            "awaiting_answer_until": session["awaiting_answer_until"].isoformat() if session.get("awaiting_answer_until") else None,
+            "last_feedback_slide_number": session.get("last_feedback_slide_number"),
         }
     )
 
@@ -80,6 +92,8 @@ def _deserialize_session(payload: str) -> dict[str, Any]:
         "last_feedback_at": datetime.fromisoformat(raw["last_feedback_at"]) if raw.get("last_feedback_at") else None,
         "last_transcript_chunk": raw.get("last_transcript_chunk"),
         "asked_feedback_messages": list(raw.get("asked_feedback_messages", [])),
+        "awaiting_answer_until": datetime.fromisoformat(raw["awaiting_answer_until"]) if raw.get("awaiting_answer_until") else None,
+        "last_feedback_slide_number": raw.get("last_feedback_slide_number"),
     }
 
 
@@ -94,6 +108,9 @@ def _deserialize_preparation(payload: str) -> PresentationPrepareResponse:
 def load_persisted_state() -> None:
     global professor_config
     _init_db()
+    template_config = load_professor_config_from_template()
+    if template_config:
+        professor_config = template_config
 
     with _connection() as conn:
         config_row = conn.execute("SELECT value FROM app_state WHERE key = 'professor_config'").fetchone()
@@ -105,6 +122,9 @@ def load_persisted_state() -> None:
 
         for row in conn.execute("SELECT cache_key, payload FROM prepared_question_cache").fetchall():
             prepared_question_cache[row["cache_key"]] = _deserialize_preparation(row["payload"])
+
+        for row in conn.execute("SELECT session_id, payload FROM presentation_results").fetchall():
+            presentation_results[row["session_id"]] = FinalEvaluation.model_validate_json(row["payload"])
 
 
 def persist_professor_config(config: ProfessorConfig) -> None:
@@ -133,6 +153,15 @@ def save_prepared_question_cache(cache_key: str, response: PresentationPrepareRe
 def save_session(session_id: str, session: dict[str, Any]) -> None:
     sessions[session_id] = session
     _persist_value("sessions", "session_id", session_id, _serialize_session(session))
+
+
+def save_presentation_result(result: FinalEvaluation) -> None:
+    presentation_results[result.sessionId] = result
+    _persist_value("presentation_results", "session_id", result.sessionId, result.model_dump_json())
+
+
+def list_presentation_results() -> list[FinalEvaluation]:
+    return sorted(presentation_results.values(), key=lambda item: item.createdAt, reverse=True)
 
 
 def get_session(session_id: str) -> dict[str, Any] | None:

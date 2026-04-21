@@ -22,6 +22,25 @@ class SessionStartResponse(BaseModel):
     sessionId: str
 
 
+class RubricScore(BaseModel):
+    criterion: str
+    score: int
+    justification: str
+
+
+class FinalEvaluation(BaseModel):
+    sessionId: str
+    projectTitle: str
+    courseName: str
+    overallGrade: str
+    numericScore: int
+    summary: str
+    strongestPoints: list[str]
+    biggestQuestions: list[str]
+    rubricScores: list[RubricScore]
+    createdAt: str
+
+
 class FeedbackItem(BaseModel):
     type: FeedbackType
     priority: Priority
@@ -75,6 +94,7 @@ class AnalyzeChunkResponse(BaseModel):
     trigger: bool
     feedback: Optional[FeedbackItem] = None
     reason: Optional[str] = None
+    inferredCurrentSlide: Optional[Slide] = None
 
 
 class SpeechSessionResponse(BaseModel):

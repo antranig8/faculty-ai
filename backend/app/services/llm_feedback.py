@@ -8,6 +8,8 @@ from app.config import get_settings
 from app.models.request_models import AnalyzeChunkRequest
 from app.models.response_models import FeedbackItem
 from app.services.cooldown import utc_now
+from app.services.prompt_loader import load_prompt
+from app.services.rubric_loader import load_professor_config_from_template
 from app.services.section_tracker import infer_section
 
 
@@ -16,6 +18,7 @@ def _created_at() -> str:
 
 
 def _build_prompt(payload: AnalyzeChunkRequest) -> str:
+    rubric = load_professor_config_from_template()
     slide_summary = "none"
     if payload.currentSlide:
         slide_summary = json.dumps(
@@ -39,18 +42,19 @@ def _build_prompt(payload: AnalyzeChunkRequest) -> str:
         for item in payload.preparedQuestions[:8]
     ]
 
+    prompt_header = load_prompt(
+        "interrupt_fallback.txt",
+        (
+            "You are FacultyAI, a skeptical but fair faculty examiner during a student project presentation.\n"
+            "Decide whether the latest transcript chunk merits one concise faculty interruption.\n"
+            "Return strict JSON only."
+        ),
+    )
+
     return (
-        "You are FacultyAI, a skeptical but fair faculty examiner during a student project presentation.\n"
-        "Decide whether the latest transcript chunk merits one concise faculty interruption.\n"
-        "Only interrupt when there is a specific academic reason.\n"
-        "Do not interrupt in the first two transcript chunks unless the student makes a clearly unsupported technical, evidence, or evaluation claim.\n"
-        "Do not ask generic opener questions, filler prompts, or questions that simply ask the student to restate the slide.\n"
-        "Prefer rubric-aware scrutiny about justification, evidence, evaluation, tradeoffs, assumptions, or a meaningful missing detail.\n"
-        "Avoid repeating recent feedback or paraphrasing an already-asked faculty question.\n"
-        'Return strict JSON with this shape: {"trigger": boolean, "reason": string, "feedback": null | '
-        '{"type":"question|critique|suggestion|clarification|praise","priority":"low|medium|high","message":string}}.\n'
-        "If trigger is false, feedback must be null.\n\n"
+        f"{prompt_header}\n\n"
         f"Transcript chunk count so far: {len(payload.recentTranscript) + 1}\n"
+        f"Professor rubric config: {rubric.model_dump_json() if rubric else '{}'}\n"
         f"Project context: {payload.projectContext.model_dump_json()}\n"
         f"Current slide: {slide_summary}\n"
         f"Prepared questions: {json.dumps(prepared_questions)}\n"
