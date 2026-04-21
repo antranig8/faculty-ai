@@ -115,6 +115,8 @@ def generate_slide_aware_feedback(
     section = infer_section(recent_text)
 
     for question in sorted(relevant_questions, key=lambda item: {"high": 0, "medium": 1, "low": 2}[item.priority]):
+        if question.priority == "low" and len(recent_transcript) < 3:
+            continue
         if not _question_matches_transcript(question, recent_text):
             continue
 

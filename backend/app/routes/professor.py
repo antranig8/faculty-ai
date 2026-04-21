@@ -14,5 +14,5 @@ def get_professor_config() -> ProfessorConfig:
 
 @router.post("/config", response_model=ProfessorConfig)
 def save_professor_config(payload: ProfessorConfigRequest) -> ProfessorConfig:
-    state.professor_config = payload.config
+    state.persist_professor_config(payload.config)
     return state.professor_config

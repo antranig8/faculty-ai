@@ -51,6 +51,8 @@ class PreparedQuestion(BaseModel):
 class PresentationPrepareResponse(BaseModel):
     slides: list[Slide]
     preparedQuestions: list[PreparedQuestion]
+    questionSource: Literal["llm", "heuristic"]
+    cacheHit: bool = False
 
 
 class ProfessorConfig(BaseModel):
@@ -73,3 +75,12 @@ class AnalyzeChunkResponse(BaseModel):
     trigger: bool
     feedback: Optional[FeedbackItem] = None
     reason: Optional[str] = None
+
+
+class SpeechSessionResponse(BaseModel):
+    provider: str
+    accessToken: Optional[str] = None
+    expiresIn: Optional[int] = None
+    websocketUrl: Optional[str] = None
+    model: Optional[str] = None
+    language: Optional[str] = None

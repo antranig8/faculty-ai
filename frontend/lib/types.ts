@@ -47,6 +47,8 @@ export type PreparedQuestion = {
 export type PresentationPreparation = {
   slides: Slide[];
   preparedQuestions: PreparedQuestion[];
+  questionSource: "llm" | "heuristic";
+  cacheHit: boolean;
 };
 
 export type ProfessorConfig = {
@@ -61,4 +63,15 @@ export type AnalyzeResponse = {
   trigger: boolean;
   feedback?: FeedbackItem;
   reason?: string;
+};
+
+export type SpeechProvider = "deepgram" | "assemblyai";
+
+export type SpeechSession = {
+  provider: SpeechProvider;
+  accessToken?: string;
+  expiresIn?: number;
+  websocketUrl?: string;
+  model?: string;
+  language?: string;
 };

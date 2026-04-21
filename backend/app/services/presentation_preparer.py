@@ -1,5 +1,9 @@
 import re
+import json
 
+from groq import Groq
+
+from app.config import get_settings
 from app.models.request_models import ProjectContext
 from app.models.response_models import PreparedQuestion, Slide
 
@@ -111,20 +115,124 @@ def prepare_questions(project_context: ProjectContext, slides: list[Slide]) -> l
             )
 
         if not questions_for_slide:
-            questions_for_slide.append(
-                PreparedQuestion(
-                    id=f"slide-{slide.slideNumber}-clarity",
-                    slideNumber=slide.slideNumber,
-                    rubricCategory=_rubric_category(project_context, "clarity"),
-                    type="question",
-                    priority="low",
-                    question="What is the most important claim faculty should take away from this slide?",
-                    listenFor=[slide.title],
-                    missingIfAbsent=["because", "evidence", "example", "result"],
-                )
-            )
+            # Do not seed generic presenter-facing opener questions for weak slides.
+            questions_for_slide = []
 
         prepared.extend(questions_for_slide[:3])
 
     return prepared
+
+
+def _llm_prompt(project_context: ProjectContext, slides: list[Slide]) -> str:
+    slide_payload = [
+        {
+            "slideNumber": slide.slideNumber,
+            "title": slide.title,
+            "content": slide.content,
+        }
+        for slide in slides[:20]
+    ]
+
+    return (
+        "You are preparing faculty-style questions for a student presentation.\n"
+        "Use the rubric and slide content to generate specific, skeptical but fair questions.\n"
+        "Avoid generic prompts. Prefer questions about justification, evidence, evaluation, assumptions, and gaps.\n"
+        "Do not generate filler questions that just ask the presenter to restate the slide, especially on title or agenda slides.\n"
+        "If a slide is too empty or generic to support a meaningful faculty question, return no question for that slide.\n"
+        "Return strict JSON only. The response must be an array of objects with this shape:\n"
+        '[{"id":string,"slideNumber":number,"rubricCategory":string,"type":"question|critique|suggestion|clarification|praise",'
+        '"priority":"low|medium|high","question":string,"listenFor":[string],"missingIfAbsent":[string]}]\n'
+        "Return at most 3 questions per slide and no more than 24 total.\n\n"
+        f"Project context: {project_context.model_dump_json()}\n"
+        f"Slides: {json.dumps(slide_payload)}"
+    )
+
+
+def prepare_questions_with_llm(project_context: ProjectContext, slides: list[Slide]) -> list[PreparedQuestion] | None:
+    settings = get_settings()
+    if settings.faculty_ai_llm_provider not in {"groq", "openai"}:
+        return None
+    if not settings.groq_api_key or not slides:
+        return None
+
+    client = Groq(api_key=settings.groq_api_key)
+    completion = client.chat.completions.create(
+        model=settings.faculty_ai_llm_model,
+        messages=[
+            {
+                "role": "user",
+                "content": _llm_prompt(project_context, slides),
+            }
+        ],
+        temperature=0.2,
+        max_completion_tokens=1800,
+        top_p=1,
+        reasoning_effort="medium",
+        stream=True,
+        stop=None,
+    )
+
+    parts: list[str] = []
+    for chunk in completion:
+        delta = chunk.choices[0].delta.content or ""
+        if delta:
+            parts.append(delta)
+
+    raw_content = "".join(parts).strip()
+    if not raw_content:
+        return None
+
+    start = raw_content.find("[")
+    end = raw_content.rfind("]")
+    if start == -1 or end == -1 or end < start:
+        raise RuntimeError("Groq prepared-question response was not valid JSON.")
+
+    try:
+        parsed = json.loads(raw_content[start : end + 1])
+    except json.JSONDecodeError as exc:
+        raise RuntimeError("Unable to parse Groq prepared questions JSON.") from exc
+
+    if not isinstance(parsed, list):
+        raise RuntimeError("Groq prepared-question response was not an array.")
+
+    prepared: list[PreparedQuestion] = []
+    counts_by_slide: dict[int, int] = {}
+    valid_slide_numbers = {slide.slideNumber for slide in slides}
+    rubric_defaults = project_context.rubric or ["clarity"]
+
+    for index, item in enumerate(parsed):
+        if not isinstance(item, dict):
+            continue
+
+        slide_number = int(item.get("slideNumber", 0))
+        if slide_number not in valid_slide_numbers:
+            continue
+        if counts_by_slide.get(slide_number, 0) >= 3:
+            continue
+
+        question = str(item.get("question", "")).strip()
+        if not question:
+            continue
+
+        listen_for = [str(value).strip() for value in item.get("listenFor", []) if str(value).strip()]
+        missing_if_absent = [str(value).strip() for value in item.get("missingIfAbsent", []) if str(value).strip()]
+        rubric_category = str(item.get("rubricCategory", "")).strip() or rubric_defaults[0]
+        feedback_type = str(item.get("type", "question")).strip() or "question"
+        priority = str(item.get("priority", "medium")).strip() or "medium"
+
+        prepared.append(
+            PreparedQuestion(
+                id=str(item.get("id", f"slide-{slide_number}-llm-{index + 1}")).strip() or f"slide-{slide_number}-llm-{index + 1}",
+                slideNumber=slide_number,
+                rubricCategory=rubric_category,
+                type=feedback_type,  # validated by Pydantic
+                priority=priority,  # validated by Pydantic
+                question=question,
+                listenFor=listen_for[:8] or [question.split("?")[0][:32]],
+                missingIfAbsent=missing_if_absent[:8] or ["because", "evidence", "tradeoff"],
+            )
+        )
+        counts_by_slide[slide_number] = counts_by_slide.get(slide_number, 0) + 1
+
+    return prepared or None
 

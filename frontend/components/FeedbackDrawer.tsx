@@ -11,10 +11,13 @@ const typeLabels: Record<FeedbackItem["type"], string> = {
 type Props = {
   feedback: FeedbackItem[];
   open: boolean;
+  latestFeedback?: FeedbackItem;
   onClose: () => void;
 };
 
-export function FeedbackDrawer({ feedback, open, onClose }: Props) {
+export function FeedbackDrawer({ feedback, open, latestFeedback, onClose }: Props) {
+  const visibleFeedback = latestFeedback ? [...feedback].reverse().slice(1) : [...feedback].reverse();
+
   return (
     <aside className={`feedback-drawer ${open ? "open" : ""}`} aria-hidden={!open}>
       <div className="drawer-header">
@@ -27,11 +30,21 @@ export function FeedbackDrawer({ feedback, open, onClose }: Props) {
         </button>
       </div>
 
+      {latestFeedback ? (
+        <section className="live-feedback-preview">
+          <p className="eyebrow">Live Faculty Question</p>
+          <h3>{latestFeedback.message}</h3>
+          <p className="muted">{latestFeedback.reason}</p>
+        </section>
+      ) : null}
+
       <div className="feedback-list">
         {feedback.length === 0 ? (
           <p className="muted">Feedback will appear here when a chunk deserves attention.</p>
+        ) : visibleFeedback.length === 0 ? (
+          <p className="muted">The latest faculty question is shown above.</p>
         ) : (
-          [...feedback].reverse().map((item, index) => (
+          visibleFeedback.map((item, index) => (
             <article className={`feedback-card ${item.type}`} key={`${item.createdAt}-${index}`}>
               <div className="feedback-meta">
                 <span>{typeLabels[item.type]}</span>
