@@ -9,8 +9,9 @@ import { SessionControls } from "@/components/SessionControls";
 import { SlideTracker } from "@/components/SlideTracker";
 import { TranscriptPanel } from "@/components/TranscriptPanel";
 import { analyzeChunk, getProfessorConfig, getSpeechProxyUrl, startSession, uploadPresentation } from "@/lib/api";
+import { finalizeSession } from "@/lib/api";
 import { demoTranscriptChunks } from "@/lib/demoTranscript";
-import type { FeedbackItem, PreparedQuestion, ProfessorConfig, ProjectContext, Slide } from "@/lib/types";
+import type { FeedbackItem, FinalEvaluation, PreparedQuestion, ProfessorConfig, ProjectContext, Slide } from "@/lib/types";
 
 const defaultProjectContext: ProjectContext = {
   title: "Project Presentation",
@@ -33,6 +34,7 @@ export default function PresentPage() {
   const [currentSlideIndex, setCurrentSlideIndex] = useState(0);
   const [transcript, setTranscript] = useState<string[]>([]);
   const [feedback, setFeedback] = useState<FeedbackItem[]>([]);
+  const [finalEvaluation, setFinalEvaluation] = useState<FinalEvaluation>();
   const [activeChunk, setActiveChunk] = useState("");
   const [chunkIndex, setChunkIndex] = useState(0);
   const [running, setRunning] = useState(false);
@@ -87,6 +89,7 @@ export default function PresentPage() {
     setTranscript([]);
     transcriptRef.current = [];
     setFeedback([]);
+    setFinalEvaluation(undefined);
     setActiveChunk("");
     setChunkIndex(0);
     setDrawerOpen(false);
@@ -233,8 +236,16 @@ export default function PresentPage() {
         recentFeedback: recentFeedbackRef.current,
         projectContext: projectContextRef.current,
         currentSlide: currentSlideRef.current,
+        presentationSlides: slides,
         preparedQuestions: preparedQuestionsRef.current,
       });
+
+      if (result.inferredCurrentSlide) {
+        const inferredIndex = slides.findIndex((slide) => slide.slideNumber === result.inferredCurrentSlide?.slideNumber);
+        if (inferredIndex >= 0) {
+          setCurrentSlideIndex(inferredIndex);
+        }
+      }
 
       if (result.trigger && result.feedback) {
         setFeedback((current) => [...current, result.feedback as FeedbackItem]);
@@ -271,8 +282,16 @@ export default function PresentPage() {
       recentFeedback: recentFeedbackRef.current,
       projectContext: projectContextRef.current,
       currentSlide: currentSlideRef.current,
+      presentationSlides: slides,
       preparedQuestions: preparedQuestionsRef.current,
     });
+
+    if (result.inferredCurrentSlide) {
+      const inferredIndex = slides.findIndex((slide) => slide.slideNumber === result.inferredCurrentSlide?.slideNumber);
+      if (inferredIndex >= 0) {
+        setCurrentSlideIndex(inferredIndex);
+      }
+    }
 
     if (result.trigger && result.feedback) {
       setFeedback((current) => [...current, result.feedback as FeedbackItem]);
@@ -627,6 +646,22 @@ export default function PresentPage() {
     }
   }
 
+  async function handleFinalize() {
+    if (!sessionId) {
+      setStatus("Start a session before finalizing the grade.");
+      return;
+    }
+
+    try {
+      const evaluation = await finalizeSession(sessionId);
+      setFinalEvaluation(evaluation);
+      setDrawerOpen(true);
+      setStatus(`Final grade ready: ${evaluation.overallGrade} (${evaluation.numericScore}).`);
+    } catch (error) {
+      setStatus(error instanceof Error ? error.message : "Unable to finalize presentation.");
+    }
+  }
+
   useEffect(() => {
     if (!running) {
       return;
@@ -680,6 +715,7 @@ export default function PresentPage() {
           </section>
           <PresentationUpload disabled={busy} filename={uploadedFilename} onUpload={(file) => void handleUpload(file)} />
           <SessionControls
+            canFinalize={Boolean(sessionId && transcript.length > 0)}
             disabled={busy}
             liveConnected={liveConnected}
             liveConnecting={liveConnecting}
@@ -692,6 +728,7 @@ export default function PresentPage() {
             onNextChunk={() => void sendNextChunk()}
             onStartLive={() => void startLiveSpeech()}
             onStopLive={() => stopLiveSpeech()}
+            onFinalize={() => void handleFinalize()}
           />
         </div>
 
@@ -708,6 +745,33 @@ export default function PresentPage() {
       </div>
 
       <FeedbackDrawer feedback={feedback} latestFeedback={latestFeedback} open={drawerOpen} onClose={() => setDrawerOpen(false)} />
+      {finalEvaluation ? (
+        <aside className="feedback-drawer open final-evaluation" aria-hidden={false}>
+          <div className="drawer-header">
+            <div>
+              <p className="eyebrow">Final Evaluation</p>
+              <h2>
+                {finalEvaluation.projectTitle}: {finalEvaluation.overallGrade} ({finalEvaluation.numericScore})
+              </h2>
+            </div>
+            <button onClick={() => setFinalEvaluation(undefined)} type="button">
+              Close
+            </button>
+          </div>
+          <p>{finalEvaluation.summary}</p>
+          <div className="feedback-list">
+            {finalEvaluation.rubricScores.map((item) => (
+              <article className="feedback-card question" key={item.criterion}>
+                <div className="feedback-meta">
+                  <span>{item.criterion}</span>
+                  <span>{item.score}/5</span>
+                </div>
+                <small>{item.justification}</small>
+              </article>
+            ))}
+          </div>
+        </aside>
+      ) : null}
       <FacultyAlert latestFeedback={latestFeedback} unseenCount={unseenCount} onOpen={openDrawer} />
     </main>
   );

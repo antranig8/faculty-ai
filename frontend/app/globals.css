@@ -332,6 +332,10 @@ h2 {
   transform: translateX(0);
 }
 
+.final-evaluation {
+  right: 440px;
+}
+
 .live-feedback-preview {
   background: #fff7ed;
   border: 1px solid #fdba74;
@@ -484,5 +488,12 @@ h2 {
   .transcript-body {
     max-height: none;
     min-height: 320px;
+  }
+
+  .final-evaluation {
+    right: 0;
+    top: auto;
+    bottom: 0;
+    width: min(92vw, 430px);
   }
 }

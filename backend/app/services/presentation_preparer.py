@@ -6,6 +6,8 @@ from groq import Groq
 from app.config import get_settings
 from app.models.request_models import ProjectContext
 from app.models.response_models import PreparedQuestion, Slide
+from app.services.prompt_loader import load_prompt
+from app.services.rubric_loader import load_professor_config_from_template
 
 
 def parse_slide_outline(slide_outline: str) -> list[Slide]:
@@ -124,6 +126,7 @@ def prepare_questions(project_context: ProjectContext, slides: list[Slide]) -> l
 
 
 def _llm_prompt(project_context: ProjectContext, slides: list[Slide]) -> str:
+    rubric = load_professor_config_from_template()
     slide_payload = [
         {
             "slideNumber": slide.slideNumber,
@@ -133,16 +136,18 @@ def _llm_prompt(project_context: ProjectContext, slides: list[Slide]) -> str:
         for slide in slides[:20]
     ]
 
+    prompt_header = load_prompt(
+        "prepared_questions.txt",
+        (
+            "You are preparing faculty-style questions for a student presentation.\n"
+            "Use the rubric and slide content to generate specific, fair questions.\n"
+            "Return strict JSON only."
+        ),
+    )
+
     return (
-        "You are preparing faculty-style questions for a student presentation.\n"
-        "Use the rubric and slide content to generate specific, skeptical but fair questions.\n"
-        "Avoid generic prompts. Prefer questions about justification, evidence, evaluation, assumptions, and gaps.\n"
-        "Do not generate filler questions that just ask the presenter to restate the slide, especially on title or agenda slides.\n"
-        "If a slide is too empty or generic to support a meaningful faculty question, return no question for that slide.\n"
-        "Return strict JSON only. The response must be an array of objects with this shape:\n"
-        '[{"id":string,"slideNumber":number,"rubricCategory":string,"type":"question|critique|suggestion|clarification|praise",'
-        '"priority":"low|medium|high","question":string,"listenFor":[string],"missingIfAbsent":[string]}]\n'
-        "Return at most 3 questions per slide and no more than 24 total.\n\n"
+        f"{prompt_header}\n\n"
+        f"Professor rubric config: {rubric.model_dump_json() if rubric else '{}'}\n"
         f"Project context: {project_context.model_dump_json()}\n"
         f"Slides: {json.dumps(slide_payload)}"
     )

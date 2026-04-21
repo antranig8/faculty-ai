@@ -12,6 +12,7 @@ export default function HomePage() {
         <div className="home-actions">
           <Link href="/professor">Professor setup</Link>
           <Link href="/present">Student presentation mode</Link>
+          <Link href="/results">Results</Link>
         </div>
       </section>
     </main>

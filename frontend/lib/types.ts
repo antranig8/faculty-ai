@@ -51,6 +51,25 @@ export type PresentationPreparation = {
   cacheHit: boolean;
 };
 
+export type RubricScore = {
+  criterion: string;
+  score: number;
+  justification: string;
+};
+
+export type FinalEvaluation = {
+  sessionId: string;
+  projectTitle: string;
+  courseName: string;
+  overallGrade: string;
+  numericScore: number;
+  summary: string;
+  strongestPoints: string[];
+  biggestQuestions: string[];
+  rubricScores: RubricScore[];
+  createdAt: string;
+};
+
 export type ProfessorConfig = {
   courseName: string;
   assignmentName: string;
@@ -63,6 +82,7 @@ export type AnalyzeResponse = {
   trigger: boolean;
   feedback?: FeedbackItem;
   reason?: string;
+  inferredCurrentSlide?: Slide;
 };
 
 export type SpeechProvider = "deepgram" | "assemblyai";
