@@ -40,6 +40,30 @@ def _priority_rank(priority: str) -> int:
     return {"high": 3, "medium": 2, "low": 1}.get(priority, 0)
 
 
+def _build_feedback_from_question(
+    payload: AnalyzeChunkRequest,
+    question: PreparedQuestion,
+    reason: str,
+    evidence_heard: list[str] | None = None,
+    evidence_missing: list[str] | None = None,
+) -> FeedbackItem:
+    section = infer_section(" ".join([*payload.recentTranscript[-5:], payload.transcriptChunk]))
+    heard = [item for item in (evidence_heard or []) if item][:3]
+    missing = [item for item in (evidence_missing or []) if item][:3]
+    evidence_summary = ""
+    if heard or missing:
+        evidence_summary = f" Heard: {', '.join(heard) or 'none'}. Missing: {', '.join(missing) or 'none'}."
+
+    return FeedbackItem(
+        type=question.type,
+        priority=question.priority,
+        section=section,
+        message=question.question,
+        reason=f"Rubric focus: {question.rubricCategory}. {reason}{evidence_summary}".strip(),
+        createdAt=_created_at(),
+    )
+
+
 def _build_candidate_payload(question: PreparedQuestion, recent_text: str, asked_messages: list[str]) -> dict:
     lower_recent = recent_text.lower()
     heard_terms = [term for term in question.listenFor if term.lower() in lower_recent][:6]
@@ -62,6 +86,43 @@ def _build_candidate_payload(question: PreparedQuestion, recent_text: str, asked
         "alreadyAsked": _normalize_message(question.question) in asked_messages,
         "matchScore": match_score,
     }
+
+
+def _select_confident_candidate(
+    payload: AnalyzeChunkRequest,
+    prepared_questions: list[PreparedQuestion],
+    asked_messages: list[str],
+) -> tuple[PreparedQuestion, list[str], list[str]] | None:
+    if len(payload.recentTranscript) + 1 < 3:
+        return None
+
+    recent_text = " ".join([*payload.recentTranscript[-5:], payload.transcriptChunk]).lower()
+    ranked: list[tuple[int, PreparedQuestion, list[str], list[str]]] = []
+    for question in prepared_questions:
+        normalized_question = _normalize_message(question.question)
+        if normalized_question in asked_messages:
+            continue
+
+        heard_terms = [term for term in question.listenFor if term.lower() in recent_text]
+        still_missing = [term for term in question.missingIfAbsent if term.lower() not in recent_text]
+        already_covered = [term for term in question.missingIfAbsent if term.lower() in recent_text]
+        if len(heard_terms) < (1 if question.priority == "high" else 2):
+            continue
+        if not still_missing:
+            continue
+
+        score = (_priority_rank(question.priority) * 3) + (len(heard_terms) * 3) + len(still_missing) - (len(already_covered) * 2)
+        ranked.append((score, question, heard_terms[:3], still_missing[:3]))
+
+    if not ranked:
+        return None
+
+    ranked.sort(key=lambda item: item[0], reverse=True)
+    best_score, best_question, heard_terms, missing_terms = ranked[0]
+    threshold = 9 if best_question.priority == "high" else 11
+    if best_score < threshold:
+        return None
+    return best_question, heard_terms, missing_terms
 
 
 def _build_messages(
@@ -190,7 +251,21 @@ def decide_faculty_feedback(
     decision = str(parsed.get("decision", "skip")).strip().lower()
     reason = str(parsed.get("reason", "")).strip() or "Faculty brain declined to interrupt."
 
-    if decision in {"wait", "skip"}:
+    if decision == "wait":
+        confident_candidate = _select_confident_candidate(payload, prepared_for_slide, asked_messages)
+        if confident_candidate is not None:
+            question, heard_terms, missing_terms = confident_candidate
+            feedback = _build_feedback_from_question(
+                payload=payload,
+                question=question,
+                reason="Prepared slide concern became timely during the live explanation.",
+                evidence_heard=heard_terms,
+                evidence_missing=missing_terms,
+            )
+            return FacultyBrainDecision(feedback=feedback, reason=reason, terminal=True)
+        return FacultyBrainDecision(feedback=None, reason=reason, terminal=False)
+
+    if decision == "skip":
         return FacultyBrainDecision(feedback=None, reason=reason, terminal=True)
 
     if decision != "ask_now":
@@ -204,28 +279,17 @@ def decide_faculty_feedback(
     if selected_question is None:
         raise RuntimeError("Faculty brain selected an unknown question id.")
 
-    suggested_message = str(parsed.get("suggestedMessage", "")).strip() or selected_question.question
-    section = infer_section(" ".join([*payload.recentTranscript[-5:], payload.transcriptChunk]))
     evidence_heard = [str(item).strip() for item in parsed.get("evidenceHeard", []) if str(item).strip()]
     evidence_missing = [str(item).strip() for item in parsed.get("evidenceMissing", []) if str(item).strip()]
-    evidence_summary = ""
-    if evidence_heard or evidence_missing:
-        evidence_summary = (
-            f" Heard: {', '.join(evidence_heard[:3]) or 'none'}."
-            f" Missing: {', '.join(evidence_missing[:3]) or 'none'}."
-        )
+    suggested_message = str(parsed.get("suggestedMessage", "")).strip() or selected_question.question
 
     try:
-        feedback = FeedbackItem(
-            type=selected_question.type,
-            priority=selected_question.priority,
-            section=section,
-            message=suggested_message,
-            reason=(
-                f"Rubric focus: {selected_question.rubricCategory}. "
-                f"{reason}{evidence_summary}"
-            ).strip(),
-            createdAt=_created_at(),
+        feedback = _build_feedback_from_question(
+            payload=payload,
+            question=selected_question.model_copy(update={"question": suggested_message}),
+            reason=reason,
+            evidence_heard=evidence_heard,
+            evidence_missing=evidence_missing,
         )
     except ValidationError as exc:
         raise RuntimeError("Faculty brain returned feedback in an invalid shape.") from exc

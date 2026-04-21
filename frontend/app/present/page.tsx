@@ -36,6 +36,7 @@ export default function PresentPage() {
   const [feedback, setFeedback] = useState<FeedbackItem[]>([]);
   const [finalEvaluation, setFinalEvaluation] = useState<FinalEvaluation>();
   const [activeChunk, setActiveChunk] = useState("");
+  const [livePreview, setLivePreview] = useState("");
   const [chunkIndex, setChunkIndex] = useState(0);
   const [running, setRunning] = useState(false);
   const [drawerOpen, setDrawerOpen] = useState(false);
@@ -81,7 +82,7 @@ export default function PresentPage() {
   const latestFeedback = feedback[feedback.length - 1];
   const recentFeedback = useMemo(() => feedback.slice(-5).map((item) => item.message), [feedback]);
   const currentSlide = slides[currentSlideIndex];
-  const LIVE_ANALYZE_MIN_GAP_MS = 2200;
+  const LIVE_ANALYZE_MIN_GAP_MS = 1400;
   const LIVE_SILENCE_MS = 2800;
 
   function resetRunState() {
@@ -91,6 +92,7 @@ export default function PresentPage() {
     setFeedback([]);
     setFinalEvaluation(undefined);
     setActiveChunk("");
+    setLivePreview("");
     setChunkIndex(0);
     setDrawerOpen(false);
     setUnseenCount(0);
@@ -274,6 +276,7 @@ export default function PresentPage() {
     setTranscript(nextTranscript);
     transcriptRef.current = nextTranscript;
     setActiveChunk(nextChunk);
+    setLivePreview("");
 
     const result = await analyzeChunk({
       sessionId: id,
@@ -319,7 +322,13 @@ export default function PresentPage() {
       lastAnalyzeAtRef.current = Date.now();
       void analyzeTranscriptChunk(normalized).catch((error: unknown) => {
         setLiveStatus("error");
-        setStatus(error instanceof Error ? error.message : "Unable to analyze live transcript.");
+        setStatus(
+          error instanceof Error && error.message === "Failed to fetch"
+            ? "Failed to fetch from the backend while analyzing live speech."
+            : error instanceof Error
+              ? error.message
+              : "Unable to analyze live transcript.",
+        );
       });
       return;
     }
@@ -340,7 +349,13 @@ export default function PresentPage() {
       lastAnalyzeAtRef.current = Date.now();
       void analyzeTranscriptChunk(queuedChunk).catch((error: unknown) => {
         setLiveStatus("error");
-        setStatus(error instanceof Error ? error.message : "Unable to analyze live transcript.");
+        setStatus(
+          error instanceof Error && error.message === "Failed to fetch"
+            ? "Failed to fetch from the backend while analyzing live speech."
+            : error instanceof Error
+              ? error.message
+              : "Unable to analyze live transcript.",
+        );
       });
     }, delay);
   }
@@ -387,6 +402,7 @@ export default function PresentPage() {
       keepAliveTimerRef.current = null;
     }
     pendingChunkRef.current = null;
+    setLivePreview("");
     if (nextLiveStatus === "idle" && mode === "live") {
       setMode("idle");
     }
@@ -423,7 +439,7 @@ export default function PresentPage() {
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
       const audioContext = new AudioContext();
       const source = audioContext.createMediaStreamSource(stream);
-      const processor = audioContext.createScriptProcessor(4096, 1, 1);
+      const processor = audioContext.createScriptProcessor(2048, 1, 1);
       const muteNode = audioContext.createGain();
       muteNode.gain.value = 0;
       const socket = new WebSocket(getSpeechProxyUrl());
@@ -515,7 +531,7 @@ export default function PresentPage() {
           return;
         }
 
-        if (data.type !== "Results" || !data.is_final || !data.speech_final) {
+        if (data.type !== "Results") {
           return;
         }
 
@@ -524,12 +540,18 @@ export default function PresentPage() {
           return;
         }
 
+        setLivePreview(transcriptText);
+        setLiveStatus("listening");
+        resetSilenceTimer();
+
+        if (!data.is_final) {
+          return;
+        }
+
         setDebugStats((current) => ({
           ...current,
           transcriptEvents: current.transcriptEvents + 1,
         }));
-        setLiveStatus("listening");
-        resetSilenceTimer();
         scheduleLiveChunk(transcriptText);
       });
 
@@ -577,7 +599,12 @@ export default function PresentPage() {
         }));
       };
     } catch (error) {
-      stopLiveSpeech(error instanceof Error ? error.message : "Unable to start live speech.", true, "error");
+      const message = error instanceof Error && error.message === "Failed to fetch"
+        ? "Failed to fetch from the backend. Confirm the API is running and NEXT_PUBLIC_API_BASE_URL is correct."
+        : error instanceof Error
+          ? error.message
+          : "Unable to start live speech.";
+      stopLiveSpeech(message, true, "error");
     }
   }
 
@@ -740,7 +767,13 @@ export default function PresentPage() {
             onPrevious={() => setCurrentSlideIndex((index) => Math.max(0, index - 1))}
             onNext={() => setCurrentSlideIndex((index) => Math.min(slides.length - 1, index + 1))}
           />
-          <TranscriptPanel activeChunk={activeChunk} debugStats={debugStats} liveStatus={liveStatus} transcript={transcript} />
+          <TranscriptPanel
+            activeChunk={activeChunk}
+            debugStats={debugStats}
+            livePreview={livePreview}
+            liveStatus={liveStatus}
+            transcript={transcript}
+          />
         </div>
       </div>
 

@@ -36,7 +36,7 @@ def _created_at() -> str:
 
 def generate_candidate_feedback(text: str, project_title: str = "") -> tuple[Optional[FeedbackItem], str]:
     words = text.split()
-    if len(words) < 20:
+    if len(words) < 12:
         return None, "Transcript chunk is too short to evaluate."
 
     lower_text = text.lower()
@@ -103,7 +103,7 @@ def generate_slide_aware_feedback(
     current_slide_number: int | None,
 ) -> tuple[Optional[FeedbackItem], str]:
     words = text.split()
-    if len(words) < 16:
+    if len(words) < 8:
         return None, "Transcript chunk is too short for slide-aware feedback."
 
     relevant_questions = [
