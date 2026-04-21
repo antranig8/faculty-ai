@@ -78,6 +78,7 @@ export default function PresentPage() {
   const pendingChunkRef = useRef<string | null>(null);
   const pendingTimerRef = useRef<NodeJS.Timeout | null>(null);
   const keepAliveTimerRef = useRef<NodeJS.Timeout | null>(null);
+  const drawerOpenTimerRef = useRef<NodeJS.Timeout | null>(null);
   const lastAnalyzeAtRef = useRef(0);
   const liveErrorMessageRef = useRef("");
   const intentionalLiveStopRef = useRef(false);
@@ -115,6 +116,24 @@ export default function PresentPage() {
     return slides.map(compactSlideForAnalysis);
   }
 
+  function clearDrawerOpenTimer() {
+    if (drawerOpenTimerRef.current) {
+      clearTimeout(drawerOpenTimerRef.current);
+      drawerOpenTimerRef.current = null;
+    }
+  }
+
+  function queueFacultyQuestionReveal() {
+    clearDrawerOpenTimer();
+    setDrawerOpen(false);
+    setUnseenCount((current) => current + 1);
+    drawerOpenTimerRef.current = setTimeout(() => {
+      setDrawerOpen(true);
+      setUnseenCount(0);
+      drawerOpenTimerRef.current = null;
+    }, 2000);
+  }
+
   function applyResolvedFeedback(resolvedFeedback?: FeedbackItem) {
     if (!resolvedFeedback) {
       return;
@@ -136,6 +155,7 @@ export default function PresentPage() {
     setLivePreview("");
     setChunkIndex(0);
     setDrawerOpen(false);
+    clearDrawerOpenTimer();
     setUnseenCount(0);
     setRunning(false);
     setLiveErrorMessage("");
@@ -296,8 +316,7 @@ export default function PresentPage() {
 
       if (result.trigger && result.feedback) {
         setFeedback((current) => [...current, result.feedback as FeedbackItem]);
-        setDrawerOpen(true);
-        setUnseenCount((current) => current + 1);
+        queueFacultyQuestionReveal();
         setStatus("Faculty alert triggered.");
       } else if (result.resolvedFeedback) {
         setStatus("Faculty question auto-marked addressed.");
@@ -347,8 +366,7 @@ export default function PresentPage() {
 
     if (result.trigger && result.feedback) {
       setFeedback((current) => [...current, result.feedback as FeedbackItem]);
-      setDrawerOpen(true);
-      setUnseenCount((current) => current + 1);
+      queueFacultyQuestionReveal();
       setStatus("Live faculty question triggered.");
       setLiveStatus("listening");
       resetSilenceTimer();
@@ -447,6 +465,7 @@ export default function PresentPage() {
       clearTimeout(pendingTimerRef.current);
       pendingTimerRef.current = null;
     }
+    clearDrawerOpenTimer();
     if (keepAliveTimerRef.current) {
       clearInterval(keepAliveTimerRef.current);
       keepAliveTimerRef.current = null;
@@ -730,6 +749,7 @@ export default function PresentPage() {
   }
 
   function openDrawer() {
+    clearDrawerOpenTimer();
     setDrawerOpen(true);
     setUnseenCount(0);
   }
@@ -806,7 +826,10 @@ export default function PresentPage() {
     };
   }, [running, chunkIndex, transcript.length]);
 
-  useEffect(() => () => stopLiveSpeech("Live microphone stopped."), []);
+  useEffect(() => () => {
+    clearDrawerOpenTimer();
+    stopLiveSpeech("Live microphone stopped.");
+  }, []);
 
   return (
     <main className="app-shell">
