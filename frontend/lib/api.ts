@@ -239,3 +239,17 @@ export async function getDeepgramTtsPreview(): Promise<TtsPreviewResponse> {
 
   return response.json();
 }
+
+export async function synthesizeDeepgramSpeech(text: string): Promise<Blob> {
+  const response = await fetch(`${API_BASE}/speech/deepgram/tts`, {
+    method: "POST",
+    headers: buildHeaders({ "Content-Type": "application/json" }),
+    body: JSON.stringify({ provider: "deepgram", text }),
+  });
+
+  if (!response.ok) {
+    throw new Error("Deepgram TTS is not enabled.");
+  }
+
+  return response.blob();
+}
