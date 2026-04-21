@@ -43,6 +43,7 @@ export default function PresentPage() {
   const [unseenCount, setUnseenCount] = useState(0);
   const [status, setStatus] = useState("Ready for fake transcript mode.");
   const [busy, setBusy] = useState(false);
+  const [voiceEnabled, setVoiceEnabled] = useState(true);
   const [liveConnecting, setLiveConnecting] = useState(false);
   const [liveConnected, setLiveConnected] = useState(false);
   const [mode, setMode] = useState<"idle" | "demo" | "live">("idle");
@@ -79,6 +80,7 @@ export default function PresentPage() {
   const pendingTimerRef = useRef<NodeJS.Timeout | null>(null);
   const keepAliveTimerRef = useRef<NodeJS.Timeout | null>(null);
   const drawerOpenTimerRef = useRef<NodeJS.Timeout | null>(null);
+  const spokenFeedbackIdsRef = useRef<Set<string>>(new Set());
   const lastAnalyzeAtRef = useRef(0);
   const liveErrorMessageRef = useRef("");
   const intentionalLiveStopRef = useRef(false);
@@ -123,13 +125,40 @@ export default function PresentPage() {
     }
   }
 
-  function queueFacultyQuestionReveal() {
+  function stopSpeaking() {
+    if (typeof window === "undefined" || !("speechSynthesis" in window)) {
+      return;
+    }
+    window.speechSynthesis.cancel();
+  }
+
+  function speakFacultyQuestion(item: FeedbackItem) {
+    if (!voiceEnabled || typeof window === "undefined" || !("speechSynthesis" in window)) {
+      return;
+    }
+
+    const speechKey = item.sourceQuestionId ?? item.createdAt;
+    if (spokenFeedbackIdsRef.current.has(speechKey)) {
+      return;
+    }
+
+    spokenFeedbackIdsRef.current.add(speechKey);
+    window.speechSynthesis.cancel();
+    const utterance = new SpeechSynthesisUtterance(item.message);
+    utterance.rate = 0.95;
+    utterance.pitch = 1;
+    utterance.volume = 1;
+    window.speechSynthesis.speak(utterance);
+  }
+
+  function queueFacultyQuestionReveal(item: FeedbackItem) {
     clearDrawerOpenTimer();
     setDrawerOpen(false);
     setUnseenCount((current) => current + 1);
     drawerOpenTimerRef.current = setTimeout(() => {
       setDrawerOpen(true);
       setUnseenCount(0);
+      speakFacultyQuestion(item);
       drawerOpenTimerRef.current = null;
     }, 2000);
   }
@@ -150,12 +179,15 @@ export default function PresentPage() {
     setTranscript([]);
     transcriptRef.current = [];
     setFeedback([]);
+    spokenFeedbackIdsRef.current = new Set();
+    stopSpeaking();
     setFinalEvaluation(undefined);
     setActiveChunk("");
     setLivePreview("");
     setChunkIndex(0);
     setDrawerOpen(false);
     clearDrawerOpenTimer();
+    stopSpeaking();
     setUnseenCount(0);
     setRunning(false);
     setLiveErrorMessage("");
@@ -316,7 +348,7 @@ export default function PresentPage() {
 
       if (result.trigger && result.feedback) {
         setFeedback((current) => [...current, result.feedback as FeedbackItem]);
-        queueFacultyQuestionReveal();
+        queueFacultyQuestionReveal(result.feedback as FeedbackItem);
         setStatus("Faculty alert triggered.");
       } else if (result.resolvedFeedback) {
         setStatus("Faculty question auto-marked addressed.");
@@ -366,7 +398,7 @@ export default function PresentPage() {
 
     if (result.trigger && result.feedback) {
       setFeedback((current) => [...current, result.feedback as FeedbackItem]);
-      queueFacultyQuestionReveal();
+      queueFacultyQuestionReveal(result.feedback as FeedbackItem);
       setStatus("Live faculty question triggered.");
       setLiveStatus("listening");
       resetSilenceTimer();
@@ -466,6 +498,7 @@ export default function PresentPage() {
       pendingTimerRef.current = null;
     }
     clearDrawerOpenTimer();
+    stopSpeaking();
     if (keepAliveTimerRef.current) {
       clearInterval(keepAliveTimerRef.current);
       keepAliveTimerRef.current = null;
@@ -752,6 +785,18 @@ export default function PresentPage() {
     clearDrawerOpenTimer();
     setDrawerOpen(true);
     setUnseenCount(0);
+    if (latestFeedback) {
+      speakFacultyQuestion(latestFeedback);
+    }
+  }
+
+  function toggleVoice() {
+    setVoiceEnabled((enabled) => {
+      if (enabled) {
+        stopSpeaking();
+      }
+      return !enabled;
+    });
   }
 
   async function handleFeedbackResolution(item: FeedbackItem, resolved: boolean) {
@@ -767,6 +812,9 @@ export default function PresentPage() {
         resolutionReason: resolved ? "Presenter addressed this faculty question." : undefined,
       });
       setFeedback(updated);
+      if (resolved) {
+        stopSpeaking();
+      }
       setUnseenCount((current) => (resolved ? Math.max(0, current - 1) : current + 1));
       setStatus(resolved ? "Faculty question marked addressed." : "Faculty question reopened.");
     } catch (error) {
@@ -871,6 +919,7 @@ export default function PresentPage() {
             liveStatus={liveStatus}
             running={running}
             sessionId={sessionId}
+            voiceEnabled={voiceEnabled}
             onStart={startDemo}
             onStop={stopDemo}
             onReset={resetDemo}
@@ -878,6 +927,7 @@ export default function PresentPage() {
             onStartLive={() => void startLiveSpeech()}
             onStopLive={() => stopLiveSpeech()}
             onFinalize={() => void handleFinalize()}
+            onToggleVoice={toggleVoice}
           />
           <section className="quiet-panel">
             <p className="eyebrow">Rubric</p>

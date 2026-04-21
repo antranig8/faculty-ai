@@ -130,6 +130,15 @@ async def create_speech_session(provider_name: SpeechProviderName) -> SpeechSess
     )
 
 
+@router.get("/deepgram/tts/preview")
+async def deepgram_tts_preview() -> dict[str, bool | str]:
+    settings = get_settings()
+    return {
+        "provider": "deepgram",
+        "enabled": bool(settings.deepgram_api_key),
+    }
+
+
 @router.websocket("/deepgram/proxy")
 async def deepgram_proxy(websocket: WebSocket) -> None:
     await websocket.accept()

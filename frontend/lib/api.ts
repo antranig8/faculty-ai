@@ -8,6 +8,7 @@ import type {
   ProjectContext,
   SpeechProvider,
   SpeechSession,
+  TtsPreviewResponse,
   Slide,
 } from "./types";
 
@@ -222,6 +223,18 @@ export async function createSpeechSession(provider: SpeechProvider): Promise<Spe
   if (!response.ok) {
     const error = await response.json().catch(() => undefined);
     throw new Error(error?.detail ?? "Unable to start live speech.");
+  }
+
+  return response.json();
+}
+
+export async function getDeepgramTtsPreview(): Promise<TtsPreviewResponse> {
+  const response = await fetch(`${API_BASE}/speech/deepgram/tts/preview`, {
+    headers: buildHeaders(),
+  });
+
+  if (!response.ok) {
+    throw new Error("Unable to load Deepgram TTS preview status.");
   }
 
   return response.json();
