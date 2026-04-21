@@ -12,6 +12,7 @@ from app.services.groq_client import build_groq_client, groq_reasoning_effort
 from app.services.prompt_loader import load_prompt
 from app.services.rubric_loader import load_professor_config_from_template
 from app.services.section_tracker import infer_section
+from app.services.transcript_evidence import TranscriptEvidence, extract_transcript_evidence
 
 _FALLBACK_PROMPT = (
     "You are FacultyAI's runtime faculty-brain.\n"
@@ -64,10 +65,13 @@ def _build_feedback_from_question(
     )
 
 
-def _build_candidate_payload(question: PreparedQuestion, recent_text: str, asked_messages: list[str]) -> dict:
+def _build_candidate_payload(question: PreparedQuestion, recent_text: str, asked_messages: list[str], evidence: TranscriptEvidence) -> dict:
     lower_recent = recent_text.lower()
     heard_terms = [term for term in question.listenFor if term.lower() in lower_recent][:6]
+    heard_terms.extend([item for item in evidence.evidenceMarkers if item not in heard_terms][:2])
     still_missing = [term for term in question.missingIfAbsent if term.lower() not in lower_recent][:6]
+    if evidence.unansweredGaps:
+        still_missing.extend([item for item in evidence.unansweredGaps if item not in still_missing][:2])
     already_covered = [term for term in question.missingIfAbsent if term.lower() in lower_recent][:6]
     match_score = (_priority_rank(question.priority) * 2) + (len(heard_terms) * 3) - len(already_covered)
 
@@ -92,6 +96,7 @@ def _select_confident_candidate(
     payload: AnalyzeChunkRequest,
     prepared_questions: list[PreparedQuestion],
     asked_messages: list[str],
+    evidence: TranscriptEvidence,
 ) -> tuple[PreparedQuestion, list[str], list[str]] | None:
     if len(payload.recentTranscript) + 1 < 3:
         return None
@@ -104,7 +109,9 @@ def _select_confident_candidate(
             continue
 
         heard_terms = [term for term in question.listenFor if term.lower() in recent_text]
+        heard_terms.extend([item for item in evidence.evidenceMarkers if item not in heard_terms][:2])
         still_missing = [term for term in question.missingIfAbsent if term.lower() not in recent_text]
+        still_missing.extend([item for item in evidence.unansweredGaps if item not in still_missing][:2])
         already_covered = [term for term in question.missingIfAbsent if term.lower() in recent_text]
         if len(heard_terms) < (1 if question.priority == "high" else 2):
             continue
@@ -134,8 +141,9 @@ def _build_messages(
 ) -> list[dict[str, str]]:
     rubric = load_professor_config_from_template()
     recent_text = " ".join([*payload.recentTranscript[-5:], payload.transcriptChunk]).strip()
+    transcript_evidence = extract_transcript_evidence(payload.recentTranscript, payload.transcriptChunk)
     candidate_payload = [
-        _build_candidate_payload(question, recent_text, asked_messages)
+        _build_candidate_payload(question, recent_text, asked_messages, transcript_evidence)
         for question in prepared_questions
     ]
     candidate_payload.sort(key=lambda item: item["matchScore"], reverse=True)
@@ -152,6 +160,7 @@ def _build_messages(
         ),
         "projectContext": payload.projectContext.model_dump(),
         "currentSlide": current_slide.model_dump(),
+        "transcriptEvidence": transcript_evidence.to_dict(),
         "candidateQuestions": candidate_payload[:5],
         "recentTranscript": payload.recentTranscript[-5:],
         "latestTranscriptChunk": payload.transcriptChunk,
@@ -250,9 +259,10 @@ def decide_faculty_feedback(
     parsed = _parse_json_object(raw_content)
     decision = str(parsed.get("decision", "skip")).strip().lower()
     reason = str(parsed.get("reason", "")).strip() or "Faculty brain declined to interrupt."
+    transcript_evidence = extract_transcript_evidence(payload.recentTranscript, payload.transcriptChunk)
 
     if decision == "wait":
-        confident_candidate = _select_confident_candidate(payload, prepared_for_slide, asked_messages)
+        confident_candidate = _select_confident_candidate(payload, prepared_for_slide, asked_messages, transcript_evidence)
         if confident_candidate is not None:
             question, heard_terms, missing_terms = confident_candidate
             feedback = _build_feedback_from_question(

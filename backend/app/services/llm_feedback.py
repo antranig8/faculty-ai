@@ -11,6 +11,7 @@ from app.services.groq_client import build_groq_client, groq_reasoning_effort
 from app.services.prompt_loader import load_prompt
 from app.services.rubric_loader import load_professor_config_from_template
 from app.services.section_tracker import infer_section
+from app.services.transcript_evidence import extract_transcript_evidence
 
 
 def _created_at() -> str:
@@ -19,6 +20,7 @@ def _created_at() -> str:
 
 def _build_prompt(payload: AnalyzeChunkRequest) -> str:
     rubric = load_professor_config_from_template()
+    transcript_evidence = extract_transcript_evidence(payload.recentTranscript, payload.transcriptChunk)
     slide_summary = "none"
     if payload.currentSlide:
         slide_summary = json.dumps(
@@ -57,6 +59,7 @@ def _build_prompt(payload: AnalyzeChunkRequest) -> str:
         f"Professor rubric config: {rubric.model_dump_json() if rubric else '{}'}\n"
         f"Project context: {payload.projectContext.model_dump_json()}\n"
         f"Current slide: {slide_summary}\n"
+        f"Transcript evidence: {json.dumps(transcript_evidence.to_dict())}\n"
         f"Prepared questions: {json.dumps(prepared_questions)}\n"
         f"Recent transcript: {json.dumps(payload.recentTranscript[-4:])}\n"
         f"Recent feedback: {json.dumps(payload.recentFeedback[-5:])}\n"

@@ -10,6 +10,9 @@ Instructions:
 - Title, agenda, and transition slides should usually produce no question.
 - If a slide is too empty or generic to support a meaningful faculty question, return no question for that slide.
 - Keep questions interpretable and concrete so the runtime faculty-brain can decide later whether to ask them.
+- Make `listenFor` concrete phrases or topic markers the presenter is likely to say out loud.
+- Make `missingIfAbsent` concrete support markers that would count as an acceptable answer, such as a metric, evidence source, tradeoff, or justification phrase.
+- Prefer one sharp concern per question instead of bundling multiple weak concerns together.
 
 Output:
 Return strict JSON only. The response must be an array of objects with this shape:

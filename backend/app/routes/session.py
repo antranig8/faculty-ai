@@ -20,6 +20,7 @@ def start_session(payload: SessionStartRequest) -> SessionStartResponse:
         "last_feedback_at": None,
         "last_transcript_chunk": None,
         "asked_feedback_messages": [],
+        "asked_feedback_slide_numbers": [],
         "awaiting_answer_until": None,
         "last_feedback_slide_number": None,
         "last_llm_attempt_at": None,
