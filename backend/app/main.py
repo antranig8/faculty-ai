@@ -10,10 +10,11 @@ from app.routes import analyze, presentation, professor, session, speech
 
 app = FastAPI(title="Faculty AI Live Feedback")
 logging.basicConfig(level=logging.INFO)
+settings = get_settings()
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:3000", "http://127.0.0.1:3000"],
+    allow_origins=settings.faculty_ai_allowed_origins,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],

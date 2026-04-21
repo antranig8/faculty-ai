@@ -125,6 +125,39 @@ h2 {
   padding: 24px;
 }
 
+.access-screen {
+  align-items: center;
+  display: grid;
+  min-height: 100vh;
+  padding: 24px;
+}
+
+.access-panel {
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  box-shadow: var(--shadow-sm);
+  display: grid;
+  gap: 18px;
+  max-width: 420px;
+  padding: 24px;
+  width: 100%;
+}
+
+.access-panel h1 {
+  margin-top: 6px;
+}
+
+.access-error {
+  background: var(--danger-soft);
+  border: 1px solid #fecdca;
+  border-radius: 10px;
+  color: var(--danger);
+  font-size: 0.9rem;
+  font-weight: 700;
+  padding: 10px 12px;
+}
+
 .home-screen section {
   display: grid;
   gap: 18px;

@@ -37,6 +37,7 @@ class Settings:
     deepgram_api_key: str | None
     groq_api_key: str | None
     faculty_ai_app_api_key: str | None
+    faculty_ai_allowed_origins: list[str]
     faculty_ai_speech_provider: str
     faculty_ai_llm_provider: str
     faculty_ai_llm_model: str
@@ -46,10 +47,19 @@ class Settings:
 
 def get_settings() -> Settings:
     _load_dotenv()
+    allowed_origins = [
+        origin.strip()
+        for origin in os.getenv(
+            "FACULTY_AI_ALLOWED_ORIGINS",
+            "http://localhost:3000,http://127.0.0.1:3000",
+        ).split(",")
+        if origin.strip()
+    ]
     return Settings(
         deepgram_api_key=os.getenv("DEEPGRAM_API_KEY"),
         groq_api_key=os.getenv("GROQ_API_KEY"),
         faculty_ai_app_api_key=os.getenv("FACULTY_AI_APP_API_KEY"),
+        faculty_ai_allowed_origins=allowed_origins,
         faculty_ai_speech_provider=os.getenv("FACULTY_AI_SPEECH_PROVIDER", "deepgram"),
         faculty_ai_llm_provider=os.getenv("FACULTY_AI_LLM_PROVIDER", "heuristic"),
         faculty_ai_llm_model=os.getenv("FACULTY_AI_LLM_MODEL", "qwen/qwen3-32b"),
