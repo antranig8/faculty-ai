@@ -20,6 +20,7 @@ _FALLBACK_PROMPT = (
     "Use the live transcript to decide timing, not to invent a different question.\n"
     "Return strict JSON only."
 )
+LIVE_FACULTY_MAX_COMPLETION_TOKENS = 260
 
 
 @dataclass
@@ -147,24 +148,39 @@ def _build_messages(
         for question in prepared_questions
     ]
     candidate_payload.sort(key=lambda item: item["matchScore"], reverse=True)
+    top_candidates = candidate_payload[:2]
 
     runtime_context = {
         "courseName": rubric.courseName if rubric else "ENES 104",
         "assignmentName": rubric.assignmentName if rubric else "Project Presentation",
         "questionStyle": rubric.questionStyle if rubric else "skeptical but fair faculty examiner",
         "rubricCriteria": rubric.rubric if rubric else payload.projectContext.rubric,
-        "assignmentContext": rubric.assignmentContext if rubric else payload.projectContext.notes,
+        "assignmentContext": (rubric.assignmentContext if rubric else payload.projectContext.notes or "")[:240],
         "courseCalibration": (
             "Introduction to engineering professions course. Prepare students for professional industry expectations, "
             "but keep questioning fair and not overly harsh."
         ),
-        "projectContext": payload.projectContext.model_dump(),
-        "currentSlide": current_slide.model_dump(),
-        "transcriptEvidence": transcript_evidence.to_dict(),
-        "candidateQuestions": candidate_payload[:5],
-        "recentTranscript": payload.recentTranscript[-5:],
-        "latestTranscriptChunk": payload.transcriptChunk,
-        "recentFeedback": recent_feedback[-5:],
+        "projectContext": {
+            "title": payload.projectContext.title,
+            "rubric": payload.projectContext.rubric[:6],
+        },
+        "currentSlide": {
+            "slideNumber": current_slide.slideNumber,
+            "title": current_slide.title,
+        },
+        "transcriptEvidence": {
+            "summary": transcript_evidence.summary,
+            "claims": transcript_evidence.claims[:2],
+            "technicalChoices": transcript_evidence.technicalChoices[:2],
+            "metrics": transcript_evidence.metrics[:3],
+            "evidenceMarkers": transcript_evidence.evidenceMarkers[:3],
+            "tradeoffMarkers": transcript_evidence.tradeoffMarkers[:3],
+            "unansweredGaps": transcript_evidence.unansweredGaps[:3],
+        },
+        "candidateQuestions": top_candidates,
+        "recentTranscript": payload.recentTranscript[-2:],
+        "latestTranscriptChunk": payload.transcriptChunk[:280],
+        "recentFeedback": recent_feedback[-2:],
         "transcriptChunkCount": len(payload.recentTranscript) + 1,
     }
 
@@ -239,7 +255,7 @@ def decide_faculty_feedback(
             asked_messages=asked_messages,
         ),
         temperature=0.1,
-        max_completion_tokens=900,
+        max_completion_tokens=LIVE_FACULTY_MAX_COMPLETION_TOKENS,
         top_p=1,
         reasoning_effort=groq_reasoning_effort(settings.faculty_ai_llm_model),
         stream=True,
