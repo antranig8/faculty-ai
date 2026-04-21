@@ -59,9 +59,14 @@ export function TranscriptPanel({ transcript, activeChunk, livePreview = "", liv
         </details>
       ) : null}
 
-      {debugStats?.lastStopReason ? <p className="muted">Last stop: {debugStats.lastStopReason}</p> : null}
+      {debugStats?.lastStopReason ? <p className="transcript-note">Last stop: {debugStats.lastStopReason}</p> : null}
 
-      {livePreview ? <p className="muted">Live preview: {livePreview}</p> : null}
+      {livePreview ? (
+        <div className="live-preview">
+          <span>Live preview</span>
+          <p>{livePreview}</p>
+        </div>
+      ) : null}
 
       <div className="transcript-body">
         {transcript.length === 0 ? (

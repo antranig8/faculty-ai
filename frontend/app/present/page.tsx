@@ -187,7 +187,6 @@ export default function PresentPage() {
     setChunkIndex(0);
     setDrawerOpen(false);
     clearDrawerOpenTimer();
-    stopSpeaking();
     setUnseenCount(0);
     setRunning(false);
     setLiveErrorMessage("");
@@ -882,11 +881,15 @@ export default function PresentPage() {
   return (
     <main className="app-shell">
       <header className="topbar">
-        <div>
+        <div className="topbar-title">
           <p className="eyebrow">Faculty AI</p>
           <h1>Presentation cockpit</h1>
+          <p>Run live Q&A support without crowding the presenter view.</p>
         </div>
-        <p>{status}</p>
+        <div className={`topbar-status ${liveStatus}`}>
+          <span aria-hidden="true" />
+          <p>{status}</p>
+        </div>
       </header>
 
       <section className="session-summary" aria-label="Presentation setup summary">

@@ -64,7 +64,7 @@ export function SessionControls({
         >
           {liveConnecting ? "Connecting..." : "Start live mic"}
         </button>
-        <button disabled={disabled || running || liveConnected || liveConnecting} onClick={onStart} type="button">
+        <button className="demo-button" disabled={disabled || running || liveConnected || liveConnecting} onClick={onStart} type="button">
           Start demo
         </button>
       </div>
