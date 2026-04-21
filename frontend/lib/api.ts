@@ -162,6 +162,31 @@ export async function getFeedback(sessionId: string): Promise<FeedbackItem[]> {
   return response.json();
 }
 
+export async function updateFeedbackResolution(params: {
+  sessionId: string;
+  createdAt: string;
+  resolved: boolean;
+  resolutionReason?: string;
+}): Promise<FeedbackItem[]> {
+  const response = await fetch(
+    `${API_BASE}/session/${params.sessionId}/feedback/${encodeURIComponent(params.createdAt)}/resolution`,
+    {
+      method: "PATCH",
+      headers: buildHeaders({ "Content-Type": "application/json" }),
+      body: JSON.stringify({
+        resolved: params.resolved,
+        resolutionReason: params.resolutionReason,
+      }),
+    },
+  );
+
+  if (!response.ok) {
+    throw new Error(params.resolved ? "Unable to mark feedback addressed." : "Unable to reopen feedback.");
+  }
+
+  return response.json();
+}
+
 export async function finalizeSession(sessionId: string): Promise<FinalEvaluation> {
   const response = await fetch(`${API_BASE}/session/${sessionId}/finalize`, {
     method: "POST",

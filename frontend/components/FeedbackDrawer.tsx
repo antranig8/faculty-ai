@@ -13,10 +13,13 @@ type Props = {
   open: boolean;
   latestFeedback?: FeedbackItem;
   onClose: () => void;
+  onResolve: (item: FeedbackItem, resolved: boolean) => void;
 };
 
-export function FeedbackDrawer({ feedback, open, latestFeedback, onClose }: Props) {
-  const visibleFeedback = latestFeedback ? [...feedback].reverse().slice(1) : [...feedback].reverse();
+export function FeedbackDrawer({ feedback, open, latestFeedback, onClose, onResolve }: Props) {
+  const visibleFeedback = latestFeedback
+    ? [...feedback].reverse().filter((item) => item.createdAt !== latestFeedback.createdAt)
+    : [...feedback].reverse();
 
   return (
     <aside className={`feedback-drawer ${open ? "open" : ""}`} aria-hidden={!open}>
@@ -31,10 +34,16 @@ export function FeedbackDrawer({ feedback, open, latestFeedback, onClose }: Prop
       </div>
 
       {latestFeedback ? (
-        <section className="live-feedback-preview">
-          <p className="eyebrow">Live Faculty Question</p>
+        <section className={`live-feedback-preview ${latestFeedback.resolved ? "resolved" : ""}`}>
+          <div className="feedback-meta">
+            <span>Live Faculty Question</span>
+            <span>{latestFeedback.section.replace("_", " ")}</span>
+          </div>
           <h3>{latestFeedback.message}</h3>
           <p className="muted">{latestFeedback.reason}</p>
+          <button className="resolved-button" onClick={() => onResolve(latestFeedback, true)} type="button">
+            Mark addressed
+          </button>
         </section>
       ) : null}
 
@@ -45,13 +54,21 @@ export function FeedbackDrawer({ feedback, open, latestFeedback, onClose }: Prop
           <p className="muted">The latest faculty question is shown above.</p>
         ) : (
           visibleFeedback.map((item, index) => (
-            <article className={`feedback-card ${item.type}`} key={`${item.createdAt}-${index}`}>
+            <article className={`feedback-card ${item.type} ${item.resolved ? "resolved" : ""}`} key={`${item.createdAt}-${index}`}>
               <div className="feedback-meta">
                 <span>{typeLabels[item.type]}</span>
-                <span>{item.section.replace("_", " ")}</span>
+                <span>{item.resolved ? "addressed" : item.section.replace("_", " ")}</span>
               </div>
               <p>{item.message}</p>
               <small>{item.reason}</small>
+              {item.resolved ? (
+                <>
+                  <small>{item.resolutionReason ?? "Marked addressed."}</small>
+                  <button className="secondary-button" onClick={() => onResolve(item, false)} type="button">
+                    Reopen
+                  </button>
+                </>
+              ) : null}
             </article>
           ))
         )}

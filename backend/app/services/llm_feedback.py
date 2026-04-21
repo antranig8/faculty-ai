@@ -13,11 +13,21 @@ from app.services.rubric_loader import load_professor_config_from_template
 from app.services.section_tracker import infer_section
 from app.services.transcript_evidence import extract_transcript_evidence
 
-LIVE_FALLBACK_MAX_COMPLETION_TOKENS = 220
+LIVE_FALLBACK_MAX_COMPLETION_TOKENS = 160
+MAX_PROMPT_TEXT_CHARS = 220
 
 
 def _created_at() -> str:
     return utc_now().astimezone(timezone.utc).isoformat()
+
+
+def _clip_text(value: str, limit: int = MAX_PROMPT_TEXT_CHARS) -> str:
+    compacted = " ".join(value.split())
+    return compacted if len(compacted) <= limit else f"{compacted[:limit].rstrip()}..."
+
+
+def _clip_list(items: list[str], count: int = 3, char_limit: int = 100) -> list[str]:
+    return [_clip_text(item, char_limit) for item in items if item][:count]
 
 
 def _build_prompt(payload: AnalyzeChunkRequest) -> str:
@@ -28,8 +38,8 @@ def _build_prompt(payload: AnalyzeChunkRequest) -> str:
         slide_summary = json.dumps(
             {
                 "slideNumber": payload.currentSlide.slideNumber,
-                "title": payload.currentSlide.title,
-                "content": payload.currentSlide.content,
+                "title": _clip_text(payload.currentSlide.title, 120),
+                "content": _clip_text(payload.currentSlide.content, 320),
             }
         )
 
@@ -39,11 +49,11 @@ def _build_prompt(payload: AnalyzeChunkRequest) -> str:
             "rubricCategory": item.rubricCategory,
             "type": item.type,
             "priority": item.priority,
-            "question": item.question,
-            "listenFor": item.listenFor,
-            "missingIfAbsent": item.missingIfAbsent,
+            "question": _clip_text(item.question, 140),
+            "listenFor": _clip_list(item.listenFor, 4, 40),
+            "missingIfAbsent": _clip_list(item.missingIfAbsent, 4, 50),
         }
-        for item in payload.preparedQuestions[:3]
+        for item in payload.preparedQuestions[:2]
     ]
 
     prompt_header = load_prompt(
@@ -58,14 +68,14 @@ def _build_prompt(payload: AnalyzeChunkRequest) -> str:
     return (
         f"{prompt_header}\n\n"
         f"Transcript chunk count so far: {len(payload.recentTranscript) + 1}\n"
-        f"Professor rubric config: {rubric.model_dump_json() if rubric else '{}'}\n"
-        f"Project context: {json.dumps({'title': payload.projectContext.title, 'rubric': payload.projectContext.rubric[:6]})}\n"
+        f"Professor rubric: {json.dumps({'courseName': rubric.courseName, 'assignmentName': rubric.assignmentName, 'rubric': rubric.rubric[:6]} if rubric else {})}\n"
+        f"Project context: {json.dumps({'title': _clip_text(payload.projectContext.title, 120), 'rubric': payload.projectContext.rubric[:6]})}\n"
         f"Current slide: {slide_summary}\n"
-        f"Transcript evidence: {json.dumps({'summary': transcript_evidence.summary, 'claims': transcript_evidence.claims[:2], 'technicalChoices': transcript_evidence.technicalChoices[:2], 'metrics': transcript_evidence.metrics[:3], 'unansweredGaps': transcript_evidence.unansweredGaps[:3]})}\n"
+        f"Transcript evidence: {json.dumps({'summary': _clip_text(transcript_evidence.summary, 180), 'claims': _clip_list(transcript_evidence.claims, 2, 100), 'technicalChoices': _clip_list(transcript_evidence.technicalChoices, 2, 100), 'metrics': transcript_evidence.metrics[:3], 'unansweredGaps': _clip_list(transcript_evidence.unansweredGaps, 3, 100)})}\n"
         f"Prepared questions: {json.dumps(prepared_questions)}\n"
-        f"Recent transcript: {json.dumps(payload.recentTranscript[-2:])}\n"
-        f"Recent feedback: {json.dumps(payload.recentFeedback[-2:])}\n"
-        f"Latest transcript chunk: {json.dumps(payload.transcriptChunk[:280])}"
+        f"Recent transcript: {json.dumps(_clip_list(payload.recentTranscript[-2:], 2, 160))}\n"
+        f"Recent feedback: {json.dumps(_clip_list(payload.recentFeedback[-1:], 1, 120))}\n"
+        f"Latest transcript chunk: {json.dumps(_clip_text(payload.transcriptChunk, 220))}"
     )
 
 

@@ -48,6 +48,11 @@ class FeedbackItem(BaseModel):
     message: str
     reason: str
     createdAt: str
+    resolved: bool = False
+    resolvedAt: Optional[str] = None
+    resolutionReason: Optional[str] = None
+    sourceQuestionId: Optional[str] = None
+    autoResolutionTerms: list[str] = Field(default_factory=list)
 
 
 class Slide(BaseModel):
@@ -93,6 +98,7 @@ class ProfessorConfig(BaseModel):
 class AnalyzeChunkResponse(BaseModel):
     trigger: bool
     feedback: Optional[FeedbackItem] = None
+    resolvedFeedback: Optional[FeedbackItem] = None
     reason: Optional[str] = None
     inferredCurrentSlide: Optional[Slide] = None
 

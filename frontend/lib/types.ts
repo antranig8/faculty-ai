@@ -25,6 +25,11 @@ export type FeedbackItem = {
   message: string;
   reason: string;
   createdAt: string;
+  resolved?: boolean;
+  resolvedAt?: string | null;
+  resolutionReason?: string | null;
+  sourceQuestionId?: string | null;
+  autoResolutionTerms?: string[];
 };
 
 export type Slide = {
@@ -81,6 +86,7 @@ export type ProfessorConfig = {
 export type AnalyzeResponse = {
   trigger: boolean;
   feedback?: FeedbackItem;
+  resolvedFeedback?: FeedbackItem;
   reason?: string;
   inferredCurrentSlide?: Slide;
 };

@@ -8,6 +8,15 @@ from app.services.groq_client import build_groq_client, groq_reasoning_effort
 from app.services.prompt_loader import load_prompt
 from app.services.rubric_loader import load_professor_config_from_template
 
+MAX_LLM_SLIDES = 16
+MAX_SLIDE_CONTENT_CHARS = 700
+PREPARED_QUESTION_MAX_TOKENS = 1200
+
+
+def _clip_text(value: str, limit: int) -> str:
+    compacted = " ".join(value.split())
+    return compacted if len(compacted) <= limit else f"{compacted[:limit].rstrip()}..."
+
 
 def parse_slide_outline(slide_outline: str) -> list[Slide]:
     blocks = re.split(r"(?=^slide\s+\d+\s*:)", slide_outline.strip(), flags=re.IGNORECASE | re.MULTILINE)
@@ -129,10 +138,11 @@ def _llm_prompt(project_context: ProjectContext, slides: list[Slide]) -> str:
     slide_payload = [
         {
             "slideNumber": slide.slideNumber,
-            "title": slide.title,
-            "content": slide.content,
+            "title": _clip_text(slide.title, 120),
+            "content": _clip_text(slide.content, MAX_SLIDE_CONTENT_CHARS),
         }
-        for slide in slides[:20]
+        for slide in slides[:MAX_LLM_SLIDES]
+        if slide.title.strip() or slide.content.strip()
     ]
 
     prompt_header = load_prompt(
@@ -146,8 +156,8 @@ def _llm_prompt(project_context: ProjectContext, slides: list[Slide]) -> str:
 
     return (
         f"{prompt_header}\n\n"
-        f"Professor rubric config: {rubric.model_dump_json() if rubric else '{}'}\n"
-        f"Project context: {project_context.model_dump_json()}\n"
+        f"Professor rubric: {json.dumps({'courseName': rubric.courseName, 'assignmentName': rubric.assignmentName, 'rubric': rubric.rubric[:6], 'questionStyle': rubric.questionStyle} if rubric else {})}\n"
+        f"Project context: {json.dumps({'title': _clip_text(project_context.title, 120), 'summary': _clip_text(project_context.summary, 240), 'rubric': project_context.rubric[:6]})}\n"
         f"Slides: {json.dumps(slide_payload)}"
     )
 
@@ -169,7 +179,7 @@ def prepare_questions_with_llm(project_context: ProjectContext, slides: list[Sli
             }
         ],
         temperature=0.2,
-        max_completion_tokens=1800,
+        max_completion_tokens=PREPARED_QUESTION_MAX_TOKENS,
         top_p=1,
         reasoning_effort=groq_reasoning_effort(settings.faculty_ai_llm_model),
         stream=True,
@@ -211,7 +221,7 @@ def prepare_questions_with_llm(project_context: ProjectContext, slides: list[Sli
         slide_number = int(item.get("slideNumber", 0))
         if slide_number not in valid_slide_numbers:
             continue
-        if counts_by_slide.get(slide_number, 0) >= 3:
+        if counts_by_slide.get(slide_number, 0) >= 2:
             continue
 
         question = str(item.get("question", "")).strip()

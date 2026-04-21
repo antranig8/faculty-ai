@@ -130,6 +130,8 @@ def generate_slide_aware_feedback(
             message=question.question,
             reason=f"Rubric focus: {question.rubricCategory}. The current slide raised this issue, but the spoken explanation has not addressed it yet.",
             createdAt=_created_at(),
+            sourceQuestionId=question.id,
+            autoResolutionTerms=question.missingIfAbsent[:8],
         ), "Generated feedback from prepared slide question."
 
     return None, "No prepared slide question matched an unanswered concern."

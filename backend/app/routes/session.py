@@ -2,7 +2,7 @@ from uuid import uuid4
 
 from fastapi import APIRouter, HTTPException
 
-from app.models.request_models import SessionStartRequest
+from app.models.request_models import FeedbackResolutionRequest, SessionStartRequest
 from app.models.response_models import FeedbackItem, FinalEvaluation, SessionStartResponse
 from app.services.final_evaluator import evaluate_presentation
 import app.state as state
@@ -36,6 +36,31 @@ def get_feedback(session_id: str) -> list[FeedbackItem]:
     if not session:
         raise HTTPException(status_code=404, detail="Session not found")
     return session["feedback"]
+
+
+@router.patch("/{session_id}/feedback/{created_at}/resolution", response_model=list[FeedbackItem])
+def update_feedback_resolution(session_id: str, created_at: str, payload: FeedbackResolutionRequest) -> list[FeedbackItem]:
+    session = state.get_session(session_id)
+    if not session:
+        raise HTTPException(status_code=404, detail="Session not found")
+
+    feedback = session["feedback"]
+    matched = False
+    for item in feedback:
+        if item.createdAt != created_at:
+            continue
+
+        matched = True
+        item.resolved = payload.resolved
+        item.resolvedAt = state.utc_now_iso() if payload.resolved else None
+        item.resolutionReason = payload.resolutionReason if payload.resolved else None
+        break
+
+    if not matched:
+        raise HTTPException(status_code=404, detail="Feedback item not found")
+
+    state.save_session(session_id, session)
+    return feedback
 
 
 @router.post("/{session_id}/finalize", response_model=FinalEvaluation)
