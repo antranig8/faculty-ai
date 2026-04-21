@@ -346,10 +346,22 @@ h2 {
   padding: 14px;
 }
 
+.live-feedback-preview.resolved {
+  background: #ecfdf3;
+  border-color: #86efac;
+}
+
 .live-feedback-preview h3 {
   font-size: 1rem;
   line-height: 1.4;
   margin: 0;
+}
+
+.resolved-button {
+  background: #ecfdf3;
+  border-color: #86efac;
+  color: var(--good);
+  font-weight: 700;
 }
 
 .drawer-header {
@@ -389,6 +401,16 @@ h2 {
 
 .feedback-card.praise {
   border-left-color: var(--good);
+}
+
+.feedback-card.resolved {
+  background: #f0fdf4;
+  border-color: #bbf7d0;
+  border-left-color: var(--good);
+}
+
+.feedback-card.resolved p {
+  color: #166534;
 }
 
 .feedback-card p {

@@ -1,6 +1,6 @@
 # FacultyAI Backend
 
-FastAPI service for session management and transcript chunk analysis.
+FastAPI service for session management, presentation upload, live speech proxying, transcript analysis, and final evaluation.
 
 ## Endpoints
 
@@ -8,6 +8,14 @@ FastAPI service for session management and transcript chunk analysis.
 - `POST /session/start`
 - `POST /analyze-chunk`
 - `GET /session/{session_id}/feedback`
+- `POST /session/{session_id}/finalize`
+- `GET /session/results`
+- `GET /professor/config`
+- `POST /professor/config`
+- `POST /presentation/upload`
+- `POST /presentation/prepare`
+- `POST /speech/{provider_name}/session`
+- `WS /speech/deepgram/proxy`
 
 ## Development
 
@@ -18,7 +26,9 @@ pip install -r requirements.txt
 uvicorn app.main:app --reload --port 8000
 ```
 
-The current analysis engine is deterministic and does not require network access or an API key.
+The backend reads configuration from the repo-root `.env` file. Localhost HTTP requests are allowed without an app API key. Non-local HTTP requests require `FACULTY_AI_APP_API_KEY` sent as `x-facultyai-key`; the Deepgram WebSocket proxy accepts the same key as either the `key` query parameter or `x-facultyai-key` header.
 
-Set `GROQ_API_KEY` and `FACULTY_AI_LLM_PROVIDER=groq` to enable the Groq-hosted `openai/gpt-oss-120b` fallback for transcript analysis. Without that key, the backend falls back to the deterministic heuristic engine.
+Set `DEEPGRAM_API_KEY` and `FACULTY_AI_SPEECH_PROVIDER=deepgram` to enable live microphone transcription through the backend proxy. The recommended demo model is `DEEPGRAM_MODEL=nova-3`.
+
+Set `GROQ_API_KEY`, `FACULTY_AI_LLM_PROVIDER=groq`, and `FACULTY_AI_LLM_MODEL=qwen/qwen3-32b` to enable Groq-backed faculty reasoning and prepared-question generation. Without a Groq key, the backend falls back to deterministic heuristic question generation and evaluation.
 

@@ -8,7 +8,7 @@ import { PresentationUpload } from "@/components/PresentationUpload";
 import { SessionControls } from "@/components/SessionControls";
 import { SlideTracker } from "@/components/SlideTracker";
 import { TranscriptPanel } from "@/components/TranscriptPanel";
-import { analyzeChunk, getProfessorConfig, getSpeechProxyUrl, startSession, uploadPresentation } from "@/lib/api";
+import { analyzeChunk, getProfessorConfig, getSpeechProxyUrl, startSession, updateFeedbackResolution, uploadPresentation } from "@/lib/api";
 import { finalizeSession } from "@/lib/api";
 import { demoTranscriptChunks } from "@/lib/demoTranscript";
 import type { FeedbackItem, FinalEvaluation, PreparedQuestion, ProfessorConfig, ProjectContext, Slide } from "@/lib/types";
@@ -81,11 +81,49 @@ export default function PresentPage() {
   const lastAnalyzeAtRef = useRef(0);
   const liveErrorMessageRef = useRef("");
 
-  const latestFeedback = feedback[feedback.length - 1];
+  const latestFeedback = [...feedback].reverse().find((item) => !item.resolved);
   const recentFeedback = useMemo(() => feedback.slice(-5).map((item) => item.message), [feedback]);
   const currentSlide = slides[currentSlideIndex];
   const LIVE_ANALYZE_MIN_GAP_MS = 1400;
   const LIVE_SILENCE_MS = 2800;
+  const SLIDE_ANALYSIS_CHAR_LIMIT = 700;
+
+  function compactSlideForAnalysis(slide: Slide): Slide {
+    return {
+      ...slide,
+      content: slide.content.length > SLIDE_ANALYSIS_CHAR_LIMIT
+        ? `${slide.content.slice(0, SLIDE_ANALYSIS_CHAR_LIMIT)}...`
+        : slide.content,
+    };
+  }
+
+  function questionsForAnalysis(activeSlide?: Slide): PreparedQuestion[] {
+    if (!activeSlide) {
+      return preparedQuestionsRef.current.slice(0, 8);
+    }
+
+    const nearbySlideNumbers = new Set([
+      activeSlide.slideNumber - 1,
+      activeSlide.slideNumber,
+      activeSlide.slideNumber + 1,
+    ]);
+    return preparedQuestionsRef.current.filter((question) => nearbySlideNumbers.has(question.slideNumber)).slice(0, 9);
+  }
+
+  function slidesForAnalysis(): Slide[] {
+    return slides.map(compactSlideForAnalysis);
+  }
+
+  function applyResolvedFeedback(resolvedFeedback?: FeedbackItem) {
+    if (!resolvedFeedback) {
+      return;
+    }
+
+    setFeedback((current) =>
+      current.map((item) => (item.createdAt === resolvedFeedback.createdAt ? resolvedFeedback : item)),
+    );
+    setUnseenCount((current) => Math.max(0, current - 1));
+  }
 
   function resetRunState() {
     setSessionId(undefined);
@@ -241,9 +279,9 @@ export default function PresentPage() {
         recentTranscript: nextTranscript.slice(-4),
         recentFeedback: recentFeedbackRef.current,
         projectContext: projectContextRef.current,
-        currentSlide: currentSlideRef.current,
-        presentationSlides: slides,
-        preparedQuestions: preparedQuestionsRef.current,
+        currentSlide: currentSlideRef.current ? compactSlideForAnalysis(currentSlideRef.current) : undefined,
+        presentationSlides: slidesForAnalysis(),
+        preparedQuestions: questionsForAnalysis(currentSlideRef.current),
       });
 
       if (result.inferredCurrentSlide) {
@@ -253,11 +291,15 @@ export default function PresentPage() {
         }
       }
 
+      applyResolvedFeedback(result.resolvedFeedback);
+
       if (result.trigger && result.feedback) {
         setFeedback((current) => [...current, result.feedback as FeedbackItem]);
         setDrawerOpen(true);
         setUnseenCount((current) => current + 1);
         setStatus("Faculty alert triggered.");
+      } else if (result.resolvedFeedback) {
+        setStatus("Faculty question auto-marked addressed.");
       } else {
         setStatus(result.reason ?? "No feedback triggered for this chunk.");
       }
@@ -288,9 +330,9 @@ export default function PresentPage() {
       recentTranscript: nextTranscript.slice(-4),
       recentFeedback: recentFeedbackRef.current,
       projectContext: projectContextRef.current,
-      currentSlide: currentSlideRef.current,
-      presentationSlides: slides,
-      preparedQuestions: preparedQuestionsRef.current,
+      currentSlide: currentSlideRef.current ? compactSlideForAnalysis(currentSlideRef.current) : undefined,
+      presentationSlides: slidesForAnalysis(),
+      preparedQuestions: questionsForAnalysis(currentSlideRef.current),
     });
 
     if (result.inferredCurrentSlide) {
@@ -299,6 +341,8 @@ export default function PresentPage() {
         setCurrentSlideIndex(inferredIndex);
       }
     }
+
+    applyResolvedFeedback(result.resolvedFeedback);
 
     if (result.trigger && result.feedback) {
       setFeedback((current) => [...current, result.feedback as FeedbackItem]);
@@ -312,7 +356,7 @@ export default function PresentPage() {
 
     setLiveStatus("listening");
     resetSilenceTimer();
-    setStatus(result.reason ?? "No feedback triggered for this chunk.");
+    setStatus(result.resolvedFeedback ? "Faculty question auto-marked addressed." : result.reason ?? "No feedback triggered for this chunk.");
   }
 
   function scheduleLiveChunk(nextChunk: string) {
@@ -678,6 +722,26 @@ export default function PresentPage() {
     setUnseenCount(0);
   }
 
+  async function handleFeedbackResolution(item: FeedbackItem, resolved: boolean) {
+    if (!sessionId) {
+      return;
+    }
+
+    try {
+      const updated = await updateFeedbackResolution({
+        sessionId,
+        createdAt: item.createdAt,
+        resolved,
+        resolutionReason: resolved ? "Presenter addressed this faculty question." : undefined,
+      });
+      setFeedback(updated);
+      setUnseenCount((current) => (resolved ? Math.max(0, current - 1) : current + 1));
+      setStatus(resolved ? "Faculty question marked addressed." : "Faculty question reopened.");
+    } catch (error) {
+      setStatus(error instanceof Error ? error.message : "Unable to update faculty question.");
+    }
+  }
+
   async function handleUpload(file: File) {
     setBusy(true);
     try {
@@ -802,7 +866,13 @@ export default function PresentPage() {
         </div>
       </div>
 
-      <FeedbackDrawer feedback={feedback} latestFeedback={latestFeedback} open={drawerOpen} onClose={() => setDrawerOpen(false)} />
+      <FeedbackDrawer
+        feedback={feedback}
+        latestFeedback={latestFeedback}
+        open={drawerOpen}
+        onClose={() => setDrawerOpen(false)}
+        onResolve={(item, resolved) => void handleFeedbackResolution(item, resolved)}
+      />
       {finalEvaluation ? (
         <aside className="feedback-drawer open final-evaluation" aria-hidden={false}>
           <div className="drawer-header">

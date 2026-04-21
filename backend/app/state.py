@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import datetime, timezone
 import hashlib
 import json
 from pathlib import Path
@@ -15,6 +15,10 @@ sessions: dict[str, dict[str, Any]] = {}
 professor_config = ProfessorConfig()
 prepared_question_cache: dict[str, PresentationPrepareResponse] = {}
 presentation_results: dict[str, FinalEvaluation] = {}
+
+
+def utc_now_iso() -> str:
+    return datetime.now(timezone.utc).isoformat()
 
 
 def _connection() -> sqlite3.Connection:

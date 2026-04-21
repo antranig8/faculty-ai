@@ -36,3 +36,8 @@ class PresentationPrepareRequest(BaseModel):
 
 class ProfessorConfigRequest(BaseModel):
     config: ProfessorConfig
+
+
+class FeedbackResolutionRequest(BaseModel):
+    resolved: bool = True
+    resolutionReason: Optional[str] = None

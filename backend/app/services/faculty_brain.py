@@ -20,7 +20,8 @@ _FALLBACK_PROMPT = (
     "Use the live transcript to decide timing, not to invent a different question.\n"
     "Return strict JSON only."
 )
-LIVE_FACULTY_MAX_COMPLETION_TOKENS = 260
+LIVE_FACULTY_MAX_COMPLETION_TOKENS = 170
+MAX_TEXT_CHARS = 220
 
 
 @dataclass
@@ -40,6 +41,15 @@ def _load_prompt() -> str:
 
 def _priority_rank(priority: str) -> int:
     return {"high": 3, "medium": 2, "low": 1}.get(priority, 0)
+
+
+def _clip_text(value: str, limit: int = MAX_TEXT_CHARS) -> str:
+    compacted = " ".join(value.split())
+    return compacted if len(compacted) <= limit else f"{compacted[:limit].rstrip()}..."
+
+
+def _clip_list(items: list[str], count: int = 3, char_limit: int = 80) -> list[str]:
+    return [_clip_text(item, char_limit) for item in items if item][:count]
 
 
 def _build_feedback_from_question(
@@ -63,6 +73,8 @@ def _build_feedback_from_question(
         message=question.question,
         reason=f"Rubric focus: {question.rubricCategory}. {reason}{evidence_summary}".strip(),
         createdAt=_created_at(),
+        sourceQuestionId=question.id,
+        autoResolutionTerms=question.missingIfAbsent[:8],
     )
 
 
@@ -82,12 +94,12 @@ def _build_candidate_payload(question: PreparedQuestion, recent_text: str, asked
         "rubricCategory": question.rubricCategory,
         "type": question.type,
         "priority": question.priority,
-        "question": question.question,
-        "listenFor": question.listenFor,
-        "missingIfAbsent": question.missingIfAbsent,
-        "heardTerms": heard_terms,
-        "stillMissing": still_missing,
-        "alreadyCovered": already_covered,
+        "question": _clip_text(question.question, 160),
+        "listenFor": _clip_list(question.listenFor, 5, 40),
+        "missingIfAbsent": _clip_list(question.missingIfAbsent, 5, 50),
+        "heardTerms": _clip_list(heard_terms, 5, 40),
+        "stillMissing": _clip_list(still_missing, 5, 50),
+        "alreadyCovered": _clip_list(already_covered, 4, 50),
         "alreadyAsked": _normalize_message(question.question) in asked_messages,
         "matchScore": match_score,
     }
@@ -141,7 +153,7 @@ def _build_messages(
     asked_messages: list[str],
 ) -> list[dict[str, str]]:
     rubric = load_professor_config_from_template()
-    recent_text = " ".join([*payload.recentTranscript[-5:], payload.transcriptChunk]).strip()
+    recent_text = " ".join([*payload.recentTranscript[-3:], payload.transcriptChunk]).strip()
     transcript_evidence = extract_transcript_evidence(payload.recentTranscript, payload.transcriptChunk)
     candidate_payload = [
         _build_candidate_payload(question, recent_text, asked_messages, transcript_evidence)
@@ -154,43 +166,34 @@ def _build_messages(
         "courseName": rubric.courseName if rubric else "ENES 104",
         "assignmentName": rubric.assignmentName if rubric else "Project Presentation",
         "questionStyle": rubric.questionStyle if rubric else "skeptical but fair faculty examiner",
-        "rubricCriteria": rubric.rubric if rubric else payload.projectContext.rubric,
-        "assignmentContext": (rubric.assignmentContext if rubric else payload.projectContext.notes or "")[:240],
-        "courseCalibration": (
-            "Introduction to engineering professions course. Prepare students for professional industry expectations, "
-            "but keep questioning fair and not overly harsh."
-        ),
+        "rubricCriteria": (rubric.rubric if rubric else payload.projectContext.rubric)[:6],
+        "assignmentContext": _clip_text(rubric.assignmentContext if rubric else payload.projectContext.notes or "", 160),
         "projectContext": {
-            "title": payload.projectContext.title,
+            "title": _clip_text(payload.projectContext.title, 120),
             "rubric": payload.projectContext.rubric[:6],
         },
         "currentSlide": {
             "slideNumber": current_slide.slideNumber,
-            "title": current_slide.title,
+            "title": _clip_text(current_slide.title, 120),
         },
         "transcriptEvidence": {
-            "summary": transcript_evidence.summary,
-            "claims": transcript_evidence.claims[:2],
-            "technicalChoices": transcript_evidence.technicalChoices[:2],
+            "summary": _clip_text(transcript_evidence.summary, 180),
+            "claims": _clip_list(transcript_evidence.claims, 2, 120),
+            "technicalChoices": _clip_list(transcript_evidence.technicalChoices, 2, 120),
             "metrics": transcript_evidence.metrics[:3],
             "evidenceMarkers": transcript_evidence.evidenceMarkers[:3],
             "tradeoffMarkers": transcript_evidence.tradeoffMarkers[:3],
-            "unansweredGaps": transcript_evidence.unansweredGaps[:3],
+            "unansweredGaps": _clip_list(transcript_evidence.unansweredGaps, 3, 120),
         },
         "candidateQuestions": top_candidates,
-        "recentTranscript": payload.recentTranscript[-2:],
-        "latestTranscriptChunk": payload.transcriptChunk[:280],
-        "recentFeedback": recent_feedback[-2:],
+        "recentTranscript": _clip_list(payload.recentTranscript[-2:], 2, 180),
+        "latestTranscriptChunk": _clip_text(payload.transcriptChunk, 220),
+        "recentFeedback": _clip_list(recent_feedback[-1:], 1, 120),
         "transcriptChunkCount": len(payload.recentTranscript) + 1,
     }
 
     user_prompt = (
-        "Decide whether FacultyAI should ask one prepared faculty question right now.\n"
-        "Return strict JSON with this shape:\n"
-        '{"decision":"ask_now|wait|skip","reason":string,"selectedQuestionId":string|null,'
-        '"evidenceHeard":[string],"evidenceMissing":[string],"suggestedMessage":string|null}\n'
-        "Use only the prepared question ids provided in candidateQuestions.\n"
-        "Prefer wait over asking too early.\n\n"
+        'Choose ask_now, wait, or skip. Use only candidateQuestions ids. Prefer wait if uncertain.\n'
         f"Runtime context: {json.dumps(runtime_context)}"
     )
 
@@ -244,6 +247,19 @@ def decide_faculty_feedback(
             terminal=False,
         )
 
+    transcript_evidence = extract_transcript_evidence(payload.recentTranscript, payload.transcriptChunk)
+    confident_candidate = _select_confident_candidate(payload, prepared_for_slide, asked_messages, transcript_evidence)
+    if confident_candidate is not None:
+        question, heard_terms, missing_terms = confident_candidate
+        feedback = _build_feedback_from_question(
+            payload=payload,
+            question=question,
+            reason="Prepared slide concern matched live transcript evidence without needing LLM arbitration.",
+            evidence_heard=heard_terms,
+            evidence_missing=missing_terms,
+        )
+        return FacultyBrainDecision(feedback=feedback, reason=feedback.reason, terminal=True)
+
     client = build_groq_client(settings.groq_api_key)
     completion = client.chat.completions.create(
         model=settings.faculty_ai_llm_model,
@@ -275,8 +291,6 @@ def decide_faculty_feedback(
     parsed = _parse_json_object(raw_content)
     decision = str(parsed.get("decision", "skip")).strip().lower()
     reason = str(parsed.get("reason", "")).strip() or "Faculty brain declined to interrupt."
-    transcript_evidence = extract_transcript_evidence(payload.recentTranscript, payload.transcriptChunk)
-
     if decision == "wait":
         confident_candidate = _select_confident_candidate(payload, prepared_for_slide, asked_messages, transcript_evidence)
         if confident_candidate is not None:

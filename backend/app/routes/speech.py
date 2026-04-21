@@ -1,4 +1,5 @@
 import asyncio
+import ipaddress
 import json
 import logging
 from urllib.parse import urlencode
@@ -13,6 +14,29 @@ from app.services.speech_provider import SpeechProviderName, get_speech_provider
 
 router = APIRouter(prefix="/speech", tags=["speech"])
 logger = logging.getLogger("faculty_ai.speech")
+
+
+def _is_local_host(host: str | None) -> bool:
+    if not host:
+        return False
+    if host in {"127.0.0.1", "::1", "localhost", "testclient"}:
+        return True
+    try:
+        return ipaddress.ip_address(host).is_loopback
+    except ValueError:
+        return False
+
+
+def _websocket_authorized(websocket: WebSocket) -> bool:
+    if _is_local_host(websocket.client.host if websocket.client else None):
+        return True
+
+    required_key = get_settings().faculty_ai_app_api_key
+    if not required_key:
+        return False
+
+    provided_key = websocket.query_params.get("key") or websocket.headers.get("x-facultyai-key")
+    return provided_key == required_key
 
 
 def _deepgram_listen_url(model: str, language: str) -> str:
@@ -64,6 +88,11 @@ async def create_speech_session(provider_name: SpeechProviderName) -> SpeechSess
 @router.websocket("/deepgram/proxy")
 async def deepgram_proxy(websocket: WebSocket) -> None:
     await websocket.accept()
+
+    if not _websocket_authorized(websocket):
+        await websocket.send_json({"type": "error", "message": "Missing or invalid API key."})
+        await websocket.close(code=1008)
+        return
 
     settings = get_settings()
     if not settings.deepgram_api_key:

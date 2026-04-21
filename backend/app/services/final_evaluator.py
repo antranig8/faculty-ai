@@ -9,6 +9,17 @@ from app.services.llm_errors import classify_llm_error, log_llm_exception
 from app.services.prompt_loader import load_prompt
 from app.services.rubric_loader import load_professor_config_from_template
 
+FINAL_EVALUATION_MAX_TOKENS = 900
+
+
+def _clip_text(value: str, limit: int) -> str:
+    compacted = " ".join(value.split())
+    return compacted if len(compacted) <= limit else f"{compacted[:limit].rstrip()}..."
+
+
+def _clip_list(items: list[str], count: int, char_limit: int) -> list[str]:
+    return [_clip_text(item, char_limit) for item in items if item][:count]
+
 
 def _created_at() -> str:
     return utc_now().astimezone(timezone.utc).isoformat()
@@ -134,10 +145,10 @@ def _prompt(config: ProfessorConfig, project_title: str, transcript: list[str], 
     )
     return (
         f"{prompt_header}\n"
-        f"Professor config: {config.model_dump_json()}\n"
-        f"Project title: {json.dumps(project_title)}\n"
-        f"Transcript excerpt: {json.dumps(transcript[-20:])}\n"
-        f"Faculty feedback history: {json.dumps([item.model_dump(mode='json') for item in feedback[-10:]])}"
+        f"Professor config: {json.dumps({'courseName': config.courseName, 'assignmentName': config.assignmentName, 'rubric': config.rubric[:6]})}\n"
+        f"Project title: {json.dumps(_clip_text(project_title, 120))}\n"
+        f"Transcript excerpt: {json.dumps(_clip_list(transcript[-12:], 12, 220))}\n"
+        f"Faculty feedback history: {json.dumps([{'type': item.type, 'priority': item.priority, 'section': item.section, 'message': _clip_text(item.message, 160), 'reason': _clip_text(item.reason, 180)} for item in feedback[-6:]])}"
     )
 
 
@@ -151,7 +162,7 @@ def evaluate_presentation(session_id: str, project_title: str, transcript: list[
                 model=settings.faculty_ai_llm_model,
                 messages=[{"role": "user", "content": _prompt(config, project_title, transcript, feedback)}],
                 temperature=0.2,
-                max_completion_tokens=1400,
+                max_completion_tokens=FINAL_EVALUATION_MAX_TOKENS,
                 top_p=1,
                 reasoning_effort=groq_reasoning_effort(settings.faculty_ai_llm_model),
                 stream=True,
