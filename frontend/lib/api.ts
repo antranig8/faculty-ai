@@ -14,6 +14,24 @@ import type {
 const API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL ?? "http://localhost:8000";
 const API_AUTH_KEY = process.env.NEXT_PUBLIC_FACULTY_AI_APP_API_KEY;
 
+async function fetchWithRetry(input: RequestInfo | URL, init?: RequestInit, retries = 1): Promise<Response> {
+  let lastError: unknown;
+
+  for (let attempt = 0; attempt <= retries; attempt += 1) {
+    try {
+      return await fetch(input, init);
+    } catch (error) {
+      lastError = error;
+      if (attempt >= retries) {
+        break;
+      }
+      await new Promise((resolve) => setTimeout(resolve, 300));
+    }
+  }
+
+  throw lastError instanceof Error ? lastError : new Error("Network request failed.");
+}
+
 function buildHeaders(headers: HeadersInit = {}): HeadersInit {
   return API_AUTH_KEY
     ? {
@@ -34,7 +52,7 @@ export function getSpeechProxyUrl(): string {
 }
 
 export async function startSession(projectContext: ProjectContext): Promise<string> {
-  const response = await fetch(`${API_BASE}/session/start`, {
+  const response = await fetchWithRetry(`${API_BASE}/session/start`, {
     method: "POST",
     headers: buildHeaders({ "Content-Type": "application/json" }),
     body: JSON.stringify({ projectContext }),
@@ -58,11 +76,11 @@ export async function analyzeChunk(params: {
   presentationSlides?: Slide[];
   preparedQuestions?: PreparedQuestion[];
 }): Promise<AnalyzeResponse> {
-  const response = await fetch(`${API_BASE}/analyze-chunk`, {
+  const response = await fetchWithRetry(`${API_BASE}/analyze-chunk`, {
     method: "POST",
     headers: buildHeaders({ "Content-Type": "application/json" }),
     body: JSON.stringify(params),
-  });
+  }, 2);
 
   if (!response.ok) {
     throw new Error("Unable to analyze transcript chunk.");

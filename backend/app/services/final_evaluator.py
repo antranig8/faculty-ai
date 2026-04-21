@@ -39,6 +39,55 @@ def _heuristic_grade(feedback: list[FeedbackItem]) -> tuple[str, int]:
     return "C", numeric
 
 
+def _grade_from_numeric(numeric: int) -> str:
+    if numeric >= 93:
+        return "A"
+    if numeric >= 90:
+        return "A-"
+    if numeric >= 87:
+        return "B+"
+    if numeric >= 83:
+        return "B"
+    if numeric >= 80:
+        return "B-"
+    if numeric >= 77:
+        return "C+"
+    if numeric >= 73:
+        return "C"
+    return "C-"
+
+
+def _score_to_numeric(score: float) -> int:
+    # Intro-course calibration: 3/5 should still land near a B-/C+ boundary, not an F-style score.
+    return round(68 + (score / 5.0) * 28)
+
+
+def _normalize_rubric_scores(config: ProfessorConfig, rubric_scores: list[RubricScore]) -> list[RubricScore]:
+    wanted = [criterion for criterion in config.rubric]
+    by_name = {item.criterion.strip().lower(): item for item in rubric_scores}
+    normalized: list[RubricScore] = []
+    for criterion in wanted:
+        existing = by_name.get(criterion.strip().lower())
+        if existing is None:
+            normalized.append(
+                RubricScore(
+                    criterion=criterion,
+                    score=3,
+                    justification="Defaulted to a mid-range score because no criterion-specific evidence was returned.",
+                )
+            )
+            continue
+
+        normalized.append(
+            RubricScore(
+                criterion=criterion,
+                score=max(2, min(5, int(existing.score))),
+                justification=existing.justification.strip() or "Calibrated from the presentation transcript and live questioning.",
+            )
+        )
+    return normalized
+
+
 def _fallback_evaluation(session_id: str, project_title: str, config: ProfessorConfig, transcript: list[str], feedback: list[FeedbackItem]) -> FinalEvaluation:
     grade, numeric = _heuristic_grade(feedback)
     biggest_questions = []
@@ -51,11 +100,14 @@ def _fallback_evaluation(session_id: str, project_title: str, config: ProfessorC
     rubric_scores = [
         RubricScore(
             criterion=criterion,
-            score=max(2, min(5, 5 - len([item for item in feedback if criterion.lower() in item.reason.lower()]))),
+            score=max(3, min(5, 5 - len([item for item in feedback if criterion.lower() in item.reason.lower()]))),
             justification="Estimated from live feedback patterns during the presentation.",
         )
         for criterion in config.rubric
     ]
+    avg_score = sum(item.score for item in rubric_scores) / max(1, len(rubric_scores))
+    numeric = max(numeric, _score_to_numeric(avg_score))
+    grade = _grade_from_numeric(numeric)
 
     return FinalEvaluation(
         sessionId=session_id,
@@ -63,7 +115,7 @@ def _fallback_evaluation(session_id: str, project_title: str, config: ProfessorC
         courseName=config.courseName,
         overallGrade=grade,
         numericScore=numeric,
-        summary="Automatic fallback evaluation based on transcript coverage and faculty feedback intensity.",
+        summary="Automatic fallback evaluation calibrated for an introductory engineering-professions presentation.",
         strongestPoints=["Presentation completed with a coherent live walkthrough."],
         biggestQuestions=biggest_questions or ["No major faculty concerns were recorded."],
         rubricScores=rubric_scores,
@@ -125,16 +177,19 @@ def evaluate_presentation(session_id: str, project_title: str, transcript: list[
                 for item in parsed.get("rubricScores", [])
             ]
             if rubric_scores:
+                normalized_scores = _normalize_rubric_scores(config, rubric_scores)
+                average_score = sum(item.score for item in normalized_scores) / max(1, len(normalized_scores))
+                numeric_score = _score_to_numeric(average_score)
                 return FinalEvaluation(
                     sessionId=session_id,
                     projectTitle=project_title,
                     courseName=config.courseName,
-                    overallGrade=str(parsed.get("overallGrade", "B")),
-                    numericScore=int(parsed.get("numericScore", 85)),
+                    overallGrade=_grade_from_numeric(numeric_score),
+                    numericScore=numeric_score,
                     summary=str(parsed.get("summary", "")).strip(),
                     strongestPoints=[str(item).strip() for item in parsed.get("strongestPoints", []) if str(item).strip()][:4],
                     biggestQuestions=[str(item).strip() for item in parsed.get("biggestQuestions", []) if str(item).strip()][:4],
-                    rubricScores=rubric_scores,
+                    rubricScores=normalized_scores,
                     createdAt=_created_at(),
                 )
 

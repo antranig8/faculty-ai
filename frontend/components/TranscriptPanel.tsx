@@ -1,6 +1,7 @@
 type Props = {
   transcript: string[];
   activeChunk: string;
+  livePreview?: string;
   liveStatus?: "idle" | "connecting" | "listening" | "silent" | "analyzing" | "error";
   debugStats?: {
     socketOpened: number;
@@ -26,7 +27,7 @@ const liveStatusLabel: Record<NonNullable<Props["liveStatus"]>, string> = {
   error: "Error",
 };
 
-export function TranscriptPanel({ transcript, activeChunk, liveStatus = "idle", debugStats }: Props) {
+export function TranscriptPanel({ transcript, activeChunk, livePreview = "", liveStatus = "idle", debugStats }: Props) {
   return (
     <section className="transcript-panel">
       <div className="panel-header">
@@ -56,6 +57,8 @@ export function TranscriptPanel({ transcript, activeChunk, liveStatus = "idle", 
       ) : null}
 
       {debugStats?.lastStopReason ? <p className="muted">Last stop: {debugStats.lastStopReason}</p> : null}
+
+      {livePreview ? <p className="muted">Live preview: {livePreview}</p> : null}
 
       <div className="transcript-body">
         {transcript.length === 0 ? (
