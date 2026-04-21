@@ -6,6 +6,7 @@ type Props = {
   canFinalize?: boolean;
   sessionId?: string;
   disabled?: boolean;
+  voiceEnabled: boolean;
   onStart: () => void;
   onStop: () => void;
   onReset: () => void;
@@ -13,6 +14,7 @@ type Props = {
   onStartLive: () => void;
   onStopLive: () => void;
   onFinalize: () => void;
+  onToggleVoice: () => void;
 };
 
 export function SessionControls({
@@ -23,6 +25,7 @@ export function SessionControls({
   canFinalize,
   sessionId,
   disabled,
+  voiceEnabled,
   onStart,
   onStop,
   onReset,
@@ -30,6 +33,7 @@ export function SessionControls({
   onStartLive,
   onStopLive,
   onFinalize,
+  onToggleVoice,
 }: Props) {
   const statusText = liveConnected
     ? "Live mic connected"
@@ -77,6 +81,9 @@ export function SessionControls({
         </button>
         <button className="secondary-button" disabled={disabled || !canFinalize} onClick={onFinalize} type="button">
           Finalize
+        </button>
+        <button className={voiceEnabled ? "secondary-button active-toggle" : "secondary-button"} onClick={onToggleVoice} type="button">
+          Voice {voiceEnabled ? "on" : "off"}
         </button>
         <button className="ghost-button" onClick={onReset} type="button">
           Reset

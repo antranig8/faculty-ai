@@ -101,3 +101,10 @@ export type SpeechSession = {
   model?: string;
   language?: string;
 };
+
+export type TtsProvider = "browser" | "deepgram";
+
+export type TtsPreviewResponse = {
+  provider: "deepgram";
+  enabled: boolean;
+};
