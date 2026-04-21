@@ -1,5 +1,6 @@
 import asyncio
 import json
+import logging
 from urllib.parse import urlencode
 
 from fastapi import APIRouter, HTTPException, WebSocket, WebSocketDisconnect
@@ -11,6 +12,34 @@ from app.models.response_models import SpeechSessionResponse
 from app.services.speech_provider import SpeechProviderName, get_speech_provider
 
 router = APIRouter(prefix="/speech", tags=["speech"])
+logger = logging.getLogger("faculty_ai.speech")
+
+
+def _deepgram_listen_url(model: str, language: str) -> str:
+    is_flux = model.startswith("flux-")
+    endpoint = "v2/listen" if is_flux else "v1/listen"
+    if is_flux:
+        params: dict[str, str] = {
+            "model": model,
+            "encoding": "linear16",
+            "sample_rate": "16000",
+            "smart_format": "true",
+            "eot_timeout_ms": "5000",
+        }
+    else:
+        params = {
+            "model": model,
+            "language": language,
+            "encoding": "linear16",
+            "sample_rate": "16000",
+            "channels": "1",
+            "smart_format": "true",
+            "interim_results": "true",
+            "vad_events": "true",
+            "endpointing": "300",
+        }
+        params["language"] = language
+    return f"wss://api.deepgram.com/{endpoint}?{urlencode(params)}"
 
 
 @router.post("/{provider_name}/session", response_model=SpeechSessionResponse)
@@ -42,20 +71,7 @@ async def deepgram_proxy(websocket: WebSocket) -> None:
         await websocket.close(code=1011)
         return
 
-    query = urlencode(
-        {
-            "model": settings.deepgram_model,
-            "language": settings.deepgram_language,
-            "encoding": "linear16",
-            "sample_rate": "16000",
-            "channels": "1",
-            "smart_format": "true",
-            "interim_results": "true",
-            "vad_events": "true",
-            "endpointing": "300",
-        }
-    )
-    deepgram_url = f"wss://api.deepgram.com/v1/listen?{query}"
+    deepgram_url = _deepgram_listen_url(settings.deepgram_model, settings.deepgram_language)
 
     try:
         async with connect(
@@ -110,6 +126,7 @@ async def deepgram_proxy(websocket: WebSocket) -> None:
                     raise exc
 
     except ConnectionClosed as exc:
+        logger.info("Deepgram upstream closed: code=%s reason=%s", exc.code, exc.reason or "")
         await websocket.send_json(
             {
                 "type": "proxy_close",
@@ -121,6 +138,7 @@ async def deepgram_proxy(websocket: WebSocket) -> None:
     except WebSocketDisconnect:
         return
     except Exception as exc:
+        logger.exception("deepgram_proxy failed")
         await websocket.send_json({"type": "error", "message": str(exc)})
         await websocket.close(code=1011)
 

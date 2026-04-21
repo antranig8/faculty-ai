@@ -1,11 +1,10 @@
 import json
 from datetime import timezone
 
-from groq import Groq
-
 from app.config import get_settings
 from app.models.response_models import FinalEvaluation, FeedbackItem, ProfessorConfig, RubricScore
 from app.services.cooldown import utc_now
+from app.services.groq_client import build_groq_client, groq_reasoning_effort
 from app.services.llm_errors import classify_llm_error, log_llm_exception
 from app.services.prompt_loader import load_prompt
 from app.services.rubric_loader import load_professor_config_from_template
@@ -147,14 +146,14 @@ def evaluate_presentation(session_id: str, project_title: str, transcript: list[
     settings = get_settings()
     if settings.faculty_ai_llm_provider in {"groq", "openai"} and settings.groq_api_key:
         try:
-            client = Groq(api_key=settings.groq_api_key, max_retries=0)
+            client = build_groq_client(settings.groq_api_key)
             completion = client.chat.completions.create(
                 model=settings.faculty_ai_llm_model,
                 messages=[{"role": "user", "content": _prompt(config, project_title, transcript, feedback)}],
                 temperature=0.2,
                 max_completion_tokens=1400,
                 top_p=1,
-                reasoning_effort="medium",
+                reasoning_effort=groq_reasoning_effort(settings.faculty_ai_llm_model),
                 stream=True,
                 stop=None,
             )

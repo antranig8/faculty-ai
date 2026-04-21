@@ -19,7 +19,7 @@ def _build_preparation_response(project_context, slides) -> PresentationPrepareR
     llm_failure_reason: str | None = None
     try:
         prepared_questions = prepare_questions_with_llm(project_context, slides)
-    except RuntimeError as exc:
+    except Exception as exc:
         log_llm_exception("prepare_questions_with_llm", exc)
         llm_failure_reason = classify_llm_error(exc)
         prepared_questions = None
