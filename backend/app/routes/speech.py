@@ -5,6 +5,7 @@ import logging
 from urllib.parse import urlencode
 
 from fastapi import APIRouter, HTTPException, WebSocket, WebSocketDisconnect
+from starlette.websockets import WebSocketState
 from websockets.asyncio.client import connect
 from websockets.exceptions import ConnectionClosed
 
@@ -66,6 +67,50 @@ def _deepgram_listen_url(model: str, language: str) -> str:
     return f"wss://api.deepgram.com/{endpoint}?{urlencode(params)}"
 
 
+def _websocket_open(websocket: WebSocket) -> bool:
+    return (
+        websocket.client_state == WebSocketState.CONNECTED
+        and websocket.application_state == WebSocketState.CONNECTED
+    )
+
+
+async def _safe_send_json(websocket: WebSocket, payload: dict) -> bool:
+    if not _websocket_open(websocket):
+        return False
+    try:
+        await websocket.send_json(payload)
+        return True
+    except (RuntimeError, WebSocketDisconnect):
+        return False
+
+
+async def _safe_send_text(websocket: WebSocket, payload: str) -> bool:
+    if not _websocket_open(websocket):
+        return False
+    try:
+        await websocket.send_text(payload)
+        return True
+    except (RuntimeError, WebSocketDisconnect):
+        return False
+
+
+async def _safe_close(websocket: WebSocket, code: int = 1000) -> None:
+    if not _websocket_open(websocket):
+        return
+    try:
+        await websocket.close(code=code)
+    except RuntimeError:
+        return
+
+
+async def _safe_deepgram_send(deepgram_ws, payload) -> bool:
+    try:
+        await deepgram_ws.send(payload)
+        return True
+    except ConnectionClosed:
+        return False
+
+
 @router.post("/{provider_name}/session", response_model=SpeechSessionResponse)
 async def create_speech_session(provider_name: SpeechProviderName) -> SpeechSessionResponse:
     provider = get_speech_provider(provider_name)
@@ -90,14 +135,14 @@ async def deepgram_proxy(websocket: WebSocket) -> None:
     await websocket.accept()
 
     if not _websocket_authorized(websocket):
-        await websocket.send_json({"type": "error", "message": "Missing or invalid API key."})
-        await websocket.close(code=1008)
+        await _safe_send_json(websocket, {"type": "error", "message": "Missing or invalid API key."})
+        await _safe_close(websocket, code=1008)
         return
 
     settings = get_settings()
     if not settings.deepgram_api_key:
-        await websocket.send_json({"type": "error", "message": "DEEPGRAM_API_KEY is not configured."})
-        await websocket.close(code=1011)
+        await _safe_send_json(websocket, {"type": "error", "message": "DEEPGRAM_API_KEY is not configured."})
+        await _safe_close(websocket, code=1011)
         return
 
     deepgram_url = _deepgram_listen_url(settings.deepgram_model, settings.deepgram_language)
@@ -108,12 +153,13 @@ async def deepgram_proxy(websocket: WebSocket) -> None:
             additional_headers={"Authorization": f"Token {settings.deepgram_api_key}"},
             max_size=None,
         ) as deepgram_ws:
-            await websocket.send_json({"type": "proxy_open"})
+            await _safe_send_json(websocket, {"type": "proxy_open"})
 
             async def keep_alive() -> None:
                 while True:
                     await asyncio.sleep(4)
-                    await deepgram_ws.send(json.dumps({"type": "KeepAlive"}))
+                    if not await _safe_deepgram_send(deepgram_ws, json.dumps({"type": "KeepAlive"})):
+                        return
 
             async def browser_to_deepgram() -> None:
                 while True:
@@ -121,21 +167,23 @@ async def deepgram_proxy(websocket: WebSocket) -> None:
                     if message.get("bytes") is not None:
                         data = message["bytes"]
                         if data:
-                            await deepgram_ws.send(data)
+                            if not await _safe_deepgram_send(deepgram_ws, data):
+                                return
                     elif message.get("text") is not None:
                         payload = message["text"]
                         if payload == "__close__":
-                            await deepgram_ws.send(json.dumps({"type": "CloseStream"}))
+                            await _safe_deepgram_send(deepgram_ws, json.dumps({"type": "CloseStream"}))
                             return
                     elif message.get("type") == "websocket.disconnect":
-                        await deepgram_ws.send(json.dumps({"type": "CloseStream"}))
+                        await _safe_deepgram_send(deepgram_ws, json.dumps({"type": "CloseStream"}))
                         return
 
             async def deepgram_to_browser() -> None:
                 async for message in deepgram_ws:
                     if isinstance(message, bytes):
                         continue
-                    await websocket.send_text(message)
+                    if not await _safe_send_text(websocket, message):
+                        return
 
             keep_alive_task = asyncio.create_task(keep_alive())
             browser_task = asyncio.create_task(browser_to_deepgram())
@@ -143,31 +191,35 @@ async def deepgram_proxy(websocket: WebSocket) -> None:
 
             done, pending = await asyncio.wait(
                 {keep_alive_task, browser_task, upstream_task},
-                return_when=asyncio.FIRST_EXCEPTION,
+                return_when=asyncio.FIRST_COMPLETED,
             )
 
             for task in pending:
                 task.cancel()
+            await asyncio.gather(*pending, return_exceptions=True)
 
             for task in done:
+                if task.cancelled():
+                    continue
                 exc = task.exception()
                 if exc and not isinstance(exc, (WebSocketDisconnect, ConnectionClosed, asyncio.CancelledError)):
                     raise exc
 
     except ConnectionClosed as exc:
         logger.info("Deepgram upstream closed: code=%s reason=%s", exc.code, exc.reason or "")
-        await websocket.send_json(
+        await _safe_send_json(
+            websocket,
             {
                 "type": "proxy_close",
                 "code": exc.code,
                 "reason": exc.reason or "",
-            }
+            },
         )
-        await websocket.close()
+        await _safe_close(websocket)
     except WebSocketDisconnect:
         return
     except Exception as exc:
         logger.exception("deepgram_proxy failed")
-        await websocket.send_json({"type": "error", "message": str(exc)})
-        await websocket.close(code=1011)
+        await _safe_send_json(websocket, {"type": "error", "message": str(exc)})
+        await _safe_close(websocket, code=1011)
 

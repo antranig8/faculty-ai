@@ -6,14 +6,13 @@ type Props = {
 
 export function PresentationUpload({ disabled, filename, onUpload }: Props) {
   return (
-    <section className="setup-panel">
+    <section className="deck-card">
       <div>
-        <p className="eyebrow">Student Upload</p>
-        <h2>Upload the presentation deck</h2>
+        <p className="eyebrow">Deck</p>
+        <h2>{filename ? filename : "Upload slides"}</h2>
       </div>
 
-      <label>
-        PowerPoint file
+      <label className="file-picker">
         <input
           accept=".pptx"
           disabled={disabled}
@@ -25,10 +24,10 @@ export function PresentationUpload({ disabled, filename, onUpload }: Props) {
           }}
           type="file"
         />
+        <span>{filename ? "Replace deck" : "Choose .pptx"}</span>
       </label>
 
-      <p className="muted">{filename ? `Loaded ${filename}` : "Only .pptx is supported in this build."}</p>
-      <p className="muted">Decks larger than 15 MB are rejected before parsing.</p>
+      <p className="muted">{filename ? "Questions are prepared from this deck." : "PowerPoint only, up to 15 MB."}</p>
     </section>
   );
 }

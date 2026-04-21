@@ -10,6 +10,7 @@ from app.models.response_models import FeedbackItem, PreparedQuestion, Slide
 from app.services.cooldown import _normalize_message, utc_now
 from app.services.groq_client import build_groq_client, groq_reasoning_effort
 from app.services.prompt_loader import load_prompt
+from app.services.question_matching import prepared_question_is_answered, prepared_question_is_topically_ready
 from app.services.rubric_loader import load_professor_config_from_template
 from app.services.section_tracker import infer_section
 from app.services.transcript_evidence import TranscriptEvidence, extract_transcript_evidence
@@ -119,6 +120,8 @@ def _select_confident_candidate(
     for question in prepared_questions:
         normalized_question = _normalize_message(question.question)
         if normalized_question in asked_messages:
+            continue
+        if not prepared_question_is_topically_ready(question, recent_text):
             continue
 
         heard_terms = [term for term in question.listenFor if term.lower() in recent_text]
@@ -239,6 +242,20 @@ def decide_faculty_feedback(
             terminal=False,
         )
 
+    recent_text = " ".join([*payload.recentTranscript[-4:], payload.transcriptChunk])
+    timely_prepared_questions = [
+        question
+        for question in prepared_for_slide
+        if prepared_question_is_topically_ready(question, recent_text)
+        and not prepared_question_is_answered(question, recent_text)
+    ]
+    if not timely_prepared_questions:
+        return FacultyBrainDecision(
+            feedback=None,
+            reason="Prepared slide concerns are waiting for the presenter to mention their specific topic.",
+            terminal=True,
+        )
+
     settings = get_settings()
     if settings.faculty_ai_llm_provider not in {"groq", "openai"} or not settings.groq_api_key:
         return FacultyBrainDecision(
@@ -248,7 +265,7 @@ def decide_faculty_feedback(
         )
 
     transcript_evidence = extract_transcript_evidence(payload.recentTranscript, payload.transcriptChunk)
-    confident_candidate = _select_confident_candidate(payload, prepared_for_slide, asked_messages, transcript_evidence)
+    confident_candidate = _select_confident_candidate(payload, timely_prepared_questions, asked_messages, transcript_evidence)
     if confident_candidate is not None:
         question, heard_terms, missing_terms = confident_candidate
         feedback = _build_feedback_from_question(
@@ -266,7 +283,7 @@ def decide_faculty_feedback(
         messages=_build_messages(
             payload=payload,
             current_slide=current_slide,
-            prepared_questions=prepared_for_slide,
+            prepared_questions=timely_prepared_questions,
             recent_feedback=recent_feedback,
             asked_messages=asked_messages,
         ),
@@ -292,7 +309,7 @@ def decide_faculty_feedback(
     decision = str(parsed.get("decision", "skip")).strip().lower()
     reason = str(parsed.get("reason", "")).strip() or "Faculty brain declined to interrupt."
     if decision == "wait":
-        confident_candidate = _select_confident_candidate(payload, prepared_for_slide, asked_messages, transcript_evidence)
+        confident_candidate = _select_confident_candidate(payload, timely_prepared_questions, asked_messages, transcript_evidence)
         if confident_candidate is not None:
             question, heard_terms, missing_terms = confident_candidate
             feedback = _build_feedback_from_question(
@@ -315,7 +332,7 @@ def decide_faculty_feedback(
     if not selected_id:
         raise RuntimeError("Faculty brain returned ask_now without a selected question id.")
 
-    selected_question = next((item for item in prepared_for_slide if item.id == selected_id), None)
+    selected_question = next((item for item in timely_prepared_questions if item.id == selected_id), None)
     if selected_question is None:
         raise RuntimeError("Faculty brain selected an unknown question id.")
 

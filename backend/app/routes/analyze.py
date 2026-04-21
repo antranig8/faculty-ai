@@ -7,7 +7,7 @@ from app.models.response_models import AnalyzeChunkResponse
 from app.services.answer_resolution import resolve_latest_feedback_if_answered
 from app.services.cooldown import _normalize_message, can_emit_feedback, utc_now
 from app.services.faculty_brain import decide_faculty_feedback
-from app.services.feedback_engine import generate_candidate_feedback, generate_slide_aware_feedback
+from app.services.feedback_engine import generate_candidate_feedback, generate_slide_aware_feedback, generate_slide_handoff_feedback
 from app.services.llm_errors import classify_llm_error, log_llm_exception
 from app.services.llm_feedback import generate_llm_feedback
 from app.services.slide_inference import infer_current_slide
@@ -85,12 +85,21 @@ def analyze_chunk(payload: AnalyzeChunkRequest) -> AnalyzeChunkResponse:
             inferredCurrentSlide=inferred_slide,
         )
 
-    candidate, reason = generate_slide_aware_feedback(
+    candidate, reason = generate_slide_handoff_feedback(
         payload.transcriptChunk,
         recent_transcript=payload.recentTranscript,
         prepared_questions=payload.preparedQuestions,
         current_slide_number=current_slide_number,
+        asked_question_ids=list(session.get("asked_feedback_question_ids", [])),
     )
+
+    if candidate is None:
+        candidate, reason = generate_slide_aware_feedback(
+            payload.transcriptChunk,
+            recent_transcript=payload.recentTranscript,
+            prepared_questions=payload.preparedQuestions,
+            current_slide_number=current_slide_number,
+        )
 
     if candidate is None and _can_attempt_live_llm(session):
         _mark_live_llm_attempt(session)
@@ -136,6 +145,14 @@ def analyze_chunk(payload: AnalyzeChunkRequest) -> AnalyzeChunkResponse:
     elif candidate is None and _llm_backoff_active(session):
         reason = "LLM backoff active after provider rate limit. Using deterministic faculty logic only."
 
+    if candidate is None and payload.preparedQuestions:
+        return AnalyzeChunkResponse(
+            trigger=False,
+            resolvedFeedback=resolved_feedback,
+            reason=reason,
+            inferredCurrentSlide=inferred_slide,
+        )
+
     if candidate is None:
         candidate, reason = generate_candidate_feedback(payload.transcriptChunk, project_title=payload.projectContext.title)
 
@@ -175,6 +192,32 @@ def analyze_chunk(payload: AnalyzeChunkRequest) -> AnalyzeChunkResponse:
             inferredCurrentSlide=inferred_slide,
         )
 
+    if candidate.sourceQuestionId and candidate.sourceQuestionId in session.get("asked_feedback_question_ids", []):
+        return AnalyzeChunkResponse(
+            trigger=False,
+            resolvedFeedback=resolved_feedback,
+            reason="This prepared faculty concern was already asked earlier in the session.",
+            inferredCurrentSlide=inferred_slide,
+        )
+
+    if any(_normalize_message(item.message) == normalized_message for item in session.get("feedback", [])):
+        return AnalyzeChunkResponse(
+            trigger=False,
+            resolvedFeedback=resolved_feedback,
+            reason="This faculty question is already in the feedback history.",
+            inferredCurrentSlide=inferred_slide,
+        )
+
+    if candidate.sourceQuestionId and any(
+        item.sourceQuestionId == candidate.sourceQuestionId for item in session.get("feedback", [])
+    ):
+        return AnalyzeChunkResponse(
+            trigger=False,
+            resolvedFeedback=resolved_feedback,
+            reason="This prepared faculty concern is already in the feedback history.",
+            inferredCurrentSlide=inferred_slide,
+        )
+
     if current_slide_number is not None and current_slide_number in session.get("asked_feedback_slide_numbers", []):
         return AnalyzeChunkResponse(
             trigger=False,
@@ -195,6 +238,8 @@ def analyze_chunk(payload: AnalyzeChunkRequest) -> AnalyzeChunkResponse:
     session["feedback"].append(candidate)
     session["last_feedback_at"] = utc_now()
     session.setdefault("asked_feedback_messages", []).append(normalized_message)
+    if candidate.sourceQuestionId:
+        session.setdefault("asked_feedback_question_ids", []).append(candidate.sourceQuestionId)
     if current_slide_number is not None:
         session.setdefault("asked_feedback_slide_numbers", []).append(current_slide_number)
     session["awaiting_answer_until"] = utc_now() + timedelta(seconds=40)
