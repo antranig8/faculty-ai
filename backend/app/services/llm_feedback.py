@@ -71,7 +71,7 @@ def generate_llm_feedback(payload: AnalyzeChunkRequest) -> tuple[FeedbackItem | 
     if not settings.groq_api_key:
         return None
 
-    client = Groq(api_key=settings.groq_api_key)
+    client = Groq(api_key=settings.groq_api_key, max_retries=0)
     completion = client.chat.completions.create(
         model=settings.faculty_ai_llm_model,
         messages=[

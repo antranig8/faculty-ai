@@ -160,7 +160,7 @@ def prepare_questions_with_llm(project_context: ProjectContext, slides: list[Sli
     if not settings.groq_api_key or not slides:
         return None
 
-    client = Groq(api_key=settings.groq_api_key)
+    client = Groq(api_key=settings.groq_api_key, max_retries=0)
     completion = client.chat.completions.create(
         model=settings.faculty_ai_llm_model,
         messages=[

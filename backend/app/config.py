@@ -52,7 +52,7 @@ def get_settings() -> Settings:
         faculty_ai_app_api_key=os.getenv("FACULTY_AI_APP_API_KEY"),
         faculty_ai_speech_provider=os.getenv("FACULTY_AI_SPEECH_PROVIDER", "deepgram"),
         faculty_ai_llm_provider=os.getenv("FACULTY_AI_LLM_PROVIDER", "heuristic"),
-        faculty_ai_llm_model=os.getenv("FACULTY_AI_LLM_MODEL", "openai/gpt-oss-120b"),
+        faculty_ai_llm_model=os.getenv("FACULTY_AI_LLM_MODEL", "qwen/qwen3-32b"),
         deepgram_model=os.getenv("DEEPGRAM_MODEL", "flux-general-en"),
         deepgram_language=os.getenv("DEEPGRAM_LANGUAGE", "en-US"),
     )

@@ -22,6 +22,8 @@ def start_session(payload: SessionStartRequest) -> SessionStartResponse:
         "asked_feedback_messages": [],
         "awaiting_answer_until": None,
         "last_feedback_slide_number": None,
+        "last_llm_attempt_at": None,
+        "llm_backoff_until": None,
     }
     state.save_session(session_id, session)
     return SessionStartResponse(sessionId=session_id)
