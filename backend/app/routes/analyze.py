@@ -7,15 +7,40 @@ from app.models.response_models import AnalyzeChunkResponse
 from app.services.cooldown import _normalize_message, can_emit_feedback, utc_now
 from app.services.faculty_brain import decide_faculty_feedback
 from app.services.feedback_engine import generate_candidate_feedback, generate_slide_aware_feedback
+from app.services.llm_errors import classify_llm_error, log_llm_exception
 from app.services.llm_feedback import generate_llm_feedback
 from app.services.slide_inference import infer_current_slide
 import app.state as state
 
 router = APIRouter(tags=["analysis"])
+LIVE_LLM_MIN_GAP_SECONDS = 20
+LIVE_LLM_BACKOFF_SECONDS = 90
 
 
 def _normalize_chunk(text: str) -> str:
     return " ".join(text.lower().split())
+
+
+def _llm_backoff_active(session: dict) -> bool:
+    backoff_until = session.get("llm_backoff_until")
+    return bool(backoff_until and utc_now() < backoff_until)
+
+
+def _can_attempt_live_llm(session: dict) -> bool:
+    if _llm_backoff_active(session):
+        return False
+    last_attempt_at = session.get("last_llm_attempt_at")
+    if not last_attempt_at:
+        return True
+    return (utc_now() - last_attempt_at).total_seconds() >= LIVE_LLM_MIN_GAP_SECONDS
+
+
+def _mark_live_llm_attempt(session: dict) -> None:
+    session["last_llm_attempt_at"] = utc_now()
+
+
+def _mark_live_llm_backoff(session: dict) -> None:
+    session["llm_backoff_until"] = utc_now() + timedelta(seconds=LIVE_LLM_BACKOFF_SECONDS)
 
 
 @router.post("/analyze-chunk", response_model=AnalyzeChunkResponse)
@@ -43,37 +68,54 @@ def analyze_chunk(payload: AnalyzeChunkRequest) -> AnalyzeChunkResponse:
     current_slide_number = effective_slide.slideNumber if effective_slide else None
     recent_feedback_messages = [item.message for item in session.get("feedback", [])][-5:]
     asked_messages = list(session.get("asked_feedback_messages", []))
-    faculty_brain = decide_faculty_feedback(
-        payload=payload,
-        current_slide=effective_slide,
-        recent_feedback=recent_feedback_messages,
-        asked_messages=asked_messages,
+    candidate, reason = generate_slide_aware_feedback(
+        payload.transcriptChunk,
+        recent_transcript=payload.recentTranscript,
+        prepared_questions=payload.preparedQuestions,
+        current_slide_number=current_slide_number,
     )
 
-    if faculty_brain.terminal:
-        if faculty_brain.feedback is None:
-            return AnalyzeChunkResponse(trigger=False, reason=faculty_brain.reason, inferredCurrentSlide=inferred_slide)
-        candidate, reason = faculty_brain.feedback, faculty_brain.reason
-    else:
-        candidate, reason = generate_slide_aware_feedback(
-            payload.transcriptChunk,
-            recent_transcript=payload.recentTranscript,
-            prepared_questions=payload.preparedQuestions,
-            current_slide_number=current_slide_number,
-        )
+    if candidate is None and _can_attempt_live_llm(session):
+        _mark_live_llm_attempt(session)
+        state.save_session(payload.sessionId, session)
+        try:
+            faculty_brain = decide_faculty_feedback(
+                payload=payload,
+                current_slide=effective_slide,
+                recent_feedback=recent_feedback_messages,
+                asked_messages=asked_messages,
+            )
+        except RuntimeError as exc:
+            log_llm_exception("decide_faculty_feedback", exc)
+            if "rate limit" in classify_llm_error(exc).lower() or "429" in classify_llm_error(exc):
+                _mark_live_llm_backoff(session)
+                state.save_session(payload.sessionId, session)
+            faculty_brain = None
 
-        if candidate is None:
+        if faculty_brain and faculty_brain.terminal:
+            if faculty_brain.feedback is None:
+                return AnalyzeChunkResponse(trigger=False, reason=faculty_brain.reason, inferredCurrentSlide=inferred_slide)
+            candidate, reason = faculty_brain.feedback, faculty_brain.reason
+        elif candidate is None and not payload.preparedQuestions:
             llm_result = None
             try:
                 llm_result = generate_llm_feedback(payload)
             except RuntimeError as exc:
-                reason = f"LLM fallback failed: {exc}"
+                log_llm_exception("generate_llm_feedback", exc)
+                classified = classify_llm_error(exc)
+                if "rate limit" in classified.lower() or "429" in classified:
+                    _mark_live_llm_backoff(session)
+                    state.save_session(payload.sessionId, session)
+                reason = f"LLM fallback failed: {classified}"
 
             if llm_result is not None:
                 candidate, reason = llm_result
 
-        if candidate is None:
-            candidate, reason = generate_candidate_feedback(payload.transcriptChunk, project_title=payload.projectContext.title)
+    elif candidate is None and _llm_backoff_active(session):
+        reason = "LLM backoff active after provider rate limit. Using deterministic faculty logic only."
+
+    if candidate is None:
+        candidate, reason = generate_candidate_feedback(payload.transcriptChunk, project_title=payload.projectContext.title)
 
     if candidate is None:
         return AnalyzeChunkResponse(trigger=False, reason=reason, inferredCurrentSlide=inferred_slide)

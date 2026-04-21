@@ -1,4 +1,5 @@
 import ipaddress
+import logging
 
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
@@ -8,6 +9,7 @@ from app.config import get_settings
 from app.routes import analyze, presentation, professor, session, speech
 
 app = FastAPI(title="Faculty AI Live Feedback")
+logging.basicConfig(level=logging.INFO)
 
 app.add_middleware(
     CORSMiddleware,

@@ -3,6 +3,7 @@ from fastapi import APIRouter, File, HTTPException, UploadFile
 import app.state as state
 from app.models.request_models import PresentationPrepareRequest
 from app.models.response_models import PresentationPrepareResponse
+from app.services.llm_errors import classify_llm_error, log_llm_exception
 from app.services.presentation_preparer import parse_slide_outline, prepare_questions, prepare_questions_with_llm
 from app.services.pptx_parser import parse_pptx_slides
 
@@ -15,9 +16,12 @@ def _build_preparation_response(project_context, slides) -> PresentationPrepareR
     if cached:
         return cached.model_copy(update={"cacheHit": True})
 
+    llm_failure_reason: str | None = None
     try:
         prepared_questions = prepare_questions_with_llm(project_context, slides)
-    except RuntimeError:
+    except RuntimeError as exc:
+        log_llm_exception("prepare_questions_with_llm", exc)
+        llm_failure_reason = classify_llm_error(exc)
         prepared_questions = None
 
     question_source = "llm"
@@ -31,6 +35,8 @@ def _build_preparation_response(project_context, slides) -> PresentationPrepareR
         questionSource=question_source,
         cacheHit=False,
     )
+    if question_source == "heuristic" and llm_failure_reason:
+        response = response.model_copy(update={"cacheHit": False})
     state.save_prepared_question_cache(cache_key, response)
     return response
 

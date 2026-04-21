@@ -6,6 +6,7 @@ from groq import Groq
 from app.config import get_settings
 from app.models.response_models import FinalEvaluation, FeedbackItem, ProfessorConfig, RubricScore
 from app.services.cooldown import utc_now
+from app.services.llm_errors import classify_llm_error, log_llm_exception
 from app.services.prompt_loader import load_prompt
 from app.services.rubric_loader import load_professor_config_from_template
 
@@ -145,52 +146,66 @@ def evaluate_presentation(session_id: str, project_title: str, transcript: list[
     config = load_professor_config_from_template() or ProfessorConfig()
     settings = get_settings()
     if settings.faculty_ai_llm_provider in {"groq", "openai"} and settings.groq_api_key:
-        client = Groq(api_key=settings.groq_api_key)
-        completion = client.chat.completions.create(
-            model=settings.faculty_ai_llm_model,
-            messages=[{"role": "user", "content": _prompt(config, project_title, transcript, feedback)}],
-            temperature=0.2,
-            max_completion_tokens=1400,
-            top_p=1,
-            reasoning_effort="medium",
-            stream=True,
-            stop=None,
-        )
+        try:
+            client = Groq(api_key=settings.groq_api_key, max_retries=0)
+            completion = client.chat.completions.create(
+                model=settings.faculty_ai_llm_model,
+                messages=[{"role": "user", "content": _prompt(config, project_title, transcript, feedback)}],
+                temperature=0.2,
+                max_completion_tokens=1400,
+                top_p=1,
+                reasoning_effort="medium",
+                stream=True,
+                stop=None,
+            )
 
-        parts: list[str] = []
-        for chunk in completion:
-            delta = chunk.choices[0].delta.content or ""
-            if delta:
-                parts.append(delta)
+            parts: list[str] = []
+            for chunk in completion:
+                delta = chunk.choices[0].delta.content or ""
+                if delta:
+                    parts.append(delta)
 
-        raw = "".join(parts).strip()
-        start = raw.find("{")
-        end = raw.rfind("}")
-        if start != -1 and end != -1 and end >= start:
-            parsed = json.loads(raw[start : end + 1])
-            rubric_scores = [
-                RubricScore(
-                    criterion=item["criterion"],
-                    score=int(item["score"]),
-                    justification=str(item["justification"]).strip(),
-                )
-                for item in parsed.get("rubricScores", [])
-            ]
-            if rubric_scores:
-                normalized_scores = _normalize_rubric_scores(config, rubric_scores)
-                average_score = sum(item.score for item in normalized_scores) / max(1, len(normalized_scores))
-                numeric_score = _score_to_numeric(average_score)
-                return FinalEvaluation(
-                    sessionId=session_id,
-                    projectTitle=project_title,
-                    courseName=config.courseName,
-                    overallGrade=_grade_from_numeric(numeric_score),
-                    numericScore=numeric_score,
-                    summary=str(parsed.get("summary", "")).strip(),
-                    strongestPoints=[str(item).strip() for item in parsed.get("strongestPoints", []) if str(item).strip()][:4],
-                    biggestQuestions=[str(item).strip() for item in parsed.get("biggestQuestions", []) if str(item).strip()][:4],
-                    rubricScores=normalized_scores,
+            raw = "".join(parts).strip()
+            start = raw.find("{")
+            end = raw.rfind("}")
+            if start != -1 and end != -1 and end >= start:
+                parsed = json.loads(raw[start : end + 1])
+                rubric_scores = [
+                    RubricScore(
+                        criterion=item["criterion"],
+                        score=int(item["score"]),
+                        justification=str(item["justification"]).strip(),
+                    )
+                    for item in parsed.get("rubricScores", [])
+                ]
+                if rubric_scores:
+                    normalized_scores = _normalize_rubric_scores(config, rubric_scores)
+                    average_score = sum(item.score for item in normalized_scores) / max(1, len(normalized_scores))
+                    numeric_score = _score_to_numeric(average_score)
+                    return FinalEvaluation(
+                        sessionId=session_id,
+                        projectTitle=project_title,
+                        courseName=config.courseName,
+                        overallGrade=_grade_from_numeric(numeric_score),
+                        numericScore=numeric_score,
+                        summary=str(parsed.get("summary", "")).strip(),
+                        strongestPoints=[str(item).strip() for item in parsed.get("strongestPoints", []) if str(item).strip()][:4],
+                        biggestQuestions=[str(item).strip() for item in parsed.get("biggestQuestions", []) if str(item).strip()][:4],
+                        rubricScores=normalized_scores,
+                        createdAt=_created_at(),
+                    )
+        except Exception as exc:
+            log_llm_exception("evaluate_presentation", exc)
+            feedback = [
+                *feedback,
+                FeedbackItem(
+                    type="clarification",
+                    priority="low",
+                    section="unknown",
+                    message="Final evaluation fell back to rubric heuristics.",
+                    reason=f"LLM final evaluation failed: {classify_llm_error(exc)}",
                     createdAt=_created_at(),
-                )
+                ),
+            ]
 
     return _fallback_evaluation(session_id, project_title, config, transcript, feedback)

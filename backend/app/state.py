@@ -79,6 +79,8 @@ def _serialize_session(session: dict[str, Any]) -> str:
             "asked_feedback_messages": list(session.get("asked_feedback_messages", [])),
             "awaiting_answer_until": session["awaiting_answer_until"].isoformat() if session.get("awaiting_answer_until") else None,
             "last_feedback_slide_number": session.get("last_feedback_slide_number"),
+            "last_llm_attempt_at": session["last_llm_attempt_at"].isoformat() if session.get("last_llm_attempt_at") else None,
+            "llm_backoff_until": session["llm_backoff_until"].isoformat() if session.get("llm_backoff_until") else None,
         }
     )
 
@@ -94,6 +96,8 @@ def _deserialize_session(payload: str) -> dict[str, Any]:
         "asked_feedback_messages": list(raw.get("asked_feedback_messages", [])),
         "awaiting_answer_until": datetime.fromisoformat(raw["awaiting_answer_until"]) if raw.get("awaiting_answer_until") else None,
         "last_feedback_slide_number": raw.get("last_feedback_slide_number"),
+        "last_llm_attempt_at": datetime.fromisoformat(raw["last_llm_attempt_at"]) if raw.get("last_llm_attempt_at") else None,
+        "llm_backoff_until": datetime.fromisoformat(raw["llm_backoff_until"]) if raw.get("llm_backoff_until") else None,
     }
 
 
