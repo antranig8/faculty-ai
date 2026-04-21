@@ -41,3 +41,8 @@ class ProfessorConfigRequest(BaseModel):
 class FeedbackResolutionRequest(BaseModel):
     resolved: bool = True
     resolutionReason: Optional[str] = None
+
+
+class TextToSpeechRequest(BaseModel):
+    text: str = Field(min_length=1, max_length=1200)
+    provider: str = "deepgram"

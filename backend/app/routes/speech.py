@@ -10,6 +10,7 @@ from websockets.asyncio.client import connect
 from websockets.exceptions import ConnectionClosed
 
 from app.config import get_settings
+from app.models.request_models import TextToSpeechRequest
 from app.models.response_models import SpeechSessionResponse
 from app.services.speech_provider import SpeechProviderName, get_speech_provider
 
@@ -135,8 +136,22 @@ async def deepgram_tts_preview() -> dict[str, bool | str]:
     settings = get_settings()
     return {
         "provider": "deepgram",
-        "enabled": bool(settings.deepgram_api_key),
+        "configured": bool(settings.deepgram_api_key),
+        "enabled": False,
+        "model": "aura-2-odysseus-en",
+        "status": "scaffolded_not_implemented",
     }
+
+
+@router.post("/deepgram/tts")
+async def deepgram_tts(payload: TextToSpeechRequest) -> None:
+    # Scaffold only. When enabled, this should return audio/mpeg bytes generated
+    # from payload.text through Deepgram Speak. Browser TTS remains the active
+    # classroom-safe implementation until the provider is deliberately wired.
+    raise HTTPException(
+        status_code=501,
+        detail="Deepgram TTS is scaffolded but not enabled. Browser TTS is the active voice provider.",
+    )
 
 
 @router.websocket("/deepgram/proxy")

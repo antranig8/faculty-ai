@@ -106,5 +106,8 @@ export type TtsProvider = "browser" | "deepgram";
 
 export type TtsPreviewResponse = {
   provider: "deepgram";
+  configured: boolean;
   enabled: boolean;
+  model: string;
+  status: "scaffolded_not_implemented" | "enabled";
 };
