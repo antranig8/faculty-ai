@@ -80,6 +80,7 @@ export default function PresentPage() {
   const keepAliveTimerRef = useRef<NodeJS.Timeout | null>(null);
   const lastAnalyzeAtRef = useRef(0);
   const liveErrorMessageRef = useRef("");
+  const intentionalLiveStopRef = useRef(false);
 
   const latestFeedback = [...feedback].reverse().find((item) => !item.resolved);
   const recentFeedback = useMemo(() => feedback.slice(-5).map((item) => item.message), [feedback]);
@@ -413,6 +414,7 @@ export default function PresentPage() {
     closeSocket = true,
     nextLiveStatus: "idle" | "error" = "idle",
   ) {
+    intentionalLiveStopRef.current = nextLiveStatus === "idle";
     setDebugStats((current) => ({
       ...current,
       lastStopReason: reason,
@@ -481,6 +483,7 @@ export default function PresentPage() {
     }
 
     resetRunState();
+    intentionalLiveStopRef.current = false;
     setMode("live");
     setLiveConnecting(true);
     setLiveStatus("connecting");
@@ -579,10 +582,13 @@ export default function PresentPage() {
             ...current,
             lastCloseCode: data.code,
           }));
+          const normalClose = !data.code || data.code === 1000 || data.code === 1001;
           stopLiveSpeech(
-            `Deepgram proxy closed (${data.code ?? 1006}).${data.reason ? ` ${data.reason}` : ""}`,
+            normalClose
+              ? "Live microphone stopped."
+              : `Deepgram proxy closed (${data.code ?? 1006}).${data.reason ? ` ${data.reason}` : ""}`,
             false,
-            data.code === 1000 ? "idle" : "error",
+            normalClose ? "idle" : "error",
           );
           return;
         }
@@ -631,14 +637,20 @@ export default function PresentPage() {
           wsCloseEvents: current.wsCloseEvents + 1,
           lastCloseCode: event.code,
         }));
+        if (intentionalLiveStopRef.current) {
+          intentionalLiveStopRef.current = false;
+          return;
+        }
         const closeReason = event.reason?.trim();
         const detail = closeReason ? ` ${closeReason}` : "";
         if (liveStateRef.current.connected || liveStateRef.current.connecting) {
-          const message = liveErrorMessageRef.current || `Deepgram connection closed (${event.code}).${detail}`;
+          const normalClose = event.code === 1000 || event.code === 1001;
+          const message = liveErrorMessageRef.current
+            || (normalClose ? "Live microphone stopped." : `Deepgram connection closed (${event.code}).${detail}`);
           stopLiveSpeech(
             message,
             false,
-            event.code === 1000 ? "idle" : "error",
+            normalClose ? "idle" : "error",
           );
         }
       });
@@ -801,34 +813,32 @@ export default function PresentPage() {
       <header className="topbar">
         <div>
           <p className="eyebrow">Faculty AI</p>
-          <h1>Student presentation mode</h1>
+          <h1>Presentation cockpit</h1>
         </div>
         <p>{status}</p>
       </header>
 
+      <section className="session-summary" aria-label="Presentation setup summary">
+        <div>
+          <span>Deck</span>
+          <strong>{uploadedFilename ? uploadedFilename : "Not uploaded"}</strong>
+        </div>
+        <div>
+          <span>Questions</span>
+          <strong>{preparedQuestions.length}</strong>
+        </div>
+        <div>
+          <span>Mode</span>
+          <strong>{mode === "idle" ? "Ready" : mode === "demo" ? "Demo" : "Live"}</strong>
+        </div>
+        <div>
+          <span>Open issues</span>
+          <strong>{feedback.filter((item) => !item.resolved).length}</strong>
+        </div>
+      </section>
+
       <div className="workspace">
         <div className="left-rail">
-          <section className="setup-panel">
-            <div>
-              <p className="eyebrow">Professor Rubric</p>
-              <h2>{professorConfig?.assignmentName ?? "Project Presentation"}</h2>
-            </div>
-            <p className="muted">
-              {(professorConfig?.rubric ?? projectContext.rubric).join(", ")}
-            </p>
-            {questionSource ? (
-              <p className="muted">
-                Question source: {questionSource}{questionCacheHit ? " (cache hit)" : ""}
-              </p>
-            ) : null}
-            <p className="muted">
-              {mode === "live"
-                ? "Live microphone mode is active."
-                : mode === "demo"
-                  ? "Fake demo mode is active."
-                  : "Choose live microphone or fake demo mode."}
-            </p>
-          </section>
           <PresentationUpload disabled={busy} filename={uploadedFilename} onUpload={(file) => void handleUpload(file)} />
           <SessionControls
             canFinalize={Boolean(sessionId && transcript.length > 0)}
@@ -846,6 +856,12 @@ export default function PresentPage() {
             onStopLive={() => stopLiveSpeech()}
             onFinalize={() => void handleFinalize()}
           />
+          <section className="quiet-panel">
+            <p className="eyebrow">Rubric</p>
+            <p>{professorConfig?.assignmentName ?? "Project Presentation"}</p>
+            <small>{(professorConfig?.rubric ?? projectContext.rubric).join(", ")}</small>
+            {questionSource ? <small>Questions: {questionSource}{questionCacheHit ? " cached" : ""}</small> : null}
+          </section>
         </div>
 
         <div className="main-stage">

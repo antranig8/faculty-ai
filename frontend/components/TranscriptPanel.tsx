@@ -42,18 +42,21 @@ export function TranscriptPanel({ transcript, activeChunk, livePreview = "", liv
       </div>
 
       {debugStats ? (
-        <div className="transcript-debug">
-          <span>socket {debugStats.socketOpened}</span>
-          <span>audio {debugStats.audioChunksSent}</span>
-          <span>bytes {debugStats.audioBytesSent}</span>
-          <span>events {debugStats.transcriptEvents}</span>
-          <span>analyzed {debugStats.finalChunksAnalyzed}</span>
-          <span>proxy {debugStats.proxyMessages}</span>
-          <span>wsclose {debugStats.wsCloseEvents}</span>
-          <span>trackend {debugStats.micTrackEnded}</span>
-          <span>audioctx {debugStats.audioContextState}</span>
-          <span>close {debugStats.lastCloseCode ?? "-"}</span>
-        </div>
+        <details className="transcript-debug">
+          <summary>Diagnostics</summary>
+          <div>
+            <span>socket {debugStats.socketOpened}</span>
+            <span>audio {debugStats.audioChunksSent}</span>
+            <span>bytes {debugStats.audioBytesSent}</span>
+            <span>events {debugStats.transcriptEvents}</span>
+            <span>analyzed {debugStats.finalChunksAnalyzed}</span>
+            <span>proxy {debugStats.proxyMessages}</span>
+            <span>wsclose {debugStats.wsCloseEvents}</span>
+            <span>trackend {debugStats.micTrackEnded}</span>
+            <span>audioctx {debugStats.audioContextState}</span>
+            <span>close {debugStats.lastCloseCode ?? "-"}</span>
+          </div>
+        </details>
       ) : null}
 
       {debugStats?.lastStopReason ? <p className="muted">Last stop: {debugStats.lastStopReason}</p> : null}

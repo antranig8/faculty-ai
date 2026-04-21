@@ -16,10 +16,24 @@ type Props = {
   onResolve: (item: FeedbackItem, resolved: boolean) => void;
 };
 
+function uniqueFeedbackItems(items: FeedbackItem[]): FeedbackItem[] {
+  const seen = new Set<string>();
+  return items.filter((item) => {
+    const key = item.sourceQuestionId ?? item.message.trim().toLowerCase();
+    if (seen.has(key)) {
+      return false;
+    }
+    seen.add(key);
+    return true;
+  });
+}
+
 export function FeedbackDrawer({ feedback, open, latestFeedback, onClose, onResolve }: Props) {
-  const visibleFeedback = latestFeedback
-    ? [...feedback].reverse().filter((item) => item.createdAt !== latestFeedback.createdAt)
-    : [...feedback].reverse();
+  const visibleFeedback = uniqueFeedbackItems(
+    latestFeedback
+      ? [...feedback].reverse().filter((item) => item.createdAt !== latestFeedback.createdAt)
+      : [...feedback].reverse(),
+  );
 
   return (
     <aside className={`feedback-drawer ${open ? "open" : ""}`} aria-hidden={!open}>

@@ -4,11 +4,21 @@ from typing import Optional
 from app.models.response_models import PreparedQuestion
 from app.models.response_models import FeedbackItem
 from app.services.cooldown import utc_now
+from app.services.question_matching import prepared_question_is_topically_ready
 from app.services.section_tracker import infer_section
 
 VAGUE_TERMS = ["better", "efficient", "improve", "personalized", "adaptive", "smart", "easy"]
 CLAIM_TERMS = ["increase", "decrease", "faster", "more accurate", "better", "improve", "optimize"]
 TECH_TERMS = ["react", "next", "fastapi", "python", "api", "database", "supabase", "model", "llm"]
+SLIDE_HANDOFF_TERMS = [
+    "any questions",
+    "questions",
+    "does anyone have questions",
+    "do you have questions",
+    "are there any questions",
+    "that's it",
+    "that is it",
+]
 
 
 def _contains_any(text: str, terms: list[str]) -> bool:
@@ -21,8 +31,7 @@ def _mentions_metric(text: str) -> bool:
 
 
 def _question_matches_transcript(question: PreparedQuestion, text: str) -> bool:
-    lower_text = text.lower()
-    return any(term.lower() in lower_text for term in question.listenFor)
+    return prepared_question_is_topically_ready(question, text)
 
 
 def _concern_is_unanswered(question: PreparedQuestion, recent_text: str) -> bool:
@@ -32,6 +41,57 @@ def _concern_is_unanswered(question: PreparedQuestion, recent_text: str) -> bool
 
 def _created_at() -> str:
     return utc_now().astimezone(timezone.utc).isoformat()
+
+
+def is_slide_handoff(text: str) -> bool:
+    lower_text = text.lower()
+    return any(term in lower_text for term in SLIDE_HANDOFF_TERMS)
+
+
+def _feedback_from_prepared_question(question: PreparedQuestion, section: str, reason: str) -> FeedbackItem:
+    return FeedbackItem(
+        type=question.type,
+        priority=question.priority,
+        section=section,
+        message=question.question,
+        reason=f"Rubric focus: {question.rubricCategory}. {reason}",
+        createdAt=_created_at(),
+        sourceQuestionId=question.id,
+        autoResolutionTerms=question.missingIfAbsent[:8],
+    )
+
+
+def generate_slide_handoff_feedback(
+    text: str,
+    recent_transcript: list[str],
+    prepared_questions: list[PreparedQuestion],
+    current_slide_number: int | None,
+    asked_question_ids: list[str],
+) -> tuple[Optional[FeedbackItem], str]:
+    if not is_slide_handoff(text):
+        return None, "No end-of-slide question handoff detected."
+
+    relevant_questions = [
+        question
+        for question in prepared_questions
+        if (current_slide_number is None or question.slideNumber == current_slide_number)
+        and question.id not in asked_question_ids
+    ]
+    if not relevant_questions:
+        return None, "No unasked prepared concern exists for this slide."
+
+    recent_text = " ".join([*recent_transcript[-4:], text])
+    section = infer_section(recent_text)
+    for question in sorted(relevant_questions, key=lambda item: {"high": 0, "medium": 1, "low": 2}[item.priority]):
+        if not _concern_is_unanswered(question, recent_text):
+            continue
+        return _feedback_from_prepared_question(
+            question=question,
+            section=section,
+            reason="The presenter invited questions at the end of the slide, so FacultyAI surfaced the strongest unasked prepared concern.",
+        ), "Generated end-of-slide faculty question from prepared concerns."
+
+    return None, "Prepared concerns for this slide were already addressed before the question handoff."
 
 
 def generate_candidate_feedback(text: str, project_title: str = "") -> tuple[Optional[FeedbackItem], str]:
@@ -123,15 +183,10 @@ def generate_slide_aware_feedback(
         if not _concern_is_unanswered(question, recent_text):
             continue
 
-        return FeedbackItem(
-            type=question.type,
-            priority=question.priority,
+        return _feedback_from_prepared_question(
+            question=question,
             section=section,
-            message=question.question,
-            reason=f"Rubric focus: {question.rubricCategory}. The current slide raised this issue, but the spoken explanation has not addressed it yet.",
-            createdAt=_created_at(),
-            sourceQuestionId=question.id,
-            autoResolutionTerms=question.missingIfAbsent[:8],
+            reason="The current slide raised this issue, but the spoken explanation has not addressed it yet.",
         ), "Generated feedback from prepared slide question."
 
     return None, "No prepared slide question matched an unanswered concern."

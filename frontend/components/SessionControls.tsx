@@ -31,43 +31,59 @@ export function SessionControls({
   onStopLive,
   onFinalize,
 }: Props) {
+  const statusText = liveConnected
+    ? "Live mic connected"
+    : liveConnecting
+      ? "Connecting mic"
+      : running
+        ? "Demo running"
+        : sessionId
+          ? "Session ready"
+          : "No active session";
+
   return (
-    <section className="session-controls">
-      <div>
-        <p className="eyebrow">Session</p>
-        <h2>{sessionId ? "Presentation mode ready" : "Start a demo session"}</h2>
-        <p className="muted">{sessionId ? `Session ${sessionId.slice(0, 8)}` : "Backend session starts when the demo begins."}</p>
-        {liveStatus ? <p className="muted">Live state: {liveStatus}</p> : null}
+    <section className="control-panel">
+      <div className="control-panel-header">
+        <div>
+          <p className="eyebrow">Run</p>
+          <h2>{statusText}</h2>
+        </div>
+        {liveStatus ? <span className={`status-pill ${liveStatus}`}>{liveStatus}</span> : null}
       </div>
 
-      <div className="button-row">
-        <button disabled={disabled || running} onClick={onStart} type="button">
-          Start demo
-        </button>
-        <button disabled={disabled || !sessionId} onClick={onNextChunk} type="button">
-          Send next chunk
-        </button>
-        <button disabled={!running} onClick={onStop} type="button">
-          Pause
-        </button>
+      <div className="primary-actions">
         <button
-          className="secondary-button"
+          className="primary-button"
           disabled={disabled || running || liveConnected || liveConnecting}
           onClick={onStartLive}
           type="button"
         >
-          {liveConnecting ? "Connecting mic..." : "Start live mic"}
+          {liveConnecting ? "Connecting..." : "Start live mic"}
+        </button>
+        <button disabled={disabled || running || liveConnected || liveConnecting} onClick={onStart} type="button">
+          Start demo
+        </button>
+      </div>
+
+      <div className="secondary-actions">
+        <button disabled={disabled || !sessionId || liveConnected} onClick={onNextChunk} type="button">
+          Next demo chunk
+        </button>
+        <button disabled={!running} onClick={onStop} type="button">
+          Pause demo
         </button>
         <button className="secondary-button" disabled={!liveConnected} onClick={onStopLive} type="button">
-          Stop live mic
+          Stop mic
         </button>
         <button className="secondary-button" disabled={disabled || !canFinalize} onClick={onFinalize} type="button">
-          Finalize grade
+          Finalize
         </button>
-        <button onClick={onReset} type="button">
+        <button className="ghost-button" onClick={onReset} type="button">
           Reset
         </button>
       </div>
+
+      {sessionId ? <p className="session-id">Session {sessionId.slice(0, 8)}</p> : null}
     </section>
   );
 }
