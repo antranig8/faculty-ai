@@ -830,7 +830,7 @@ export default function PresentPage() {
           </div>
         </aside>
       ) : null}
-      <FacultyAlert latestFeedback={latestFeedback} unseenCount={unseenCount} onOpen={openDrawer} />
+      <FacultyAlert latestFeedback={latestFeedback} open={drawerOpen} unseenCount={unseenCount} onOpen={openDrawer} />
     </main>
   );
 }

@@ -13,6 +13,8 @@ from app.services.rubric_loader import load_professor_config_from_template
 from app.services.section_tracker import infer_section
 from app.services.transcript_evidence import extract_transcript_evidence
 
+LIVE_FALLBACK_MAX_COMPLETION_TOKENS = 220
+
 
 def _created_at() -> str:
     return utc_now().astimezone(timezone.utc).isoformat()
@@ -41,7 +43,7 @@ def _build_prompt(payload: AnalyzeChunkRequest) -> str:
             "listenFor": item.listenFor,
             "missingIfAbsent": item.missingIfAbsent,
         }
-        for item in payload.preparedQuestions[:8]
+        for item in payload.preparedQuestions[:3]
     ]
 
     prompt_header = load_prompt(
@@ -57,13 +59,13 @@ def _build_prompt(payload: AnalyzeChunkRequest) -> str:
         f"{prompt_header}\n\n"
         f"Transcript chunk count so far: {len(payload.recentTranscript) + 1}\n"
         f"Professor rubric config: {rubric.model_dump_json() if rubric else '{}'}\n"
-        f"Project context: {payload.projectContext.model_dump_json()}\n"
+        f"Project context: {json.dumps({'title': payload.projectContext.title, 'rubric': payload.projectContext.rubric[:6]})}\n"
         f"Current slide: {slide_summary}\n"
-        f"Transcript evidence: {json.dumps(transcript_evidence.to_dict())}\n"
+        f"Transcript evidence: {json.dumps({'summary': transcript_evidence.summary, 'claims': transcript_evidence.claims[:2], 'technicalChoices': transcript_evidence.technicalChoices[:2], 'metrics': transcript_evidence.metrics[:3], 'unansweredGaps': transcript_evidence.unansweredGaps[:3]})}\n"
         f"Prepared questions: {json.dumps(prepared_questions)}\n"
-        f"Recent transcript: {json.dumps(payload.recentTranscript[-4:])}\n"
-        f"Recent feedback: {json.dumps(payload.recentFeedback[-5:])}\n"
-        f"Latest transcript chunk: {json.dumps(payload.transcriptChunk)}"
+        f"Recent transcript: {json.dumps(payload.recentTranscript[-2:])}\n"
+        f"Recent feedback: {json.dumps(payload.recentFeedback[-2:])}\n"
+        f"Latest transcript chunk: {json.dumps(payload.transcriptChunk[:280])}"
     )
 
 
@@ -84,7 +86,7 @@ def generate_llm_feedback(payload: AnalyzeChunkRequest) -> tuple[FeedbackItem | 
             }
         ],
         temperature=0.2,
-        max_completion_tokens=1200,
+        max_completion_tokens=LIVE_FALLBACK_MAX_COMPLETION_TOKENS,
         top_p=1,
         reasoning_effort=groq_reasoning_effort(settings.faculty_ai_llm_model),
         stream=True,
