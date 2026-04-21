@@ -20,3 +20,5 @@ uvicorn app.main:app --reload --port 8000
 
 The current analysis engine is deterministic and does not require network access or an API key.
 
+Set `GROQ_API_KEY` and `FACULTY_AI_LLM_PROVIDER=groq` to enable the Groq-hosted `openai/gpt-oss-120b` fallback for transcript analysis. Without that key, the backend falls back to the deterministic heuristic engine.
+

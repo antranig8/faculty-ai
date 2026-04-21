@@ -10,9 +10,6 @@ type Props = {
 
 export function SlideTracker({ slides, preparedQuestions, currentSlideIndex, onPrevious, onNext }: Props) {
   const currentSlide = slides[currentSlideIndex];
-  const slideQuestions = currentSlide
-    ? preparedQuestions.filter((question) => question.slideNumber === currentSlide.slideNumber)
-    : [];
 
   return (
     <section className="slide-tracker">
@@ -33,20 +30,6 @@ export function SlideTracker({ slides, preparedQuestions, currentSlideIndex, onP
         <button disabled={currentSlideIndex >= slides.length - 1} onClick={onNext} type="button">
           Next slide
         </button>
-      </div>
-
-      <div className="prepared-question-list">
-        <p className="eyebrow">Prepared faculty concerns</p>
-        {slideQuestions.length === 0 ? (
-          <p className="muted">Prepare the presentation to load slide-specific questions.</p>
-        ) : (
-          slideQuestions.map((question) => (
-            <article key={question.id}>
-              <strong>{question.rubricCategory}</strong>
-              <p>{question.question}</p>
-            </article>
-          ))
-        )}
       </div>
     </section>
   );

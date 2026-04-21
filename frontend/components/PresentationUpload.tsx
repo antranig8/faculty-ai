@@ -28,6 +28,7 @@ export function PresentationUpload({ disabled, filename, onUpload }: Props) {
       </label>
 
       <p className="muted">{filename ? `Loaded ${filename}` : "Only .pptx is supported in this build."}</p>
+      <p className="muted">Decks larger than 15 MB are rejected before parsing.</p>
     </section>
   );
 }

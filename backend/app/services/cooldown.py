@@ -1,9 +1,16 @@
 from datetime import datetime, timezone
 from difflib import SequenceMatcher
+import re
 from typing import Dict, List
 
-MIN_SECONDS_BETWEEN_ALERTS = 15
+MIN_SECONDS_BETWEEN_ALERTS = 25
 MAX_ALERTS_PER_SESSION = 7
+
+
+def _normalize_message(message: str) -> str:
+    lowered = message.lower().strip()
+    lowered = re.sub(r"[^a-z0-9\s]", "", lowered)
+    return " ".join(lowered.split())
 
 
 def utc_now() -> datetime:
@@ -17,10 +24,17 @@ def seconds_since(value: datetime | None) -> float:
 
 
 def too_similar(message: str, existing_messages: List[str], threshold: float = 0.72) -> bool:
-    normalized = message.lower().strip()
+    normalized = _normalize_message(message)
     for existing in existing_messages[-5:]:
-        ratio = SequenceMatcher(None, normalized, existing.lower().strip()).ratio()
-        if ratio >= threshold:
+        existing_normalized = _normalize_message(existing)
+        if not existing_normalized:
+            continue
+        if normalized == existing_normalized:
+            return True
+        if normalized in existing_normalized or existing_normalized in normalized:
+            return True
+        ratio = SequenceMatcher(None, normalized, existing_normalized).ratio()
+        if ratio >= 0.64:
             return True
     return False
 
