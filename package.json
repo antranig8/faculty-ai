@@ -5,6 +5,9 @@
   "scripts": {
     "frontend:dev": "npm --prefix frontend run dev",
     "frontend:build": "npm --prefix frontend run build",
+    "frontend:start": "npm --prefix frontend run start",
+    "build": "npm --prefix frontend install && npm --prefix frontend run build",
+    "start": "npm --prefix frontend run start",
     "backend:dev": "uvicorn app.main:app --app-dir backend --reload --port 8000"
   }
 }
