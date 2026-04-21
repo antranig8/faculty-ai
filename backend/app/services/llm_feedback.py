@@ -1,13 +1,13 @@
 import json
 from datetime import timezone
 
-from groq import Groq
 from pydantic import ValidationError
 
 from app.config import get_settings
 from app.models.request_models import AnalyzeChunkRequest
 from app.models.response_models import FeedbackItem
 from app.services.cooldown import utc_now
+from app.services.groq_client import build_groq_client, groq_reasoning_effort
 from app.services.prompt_loader import load_prompt
 from app.services.rubric_loader import load_professor_config_from_template
 from app.services.section_tracker import infer_section
@@ -71,7 +71,7 @@ def generate_llm_feedback(payload: AnalyzeChunkRequest) -> tuple[FeedbackItem | 
     if not settings.groq_api_key:
         return None
 
-    client = Groq(api_key=settings.groq_api_key, max_retries=0)
+    client = build_groq_client(settings.groq_api_key)
     completion = client.chat.completions.create(
         model=settings.faculty_ai_llm_model,
         messages=[
@@ -83,7 +83,7 @@ def generate_llm_feedback(payload: AnalyzeChunkRequest) -> tuple[FeedbackItem | 
         temperature=0.2,
         max_completion_tokens=1200,
         top_p=1,
-        reasoning_effort="medium",
+        reasoning_effort=groq_reasoning_effort(settings.faculty_ai_llm_model),
         stream=True,
         stop=None,
     )

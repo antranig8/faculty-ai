@@ -47,6 +47,7 @@ export default function PresentPage() {
   const [liveConnected, setLiveConnected] = useState(false);
   const [mode, setMode] = useState<"idle" | "demo" | "live">("idle");
   const [liveStatus, setLiveStatus] = useState<"idle" | "connecting" | "listening" | "silent" | "analyzing" | "error">("idle");
+  const [liveErrorMessage, setLiveErrorMessage] = useState("");
   const [debugStats, setDebugStats] = useState({
     socketOpened: 0,
     audioChunksSent: 0,
@@ -78,6 +79,7 @@ export default function PresentPage() {
   const pendingTimerRef = useRef<NodeJS.Timeout | null>(null);
   const keepAliveTimerRef = useRef<NodeJS.Timeout | null>(null);
   const lastAnalyzeAtRef = useRef(0);
+  const liveErrorMessageRef = useRef("");
 
   const latestFeedback = feedback[feedback.length - 1];
   const recentFeedback = useMemo(() => feedback.slice(-5).map((item) => item.message), [feedback]);
@@ -97,6 +99,8 @@ export default function PresentPage() {
     setDrawerOpen(false);
     setUnseenCount(0);
     setRunning(false);
+    setLiveErrorMessage("");
+    liveErrorMessageRef.current = "";
     setDebugStats({
       socketOpened: 0,
       audioChunksSent: 0,
@@ -406,7 +410,9 @@ export default function PresentPage() {
     if (nextLiveStatus === "idle" && mode === "live") {
       setMode("idle");
     }
-    setStatus(reason);
+    if (!liveErrorMessageRef.current || nextLiveStatus !== "error") {
+      setStatus(reason);
+    }
   }
 
   async function startLiveSpeech() {
@@ -496,6 +502,8 @@ export default function PresentPage() {
           type?: string;
           is_final?: boolean;
           speech_final?: boolean;
+          event?: string;
+          transcript?: string;
           code?: number;
           reason?: string;
           message?: string;
@@ -514,7 +522,11 @@ export default function PresentPage() {
 
         if (data.type === "error") {
           setLiveStatus("error");
-          stopLiveSpeech(data.message ?? "Speech proxy failed.", false, "error");
+          const message = data.message ?? "Speech proxy failed.";
+          liveErrorMessageRef.current = message;
+          setLiveErrorMessage(message);
+          setStatus(message);
+          stopLiveSpeech(message, false, "error");
           return;
         }
 
@@ -531,11 +543,15 @@ export default function PresentPage() {
           return;
         }
 
-        if (data.type !== "Results") {
+        const isFluxTurnInfo = data.type === "TurnInfo";
+        const isNovaResults = data.type === "Results";
+        if (!isFluxTurnInfo && !isNovaResults) {
           return;
         }
 
-        const transcriptText = data.channel?.alternatives?.[0]?.transcript?.trim();
+        const transcriptText = isFluxTurnInfo
+          ? data.transcript?.trim()
+          : data.channel?.alternatives?.[0]?.transcript?.trim();
         if (!transcriptText) {
           return;
         }
@@ -544,7 +560,11 @@ export default function PresentPage() {
         setLiveStatus("listening");
         resetSilenceTimer();
 
-        if (!data.is_final) {
+        if (isFluxTurnInfo) {
+          if (data.event !== "EndOfTurn" && data.event !== "EagerEndOfTurn") {
+            return;
+          }
+        } else if (!data.is_final) {
           return;
         }
 
@@ -556,6 +576,8 @@ export default function PresentPage() {
       });
 
       socket.addEventListener("error", () => {
+        liveErrorMessageRef.current = "Deepgram connection failed.";
+        setLiveErrorMessage("Deepgram connection failed.");
         stopLiveSpeech("Deepgram connection failed.", true, "error");
       });
 
@@ -568,8 +590,9 @@ export default function PresentPage() {
         const closeReason = event.reason?.trim();
         const detail = closeReason ? ` ${closeReason}` : "";
         if (liveStateRef.current.connected || liveStateRef.current.connecting) {
+          const message = liveErrorMessageRef.current || `Deepgram connection closed (${event.code}).${detail}`;
           stopLiveSpeech(
-            `Deepgram connection closed (${event.code}).${detail}`,
+            message,
             false,
             event.code === 1000 ? "idle" : "error",
           );
@@ -604,6 +627,8 @@ export default function PresentPage() {
         : error instanceof Error
           ? error.message
           : "Unable to start live speech.";
+      liveErrorMessageRef.current = message;
+      setLiveErrorMessage(message);
       stopLiveSpeech(message, true, "error");
     }
   }

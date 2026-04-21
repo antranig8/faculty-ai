@@ -1,11 +1,10 @@
 import re
 import json
 
-from groq import Groq
-
 from app.config import get_settings
 from app.models.request_models import ProjectContext
 from app.models.response_models import PreparedQuestion, Slide
+from app.services.groq_client import build_groq_client, groq_reasoning_effort
 from app.services.prompt_loader import load_prompt
 from app.services.rubric_loader import load_professor_config_from_template
 
@@ -160,7 +159,7 @@ def prepare_questions_with_llm(project_context: ProjectContext, slides: list[Sli
     if not settings.groq_api_key or not slides:
         return None
 
-    client = Groq(api_key=settings.groq_api_key, max_retries=0)
+    client = build_groq_client(settings.groq_api_key)
     completion = client.chat.completions.create(
         model=settings.faculty_ai_llm_model,
         messages=[
@@ -172,7 +171,7 @@ def prepare_questions_with_llm(project_context: ProjectContext, slides: list[Sli
         temperature=0.2,
         max_completion_tokens=1800,
         top_p=1,
-        reasoning_effort="medium",
+        reasoning_effort=groq_reasoning_effort(settings.faculty_ai_llm_model),
         stream=True,
         stop=None,
     )

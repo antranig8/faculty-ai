@@ -2,13 +2,13 @@ import json
 from dataclasses import dataclass
 from datetime import timezone
 
-from groq import Groq
 from pydantic import ValidationError
 
 from app.config import get_settings
 from app.models.request_models import AnalyzeChunkRequest
 from app.models.response_models import FeedbackItem, PreparedQuestion, Slide
 from app.services.cooldown import _normalize_message, utc_now
+from app.services.groq_client import build_groq_client, groq_reasoning_effort
 from app.services.prompt_loader import load_prompt
 from app.services.rubric_loader import load_professor_config_from_template
 from app.services.section_tracker import infer_section
@@ -219,7 +219,7 @@ def decide_faculty_feedback(
             terminal=False,
         )
 
-    client = Groq(api_key=settings.groq_api_key, max_retries=0)
+    client = build_groq_client(settings.groq_api_key)
     completion = client.chat.completions.create(
         model=settings.faculty_ai_llm_model,
         messages=_build_messages(
@@ -232,7 +232,7 @@ def decide_faculty_feedback(
         temperature=0.1,
         max_completion_tokens=900,
         top_p=1,
-        reasoning_effort="medium",
+        reasoning_effort=groq_reasoning_effort(settings.faculty_ai_llm_model),
         stream=True,
         stop=None,
     )

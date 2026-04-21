@@ -85,7 +85,7 @@ def analyze_chunk(payload: AnalyzeChunkRequest) -> AnalyzeChunkResponse:
                 recent_feedback=recent_feedback_messages,
                 asked_messages=asked_messages,
             )
-        except RuntimeError as exc:
+        except Exception as exc:
             log_llm_exception("decide_faculty_feedback", exc)
             if "rate limit" in classify_llm_error(exc).lower() or "429" in classify_llm_error(exc):
                 _mark_live_llm_backoff(session)
@@ -100,7 +100,7 @@ def analyze_chunk(payload: AnalyzeChunkRequest) -> AnalyzeChunkResponse:
             llm_result = None
             try:
                 llm_result = generate_llm_feedback(payload)
-            except RuntimeError as exc:
+            except Exception as exc:
                 log_llm_exception("generate_llm_feedback", exc)
                 classified = classify_llm_error(exc)
                 if "rate limit" in classified.lower() or "429" in classified:
