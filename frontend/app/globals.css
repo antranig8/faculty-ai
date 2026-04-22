@@ -128,6 +128,7 @@ h2 {
 .access-screen {
   align-items: center;
   display: grid;
+  justify-items: center;
   min-height: 100vh;
   padding: 24px;
 }
