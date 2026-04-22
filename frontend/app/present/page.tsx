@@ -26,6 +26,11 @@ const FACULTY_VOICE_PREFACES = [
   "I have a question before you move on.",
   "Quick question before you continue.",
 ];
+const FACULTY_HANDOFF_PREFACES = [
+  "Yeah, I actually have a question.",
+  "Yes, I have one question.",
+  "I do have a question.",
+];
 
 export default function PresentPage() {
   const [projectContext, setProjectContext] = useState<ProjectContext>(defaultProjectContext);
@@ -197,21 +202,18 @@ export default function PresentPage() {
     }
 
     spokenFeedbackIdsRef.current.add(speechKey);
-    const preface = FACULTY_VOICE_PREFACES[spokenFeedbackIdsRef.current.size % FACULTY_VOICE_PREFACES.length];
+    const handoffQuestion = /presenter invited questions|end-of-slide/i.test(item.reason);
+    const prefaces = handoffQuestion ? FACULTY_HANDOFF_PREFACES : FACULTY_VOICE_PREFACES;
+    const preface = prefaces[spokenFeedbackIdsRef.current.size % prefaces.length];
     const spokenText = `${preface} ${item.message}`;
     void speakWithDeepgramVoice(spokenText).catch(() => speakWithBrowserVoice(spokenText));
   }
 
   function queueFacultyQuestionReveal(item: FeedbackItem) {
     clearDrawerOpenTimer();
-    setDrawerOpen(false);
-    setUnseenCount((current) => current + 1);
-    drawerOpenTimerRef.current = setTimeout(() => {
-      setDrawerOpen(true);
-      setUnseenCount(0);
-      speakFacultyQuestion(item);
-      drawerOpenTimerRef.current = null;
-    }, 2000);
+    setDrawerOpen(true);
+    setUnseenCount(0);
+    speakFacultyQuestion(item);
   }
 
   function applyResolvedFeedback(resolvedFeedback?: FeedbackItem) {

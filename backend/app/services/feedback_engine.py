@@ -48,10 +48,13 @@ def _question_is_proactively_ready(question: PreparedQuestion, recent_text: str,
     if any(term in normalized_recent for term in listen_terms):
         return True
 
-    # High-priority prepared concerns are already scoped to the inferred slide.
-    # After enough speech on that slide, surface the strongest missing concern
-    # before the presenter explicitly asks for questions.
-    return question.priority == "high" and len(recent_text.split()) >= 24
+    # Prepared concerns are already scoped to the inferred slide. After enough
+    # speech on that slide, surface the strongest missing concern before the
+    # presenter explicitly asks for questions.
+    word_count = len(recent_text.split())
+    if question.priority == "high":
+        return word_count >= 18
+    return question.priority == "medium" and word_count >= 32
 
 
 def _created_at() -> str:
