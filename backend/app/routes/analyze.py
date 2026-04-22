@@ -1,4 +1,5 @@
 from datetime import timedelta
+import logging
 
 from fastapi import APIRouter, HTTPException
 
@@ -14,6 +15,7 @@ from app.services.slide_inference import infer_current_slide
 import app.state as state
 
 router = APIRouter(tags=["analysis"])
+logger = logging.getLogger("faculty_ai.analysis")
 LIVE_LLM_MIN_GAP_SECONDS = 20
 LIVE_LLM_BACKOFF_SECONDS = 90
 
@@ -145,14 +147,6 @@ def analyze_chunk(payload: AnalyzeChunkRequest) -> AnalyzeChunkResponse:
     elif candidate is None and _llm_backoff_active(session):
         reason = "LLM backoff active after provider rate limit. Using deterministic faculty logic only."
 
-    if candidate is None and payload.preparedQuestions:
-        return AnalyzeChunkResponse(
-            trigger=False,
-            resolvedFeedback=resolved_feedback,
-            reason=reason,
-            inferredCurrentSlide=inferred_slide,
-        )
-
     if candidate is None:
         candidate, reason = generate_candidate_feedback(payload.transcriptChunk, project_title=payload.projectContext.title)
 
@@ -245,6 +239,13 @@ def analyze_chunk(payload: AnalyzeChunkRequest) -> AnalyzeChunkResponse:
     session["awaiting_answer_until"] = utc_now() + timedelta(seconds=40)
     session["last_feedback_slide_number"] = current_slide_number
     state.save_session(payload.sessionId, session)
+    logger.info(
+        "triggered feedback session=%s slide=%s source=%s reason=%s",
+        payload.sessionId[:8],
+        current_slide_number,
+        candidate.sourceQuestionId or "heuristic",
+        reason,
+    )
     return AnalyzeChunkResponse(
         trigger=True,
         feedback=candidate,

@@ -10,7 +10,8 @@ from app.services.rubric_loader import load_professor_config_from_template
 
 MAX_LLM_SLIDES = 16
 MAX_SLIDE_CONTENT_CHARS = 700
-PREPARED_QUESTION_MAX_TOKENS = 1200
+PREPARED_QUESTION_MAX_TOKENS = 900
+PREPARED_QUESTION_REPAIR_MAX_TOKENS = 1100
 
 
 def _clip_text(value: str, limit: int) -> str:
@@ -67,6 +68,67 @@ def prepare_questions(project_context: ProjectContext, slides: list[Slide]) -> l
     for slide in slides:
         text = _slide_text(slide)
         questions_for_slide: list[PreparedQuestion] = []
+        is_title_like = _has_any(text, ["title", "group members"]) and len(text.split()) < 35
+
+        if is_title_like:
+            prepared.extend(questions_for_slide)
+            continue
+
+        if _has_any(text, ["takeaway", "takeaways", "lecture", "discussion", "executive summary", "assignment", "workshop", "speaker series"]):
+            questions_for_slide.append(
+                PreparedQuestion(
+                    id=f"slide-{slide.slideNumber}-team-perspective",
+                    slideNumber=slide.slideNumber,
+                    rubricCategory=_rubric_category(project_context, "team 360-degree perspective on ENES 104"),
+                    type="question",
+                    priority="high",
+                    question="What makes this a team perspective on ENES 104 rather than just a summary of course activities?",
+                    listenFor=["takeaway", "takeaways", "lecture", "discussion", "executive summary", "assignment", "workshop", "speaker series"],
+                    missingIfAbsent=["team perspective", "we chose", "because", "most important", "our group"],
+                )
+            )
+
+        if _has_any(text, ["lesson", "lessons", "learned", "apply", "application", "workshop", "speaker", "career", "future"]):
+            questions_for_slide.append(
+                PreparedQuestion(
+                    id=f"slide-{slide.slideNumber}-individual-application",
+                    slideNumber=slide.slideNumber,
+                    rubricCategory=_rubric_category(project_context, "individual application of lessons to future study, career planning, or engineering practice"),
+                    type="question",
+                    priority="high",
+                    question="How will the person named on this slide actually apply this lesson after ENES 104?",
+                    listenFor=["lesson", "learned", "apply", "application", "workshop", "speaker", "career", "future"],
+                    missingIfAbsent=["apply", "future", "career", "engineering practice", "specific example"],
+                )
+            )
+
+        if _has_any(text, ["cip-1", "continuous improvement", "what worked", "could be improved", "management", "enes104", "enes 104"]):
+            questions_for_slide.append(
+                PreparedQuestion(
+                    id=f"slide-{slide.slideNumber}-course-cip",
+                    slideNumber=slide.slideNumber,
+                    rubricCategory=_rubric_category(project_context, "continuous improvement plan for ENES 104"),
+                    type="question",
+                    priority="high",
+                    question="Which improvement would you most want management to act on first, and why?",
+                    listenFor=["CIP-1", "continuous improvement", "worked", "improved", "management", "ENES 104"],
+                    missingIfAbsent=["because", "specific", "management", "improve", "priority"],
+                )
+            )
+
+        if _has_any(text, ["cip-2", "team building", "team-building", "teamwork", "team work", "feedback", "provided each other"]):
+            questions_for_slide.append(
+                PreparedQuestion(
+                    id=f"slide-{slide.slideNumber}-team-feedback",
+                    slideNumber=slide.slideNumber,
+                    rubricCategory=_rubric_category(project_context, "evidence of feedback exchanged among team members"),
+                    type="question",
+                    priority="high",
+                    question="What feedback did team members give each other during this assignment, and how did it change the final presentation?",
+                    listenFor=["CIP-2", "team building", "teamwork", "feedback", "provided each other", "collaboration"],
+                    missingIfAbsent=["feedback", "changed", "improved", "specific", "because"],
+                )
+            )
 
         if _has_any(text, ["architecture", "stack", "backend", "frontend", "api", "database", "fastapi", "next.js"]):
             questions_for_slide.append(
@@ -162,6 +224,119 @@ def _llm_prompt(project_context: ProjectContext, slides: list[Slide]) -> str:
     )
 
 
+def _extract_json_array(raw_content: str) -> str:
+    start = raw_content.find("[")
+    if start == -1:
+        raise RuntimeError("Groq prepared-question response did not contain a JSON array.")
+
+    depth = 0
+    in_string = False
+    escaped = False
+    for index, char in enumerate(raw_content[start:], start=start):
+        if in_string:
+            if escaped:
+                escaped = False
+            elif char == "\\":
+                escaped = True
+            elif char == "\"":
+                in_string = False
+            continue
+
+        if char == "\"":
+            in_string = True
+        elif char == "[":
+            depth += 1
+        elif char == "]":
+            depth -= 1
+            if depth == 0:
+                return raw_content[start : index + 1]
+
+    raise RuntimeError("Groq prepared-question response contained an incomplete JSON array.")
+
+
+def _normalize_json_array_text(value: str) -> str:
+    # Handles common model slips like trailing commas before object/array close.
+    return re.sub(r",\s*([}\]])", r"\1", value.strip())
+
+
+def _parse_prepared_question_json(raw_content: str) -> list:
+    json_text = _normalize_json_array_text(_extract_json_array(raw_content))
+    try:
+        parsed = json.loads(json_text)
+    except json.JSONDecodeError as exc:
+        raise RuntimeError("Unable to parse Groq prepared questions JSON.") from exc
+
+    if not isinstance(parsed, list):
+        raise RuntimeError("Groq prepared-question response was not an array.")
+    return parsed
+
+
+def _repair_prepared_question_json(client, settings, raw_content: str) -> list | None:
+    repair_prompt = (
+        "Repair this malformed JSON into a valid JSON array only. "
+        "Do not add commentary. Preserve the existing fields and values as much as possible. "
+        "If an item cannot be repaired, omit only that item.\n\n"
+        f"Malformed JSON/text:\n{raw_content[:5000]}"
+    )
+    completion = client.chat.completions.create(
+        model=settings.faculty_ai_llm_model,
+        messages=[{"role": "user", "content": repair_prompt}],
+        temperature=0,
+        max_completion_tokens=PREPARED_QUESTION_REPAIR_MAX_TOKENS,
+        top_p=1,
+        reasoning_effort=groq_reasoning_effort(settings.faculty_ai_llm_model),
+        stream=False,
+        stop=None,
+    )
+    repaired = (completion.choices[0].message.content or "").strip()
+    if not repaired:
+        return None
+    return _parse_prepared_question_json(repaired)
+
+
+def _coerce_prepared_questions(parsed: list, project_context: ProjectContext, slides: list[Slide]) -> list[PreparedQuestion]:
+    prepared: list[PreparedQuestion] = []
+    counts_by_slide: dict[int, int] = {}
+    valid_slide_numbers = {slide.slideNumber for slide in slides}
+    rubric_defaults = project_context.rubric or ["clarity"]
+
+    for index, item in enumerate(parsed):
+        if not isinstance(item, dict):
+            continue
+
+        slide_number = int(item.get("slideNumber", 0))
+        if slide_number not in valid_slide_numbers:
+            continue
+        if counts_by_slide.get(slide_number, 0) >= 1:
+            continue
+
+        question = str(item.get("question", "")).strip()
+        if not question:
+            continue
+
+        listen_for = [str(value).strip() for value in item.get("listenFor", []) if str(value).strip()]
+        missing_if_absent = [str(value).strip() for value in item.get("missingIfAbsent", []) if str(value).strip()]
+        rubric_category = str(item.get("rubricCategory", "")).strip() or rubric_defaults[0]
+        feedback_type = str(item.get("type", "question")).strip() or "question"
+        priority = str(item.get("priority", "medium")).strip() or "medium"
+
+        prepared.append(
+            PreparedQuestion(
+                id=str(item.get("id", f"slide-{slide_number}-llm-{index + 1}")).strip() or f"slide-{slide_number}-llm-{index + 1}",
+                slideNumber=slide_number,
+                rubricCategory=rubric_category,
+                type=feedback_type,
+                priority=priority,
+                question=question,
+                listenFor=listen_for[:8] or [question.split("?")[0][:32]],
+                missingIfAbsent=missing_if_absent[:8] or ["because", "specific", "example"],
+            )
+        )
+        counts_by_slide[slide_number] = counts_by_slide.get(slide_number, 0) + 1
+
+    return prepared
+
+
 def prepare_questions_with_llm(project_context: ProjectContext, slides: list[Slide]) -> list[PreparedQuestion] | None:
     settings = get_settings()
     if settings.faculty_ai_llm_provider not in {"groq", "openai"}:
@@ -196,57 +371,13 @@ def prepare_questions_with_llm(project_context: ProjectContext, slides: list[Sli
     if not raw_content:
         return None
 
-    start = raw_content.find("[")
-    end = raw_content.rfind("]")
-    if start == -1 or end == -1 or end < start:
-        raise RuntimeError("Groq prepared-question response was not valid JSON.")
-
     try:
-        parsed = json.loads(raw_content[start : end + 1])
-    except json.JSONDecodeError as exc:
-        raise RuntimeError("Unable to parse Groq prepared questions JSON.") from exc
+        parsed = _parse_prepared_question_json(raw_content)
+    except RuntimeError:
+        repaired = _repair_prepared_question_json(client, settings, raw_content)
+        if repaired is None:
+            raise
+        parsed = repaired
 
-    if not isinstance(parsed, list):
-        raise RuntimeError("Groq prepared-question response was not an array.")
-
-    prepared: list[PreparedQuestion] = []
-    counts_by_slide: dict[int, int] = {}
-    valid_slide_numbers = {slide.slideNumber for slide in slides}
-    rubric_defaults = project_context.rubric or ["clarity"]
-
-    for index, item in enumerate(parsed):
-        if not isinstance(item, dict):
-            continue
-
-        slide_number = int(item.get("slideNumber", 0))
-        if slide_number not in valid_slide_numbers:
-            continue
-        if counts_by_slide.get(slide_number, 0) >= 2:
-            continue
-
-        question = str(item.get("question", "")).strip()
-        if not question:
-            continue
-
-        listen_for = [str(value).strip() for value in item.get("listenFor", []) if str(value).strip()]
-        missing_if_absent = [str(value).strip() for value in item.get("missingIfAbsent", []) if str(value).strip()]
-        rubric_category = str(item.get("rubricCategory", "")).strip() or rubric_defaults[0]
-        feedback_type = str(item.get("type", "question")).strip() or "question"
-        priority = str(item.get("priority", "medium")).strip() or "medium"
-
-        prepared.append(
-            PreparedQuestion(
-                id=str(item.get("id", f"slide-{slide_number}-llm-{index + 1}")).strip() or f"slide-{slide_number}-llm-{index + 1}",
-                slideNumber=slide_number,
-                rubricCategory=rubric_category,
-                type=feedback_type,  # validated by Pydantic
-                priority=priority,  # validated by Pydantic
-                question=question,
-                listenFor=listen_for[:8] or [question.split("?")[0][:32]],
-                missingIfAbsent=missing_if_absent[:8] or ["because", "evidence", "tradeoff"],
-            )
-        )
-        counts_by_slide[slide_number] = counts_by_slide.get(slide_number, 0) + 1
-
-    return prepared or None
+    return _coerce_prepared_questions(parsed, project_context, slides) or None
 
