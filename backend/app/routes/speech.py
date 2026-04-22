@@ -2,9 +2,11 @@ import asyncio
 import ipaddress
 import json
 import logging
+import urllib.error
+import urllib.request
 from urllib.parse import urlencode
 
-from fastapi import APIRouter, HTTPException, WebSocket, WebSocketDisconnect
+from fastapi import APIRouter, HTTPException, Response, WebSocket, WebSocketDisconnect
 from starlette.websockets import WebSocketState
 from websockets.asyncio.client import connect
 from websockets.exceptions import ConnectionClosed
@@ -16,6 +18,7 @@ from app.services.speech_provider import SpeechProviderName, get_speech_provider
 
 router = APIRouter(prefix="/speech", tags=["speech"])
 logger = logging.getLogger("faculty_ai.speech")
+DEEPGRAM_TTS_MODEL = "aura-2-odysseus-en"
 
 
 def _is_local_host(host: str | None) -> bool:
@@ -137,21 +140,41 @@ async def deepgram_tts_preview() -> dict[str, bool | str]:
     return {
         "provider": "deepgram",
         "configured": bool(settings.deepgram_api_key),
-        "enabled": False,
-        "model": "aura-2-odysseus-en",
-        "status": "scaffolded_not_implemented",
+        "enabled": bool(settings.deepgram_api_key),
+        "model": DEEPGRAM_TTS_MODEL,
+        "status": "enabled" if settings.deepgram_api_key else "missing_deepgram_api_key",
     }
 
 
 @router.post("/deepgram/tts")
-async def deepgram_tts(payload: TextToSpeechRequest) -> None:
-    # Scaffold only. When enabled, this should return audio/mpeg bytes generated
-    # from payload.text through Deepgram Speak. Browser TTS remains the active
-    # classroom-safe implementation until the provider is deliberately wired.
-    raise HTTPException(
-        status_code=501,
-        detail="Deepgram TTS is scaffolded but not enabled. Browser TTS is the active voice provider.",
+async def deepgram_tts(payload: TextToSpeechRequest) -> Response:
+    settings = get_settings()
+    if not settings.deepgram_api_key:
+        raise HTTPException(status_code=503, detail="DEEPGRAM_API_KEY is not configured.")
+
+    request = urllib.request.Request(
+        f"https://api.deepgram.com/v1/speak?{urlencode({'model': DEEPGRAM_TTS_MODEL})}",
+        data=json.dumps({"text": payload.text}).encode("utf-8"),
+        headers={
+            "Authorization": f"Token {settings.deepgram_api_key}",
+            "Content-Type": "application/json",
+        },
+        method="POST",
     )
+
+    def synthesize() -> bytes:
+        with urllib.request.urlopen(request, timeout=20) as response:
+            return response.read()
+
+    try:
+        audio = await asyncio.to_thread(synthesize)
+    except urllib.error.HTTPError as exc:
+        detail = exc.read().decode("utf-8", errors="replace")
+        raise HTTPException(status_code=exc.code, detail=detail or "Deepgram TTS request failed.") from exc
+    except urllib.error.URLError as exc:
+        raise HTTPException(status_code=503, detail=f"Unable to reach Deepgram TTS: {exc.reason}") from exc
+
+    return Response(content=audio, media_type="audio/mpeg")
 
 
 @router.websocket("/deepgram/proxy")

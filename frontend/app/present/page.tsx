@@ -8,7 +8,7 @@ import { PresentationUpload } from "@/components/PresentationUpload";
 import { SessionControls } from "@/components/SessionControls";
 import { SlideTracker } from "@/components/SlideTracker";
 import { TranscriptPanel } from "@/components/TranscriptPanel";
-import { analyzeChunk, getProfessorConfig, getSpeechProxyUrl, startSession, updateFeedbackResolution, uploadPresentation } from "@/lib/api";
+import { analyzeChunk, getProfessorConfig, getSpeechProxyUrl, startSession, synthesizeDeepgramSpeech, updateFeedbackResolution, uploadPresentation } from "@/lib/api";
 import { finalizeSession } from "@/lib/api";
 import { demoTranscriptChunks } from "@/lib/demoTranscript";
 import type { FeedbackItem, FinalEvaluation, PreparedQuestion, ProfessorConfig, ProjectContext, Slide } from "@/lib/types";
@@ -81,6 +81,8 @@ export default function PresentPage() {
   const keepAliveTimerRef = useRef<NodeJS.Timeout | null>(null);
   const drawerOpenTimerRef = useRef<NodeJS.Timeout | null>(null);
   const spokenFeedbackIdsRef = useRef<Set<string>>(new Set());
+  const speechAudioRef = useRef<HTMLAudioElement | null>(null);
+  const speechAudioUrlRef = useRef<string | null>(null);
   const lastAnalyzeAtRef = useRef(0);
   const liveErrorMessageRef = useRef("");
   const intentionalLiveStopRef = useRef(false);
@@ -126,14 +128,60 @@ export default function PresentPage() {
   }
 
   function stopSpeaking() {
+    if (speechAudioRef.current) {
+      speechAudioRef.current.pause();
+      speechAudioRef.current = null;
+    }
+    if (speechAudioUrlRef.current) {
+      URL.revokeObjectURL(speechAudioUrlRef.current);
+      speechAudioUrlRef.current = null;
+    }
     if (typeof window === "undefined" || !("speechSynthesis" in window)) {
       return;
     }
     window.speechSynthesis.cancel();
   }
 
+  function speakWithBrowserVoice(text: string) {
+    if (typeof window === "undefined" || !("speechSynthesis" in window)) {
+      return;
+    }
+
+    window.speechSynthesis.cancel();
+    const utterance = new SpeechSynthesisUtterance(text);
+    const voices = window.speechSynthesis.getVoices();
+    const preferredVoice = voices.find((voice) => /natural|online|neural|aria|jenny|guy/i.test(voice.name))
+      ?? voices.find((voice) => voice.lang.toLowerCase().startsWith("en"));
+    if (preferredVoice) {
+      utterance.voice = preferredVoice;
+    }
+    utterance.rate = 0.95;
+    utterance.pitch = 0.98;
+    utterance.volume = 1;
+    window.speechSynthesis.speak(utterance);
+  }
+
+  async function speakWithDeepgramVoice(text: string) {
+    const audio = await synthesizeDeepgramSpeech(text);
+    stopSpeaking();
+    const url = URL.createObjectURL(audio);
+    const element = new Audio(url);
+    speechAudioRef.current = element;
+    speechAudioUrlRef.current = url;
+    element.addEventListener("ended", () => {
+      URL.revokeObjectURL(url);
+      if (speechAudioUrlRef.current === url) {
+        speechAudioUrlRef.current = null;
+      }
+      if (speechAudioRef.current === element) {
+        speechAudioRef.current = null;
+      }
+    }, { once: true });
+    await element.play();
+  }
+
   function speakFacultyQuestion(item: FeedbackItem) {
-    if (!voiceEnabled || typeof window === "undefined" || !("speechSynthesis" in window)) {
+    if (!voiceEnabled || typeof window === "undefined") {
       return;
     }
 
@@ -143,12 +191,7 @@ export default function PresentPage() {
     }
 
     spokenFeedbackIdsRef.current.add(speechKey);
-    window.speechSynthesis.cancel();
-    const utterance = new SpeechSynthesisUtterance(item.message);
-    utterance.rate = 0.95;
-    utterance.pitch = 1;
-    utterance.volume = 1;
-    window.speechSynthesis.speak(utterance);
+    void speakWithDeepgramVoice(item.message).catch(() => speakWithBrowserVoice(item.message));
   }
 
   function queueFacultyQuestionReveal(item: FeedbackItem) {
