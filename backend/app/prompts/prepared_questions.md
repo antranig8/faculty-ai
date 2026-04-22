@@ -11,5 +11,5 @@ Prefer second-order questions that make students reflect, justify priorities, ex
 
 Avoid generic startup, production deployment, advanced ML architecture, and deep implementation questions unless the slide explicitly makes those central. Skip title, agenda, transition, empty, or generic slides. No filler or restating the slide.
 
-Return strict JSON only, max 1 question per slide and 10 total:
+Return strict JSON only, max 1 question per substantive slide:
 [{"id":"string","slideNumber":1,"rubricCategory":"string","type":"question|critique|suggestion|clarification|praise","priority":"low|medium|high","question":"string","listenFor":["string"],"missingIfAbsent":["string"]}]

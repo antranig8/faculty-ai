@@ -10,7 +10,7 @@ from app.services.rubric_loader import load_professor_config_from_template
 
 MAX_LLM_SLIDES = 16
 MAX_SLIDE_CONTENT_CHARS = 700
-PREPARED_QUESTION_MAX_TOKENS = 900
+PREPARED_QUESTION_MAX_TOKENS = 1400
 PREPARED_QUESTION_REPAIR_MAX_TOKENS = 1100
 
 
@@ -62,6 +62,20 @@ def _rubric_category(project_context: ProjectContext, preferred: str) -> str:
     return preferred
 
 
+def _fallback_question_for_slide(project_context: ProjectContext, slide: Slide) -> PreparedQuestion:
+    title = slide.title.strip() or f"slide {slide.slideNumber}"
+    return PreparedQuestion(
+        id=f"slide-{slide.slideNumber}-slide-specific",
+        slideNumber=slide.slideNumber,
+        rubricCategory=_rubric_category(project_context, "clarity"),
+        type="question",
+        priority="medium",
+        question=f"What is the strongest claim on {title}, and what specific evidence or example supports it?",
+        listenFor=[title, *_clip_text(slide.content, 180).split()[:6]],
+        missingIfAbsent=["because", "evidence", "example", "specific", "supports"],
+    )
+
+
 def prepare_questions(project_context: ProjectContext, slides: list[Slide]) -> list[PreparedQuestion]:
     prepared: list[PreparedQuestion] = []
     context_text = " ".join(
@@ -77,7 +91,7 @@ def prepare_questions(project_context: ProjectContext, slides: list[Slide]) -> l
     for slide in slides:
         text = _slide_text(slide)
         questions_for_slide: list[PreparedQuestion] = []
-        is_title_like = _has_any(text, ["title", "group members"]) and len(text.split()) < 35
+        is_title_like = slide.slideNumber == 1 or (_has_any(text, ["title", "group members"]) and len(text.split()) < 35)
 
         if is_title_like:
             prepared.extend(questions_for_slide)
@@ -257,8 +271,7 @@ def prepare_questions(project_context: ProjectContext, slides: list[Slide]) -> l
             )
 
         if not questions_for_slide:
-            # Do not seed generic presenter-facing opener questions for weak slides.
-            questions_for_slide = []
+            questions_for_slide = [_fallback_question_for_slide(project_context, slide)]
 
         prepared.extend(questions_for_slide[:3])
 

@@ -158,8 +158,8 @@ def analyze_chunk(payload: AnalyzeChunkRequest) -> AnalyzeChunkResponse:
             inferredCurrentSlide=inferred_slide,
         )
 
-    # Let the presenter establish context before low/medium-priority interruptions fire.
-    if len(session["transcript"]) < 3 and candidate.priority != "high":
+    # Let the presenter establish context before lower-priority interruptions fire.
+    if len(session["transcript"]) < 2 and candidate.priority == "low":
         return AnalyzeChunkResponse(
             trigger=False,
             resolvedFeedback=resolved_feedback,
@@ -236,7 +236,7 @@ def analyze_chunk(payload: AnalyzeChunkRequest) -> AnalyzeChunkResponse:
         session.setdefault("asked_feedback_question_ids", []).append(candidate.sourceQuestionId)
     if current_slide_number is not None:
         session.setdefault("asked_feedback_slide_numbers", []).append(current_slide_number)
-    session["awaiting_answer_until"] = utc_now() + timedelta(seconds=40)
+    session["awaiting_answer_until"] = utc_now() + timedelta(seconds=15)
     session["last_feedback_slide_number"] = current_slide_number
     state.save_session(payload.sessionId, session)
     logger.info(

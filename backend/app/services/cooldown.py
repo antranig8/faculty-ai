@@ -3,8 +3,8 @@ from difflib import SequenceMatcher
 import re
 from typing import Dict, List
 
-MIN_SECONDS_BETWEEN_ALERTS = 25
-MAX_ALERTS_PER_SESSION = 7
+MIN_SECONDS_BETWEEN_ALERTS = 12
+MAX_ALERTS_PER_SESSION = 12
 
 
 def _normalize_message(message: str) -> str:

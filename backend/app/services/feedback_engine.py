@@ -40,7 +40,7 @@ def _concern_is_unanswered(question: PreparedQuestion, recent_text: str) -> bool
 
 
 def _question_is_proactively_ready(question: PreparedQuestion, recent_text: str, recent_transcript: list[str]) -> bool:
-    if question.priority == "low" or len(recent_transcript) < 2:
+    if question.priority == "low":
         return False
 
     normalized_recent = recent_text.lower()
@@ -51,7 +51,7 @@ def _question_is_proactively_ready(question: PreparedQuestion, recent_text: str,
     # High-priority prepared concerns are already scoped to the inferred slide.
     # After enough speech on that slide, surface the strongest missing concern
     # before the presenter explicitly asks for questions.
-    return question.priority == "high" and len(recent_text.split()) >= 45
+    return question.priority == "high" and len(recent_text.split()) >= 24
 
 
 def _created_at() -> str:
@@ -230,7 +230,7 @@ def generate_slide_aware_feedback(
     section = infer_section(recent_text)
 
     for question in sorted(relevant_questions, key=lambda item: {"high": 0, "medium": 1, "low": 2}[item.priority]):
-        if question.priority == "low" and len(recent_transcript) < 3:
+        if question.priority == "low" and len(recent_transcript) < 2:
             continue
         if not _question_matches_transcript(question, recent_text):
             if not _question_is_proactively_ready(question, recent_text, recent_transcript):

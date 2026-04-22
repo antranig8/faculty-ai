@@ -10,7 +10,7 @@ from app.models.response_models import FeedbackItem, FinalEvaluation, Presentati
 from app.services.rubric_loader import load_professor_config_from_template
 
 _DB_PATH = Path(__file__).resolve().parents[2] / "faculty_ai.db"
-PREPARED_QUESTION_CACHE_VERSION = "assignment6-reflective-v1"
+PREPARED_QUESTION_CACHE_VERSION = "assignment6-reflective-v2"
 
 sessions: dict[str, dict[str, Any]] = {}
 professor_config = ProfessorConfig()

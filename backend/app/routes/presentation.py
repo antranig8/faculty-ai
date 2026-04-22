@@ -28,6 +28,14 @@ def _build_preparation_response(project_context, slides) -> PresentationPrepareR
     if prepared_questions is None:
         prepared_questions = prepare_questions(project_context, slides)
         question_source = "heuristic"
+    else:
+        covered_slide_numbers = {question.slideNumber for question in prepared_questions}
+        gap_questions = [
+            question
+            for question in prepare_questions(project_context, slides)
+            if question.slideNumber not in covered_slide_numbers
+        ]
+        prepared_questions = [*prepared_questions, *gap_questions]
 
     response = PresentationPrepareResponse(
         slides=slides,
