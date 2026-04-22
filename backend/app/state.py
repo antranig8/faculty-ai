@@ -10,6 +10,7 @@ from app.models.response_models import FeedbackItem, FinalEvaluation, Presentati
 from app.services.rubric_loader import load_professor_config_from_template
 
 _DB_PATH = Path(__file__).resolve().parents[2] / "faculty_ai.db"
+PREPARED_QUESTION_CACHE_VERSION = "assignment6-reflective-v1"
 
 sessions: dict[str, dict[str, Any]] = {}
 professor_config = ProfessorConfig()
@@ -151,6 +152,7 @@ def persist_professor_config(config: ProfessorConfig) -> None:
 
 def build_preparation_cache_key(project_context: ProjectContext, slides: list[Slide]) -> str:
     payload = {
+        "version": PREPARED_QUESTION_CACHE_VERSION,
         "projectContext": project_context.model_dump(mode="json"),
         "slides": [slide.model_dump(mode="json") for slide in slides],
     }

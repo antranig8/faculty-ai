@@ -61,18 +61,14 @@ def _build_feedback_from_question(
     evidence_missing: list[str] | None = None,
 ) -> FeedbackItem:
     section = infer_section(" ".join([*payload.recentTranscript[-5:], payload.transcriptChunk]))
-    heard = [item for item in (evidence_heard or []) if item][:3]
-    missing = [item for item in (evidence_missing or []) if item][:3]
-    evidence_summary = ""
-    if heard or missing:
-        evidence_summary = f" Heard: {', '.join(heard) or 'none'}. Missing: {', '.join(missing) or 'none'}."
+    clean_reason = reason.split("Heard:", 1)[0].split("Missing:", 1)[0].strip()
 
     return FeedbackItem(
         type=question.type,
         priority=question.priority,
         section=section,
         message=question.question,
-        reason=f"Rubric focus: {question.rubricCategory}. {reason}{evidence_summary}".strip(),
+        reason=f"Rubric focus: {question.rubricCategory}. {clean_reason}".strip(),
         createdAt=_created_at(),
         sourceQuestionId=question.id,
         autoResolutionTerms=question.missingIfAbsent[:8],

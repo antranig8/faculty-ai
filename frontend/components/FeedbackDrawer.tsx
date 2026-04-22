@@ -54,7 +54,6 @@ export function FeedbackDrawer({ feedback, open, latestFeedback, onClose, onReso
             <span>{latestFeedback.section.replace("_", " ")}</span>
           </div>
           <h3>{latestFeedback.message}</h3>
-          <p className="muted">{latestFeedback.reason}</p>
           <button className="resolved-button" onClick={() => onResolve(latestFeedback, true)} type="button">
             Mark addressed
           </button>
