@@ -13,7 +13,7 @@ function isPublicPath(pathname: string): boolean {
   );
 }
 
-export async function middleware(request: NextRequest): Promise<NextResponse> {
+export async function proxy(request: NextRequest): Promise<NextResponse> {
   if (!ACCESS_CODE || isPublicPath(request.nextUrl.pathname)) {
     return NextResponse.next();
   }

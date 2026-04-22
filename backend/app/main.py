@@ -11,6 +11,7 @@ from app.routes import analyze, presentation, professor, session, speech
 app = FastAPI(title="Faculty AI Live Feedback")
 logging.basicConfig(level=logging.INFO)
 settings = get_settings()
+PUBLIC_PATHS = {"/", "/health"}
 
 app.add_middleware(
     CORSMiddleware,
@@ -34,6 +35,9 @@ def _is_local_request(host: str | None) -> bool:
 
 @app.middleware("http")
 async def require_api_key_for_non_local_requests(request: Request, call_next):
+    if request.url.path in PUBLIC_PATHS:
+        return await call_next(request)
+
     if _is_local_request(request.client.host if request.client else None):
         return await call_next(request)
 
@@ -54,6 +58,11 @@ app.include_router(analyze.router)
 app.include_router(presentation.router)
 app.include_router(professor.router)
 app.include_router(speech.router)
+
+
+@app.get("/")
+def root() -> dict[str, str]:
+    return {"name": "Faculty AI Backend", "status": "ok"}
 
 
 @app.get("/health")
