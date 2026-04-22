@@ -156,8 +156,8 @@ def _llm_prompt(project_context: ProjectContext, slides: list[Slide]) -> str:
 
     return (
         f"{prompt_header}\n\n"
-        f"Professor rubric: {json.dumps({'courseName': rubric.courseName, 'assignmentName': rubric.assignmentName, 'rubric': rubric.rubric[:6], 'questionStyle': rubric.questionStyle} if rubric else {})}\n"
-        f"Project context: {json.dumps({'title': _clip_text(project_context.title, 120), 'summary': _clip_text(project_context.summary, 240), 'rubric': project_context.rubric[:6]})}\n"
+        f"Professor rubric: {json.dumps({'courseName': rubric.courseName, 'assignmentName': rubric.assignmentName, 'rubric': rubric.rubric[:10], 'questionStyle': rubric.questionStyle, 'assignmentContext': _clip_text(rubric.assignmentContext, 1800)} if rubric else {})}\n"
+        f"Project context: {json.dumps({'title': _clip_text(project_context.title, 120), 'summary': _clip_text(project_context.summary, 240), 'rubric': project_context.rubric[:10], 'notes': _clip_text(project_context.notes or '', 600)})}\n"
         f"Slides: {json.dumps(slide_payload)}"
     )
 
