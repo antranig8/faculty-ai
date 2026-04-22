@@ -119,7 +119,8 @@ export async function uploadPresentation(file: File): Promise<PresentationPrepar
 
   if (!response.ok) {
     const error = await response.json().catch(() => undefined);
-    throw new Error(error?.detail ?? "Unable to upload presentation.");
+    const detail = typeof error?.detail === "string" ? error.detail : "Unable to upload presentation.";
+    throw new Error(`Upload failed (${response.status}): ${detail}`);
   }
 
   return response.json();
