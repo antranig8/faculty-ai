@@ -2,24 +2,31 @@ import { NextRequest, NextResponse } from "next/server";
 
 import { createAccessSession, getAccessCookieName, getAccessSessionTtlSeconds } from "@/lib/accessSession";
 
-function redirectTarget(request: NextRequest, rawTarget: FormDataEntryValue | null): URL {
+function redirectTarget(rawTarget: FormDataEntryValue | null): string {
   const target = typeof rawTarget === "string" && rawTarget.startsWith("/") ? rawTarget : "/";
-  return new URL(target, request.url);
+  return target.startsWith("//") ? "/" : target;
+}
+
+function redirectResponse(target: string): NextResponse {
+  return new NextResponse(null, {
+    status: 303,
+    headers: {
+      Location: target,
+    },
+  });
 }
 
 export async function POST(request: NextRequest): Promise<NextResponse> {
   const accessCode = process.env.FACULTY_AI_ACCESS_CODE;
   const formData = await request.formData();
-  const nextUrl = redirectTarget(request, formData.get("next"));
+  const nextUrl = redirectTarget(formData.get("next"));
 
   if (!accessCode || formData.get("accessCode") !== accessCode) {
-    const retryUrl = new URL("/access", request.url);
-    retryUrl.searchParams.set("error", "1");
-    retryUrl.searchParams.set("next", nextUrl.pathname + nextUrl.search);
-    return NextResponse.redirect(retryUrl, { status: 303 });
+    const retryUrl = `/access?error=1&next=${encodeURIComponent(nextUrl)}`;
+    return redirectResponse(retryUrl);
   }
 
-  const response = NextResponse.redirect(nextUrl, { status: 303 });
+  const response = redirectResponse(nextUrl);
   response.cookies.set({
     name: getAccessCookieName(),
     value: await createAccessSession(accessCode),
