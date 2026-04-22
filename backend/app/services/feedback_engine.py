@@ -4,7 +4,7 @@ from typing import Optional
 from app.models.response_models import PreparedQuestion
 from app.models.response_models import FeedbackItem
 from app.services.cooldown import utc_now
-from app.services.question_matching import prepared_question_is_topically_ready
+from app.services.question_matching import meaningful_listen_terms, prepared_question_is_topically_ready
 from app.services.section_tracker import infer_section
 
 VAGUE_TERMS = ["better", "efficient", "improve", "personalized", "adaptive", "smart", "easy"]
@@ -37,6 +37,21 @@ def _question_matches_transcript(question: PreparedQuestion, text: str) -> bool:
 def _concern_is_unanswered(question: PreparedQuestion, recent_text: str) -> bool:
     lower_recent = recent_text.lower()
     return not any(marker.lower() in lower_recent for marker in question.missingIfAbsent)
+
+
+def _question_is_proactively_ready(question: PreparedQuestion, recent_text: str, recent_transcript: list[str]) -> bool:
+    if question.priority == "low" or len(recent_transcript) < 2:
+        return False
+
+    normalized_recent = recent_text.lower()
+    listen_terms = meaningful_listen_terms(question)
+    if any(term in normalized_recent for term in listen_terms):
+        return True
+
+    # High-priority prepared concerns are already scoped to the inferred slide.
+    # After enough speech on that slide, surface the strongest missing concern
+    # before the presenter explicitly asks for questions.
+    return question.priority == "high" and len(recent_text.split()) >= 45
 
 
 def _created_at() -> str:
@@ -178,7 +193,8 @@ def generate_slide_aware_feedback(
         if question.priority == "low" and len(recent_transcript) < 3:
             continue
         if not _question_matches_transcript(question, recent_text):
-            continue
+            if not _question_is_proactively_ready(question, recent_text, recent_transcript):
+                continue
 
         if not _concern_is_unanswered(question, recent_text):
             continue
@@ -186,7 +202,7 @@ def generate_slide_aware_feedback(
         return _feedback_from_prepared_question(
             question=question,
             section=section,
-            reason="The current slide raised this issue, but the spoken explanation has not addressed it yet.",
-        ), "Generated feedback from prepared slide question."
+            reason="The current slide has enough spoken context for this prepared concern, but the explanation has not addressed it yet.",
+        ), "Generated proactive feedback from prepared slide question."
 
     return None, "No prepared slide question matched an unanswered concern."
