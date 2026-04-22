@@ -35,6 +35,9 @@ def _is_local_request(host: str | None) -> bool:
 
 @app.middleware("http")
 async def require_api_key_for_non_local_requests(request: Request, call_next):
+    if request.method == "OPTIONS":
+        return await call_next(request)
+
     if request.url.path in PUBLIC_PATHS:
         return await call_next(request)
 
