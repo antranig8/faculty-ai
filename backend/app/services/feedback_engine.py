@@ -118,6 +118,46 @@ def generate_candidate_feedback(text: str, project_title: str = "") -> tuple[Opt
     section = infer_section(text)
     title = project_title.strip() or "this project"
 
+    if _contains_any(lower_text, ["takeaway", "takeaways"]) and not _contains_any(lower_text, ["perspective", "because", "we chose", "our group", "most important"]):
+        return FeedbackItem(
+            type="question",
+            priority="high",
+            section=section,
+            message="What makes this a team perspective rather than a summary of ENES 104 activities?",
+            reason="The presenter discussed takeaways but has not yet distinguished team perspective from summary.",
+            createdAt=_created_at(),
+        ), "Generated Assignment 6 feedback for team perspective."
+
+    if _contains_any(lower_text, ["lesson", "lessons", "learned", "workshop", "speaker"]) and not _contains_any(lower_text, ["apply", "future", "career", "use this", "engineering practice"]):
+        return FeedbackItem(
+            type="question",
+            priority="high",
+            section=section,
+            message="How will this lesson be applied after ENES 104?",
+            reason="The presenter mentioned a lesson but has not yet connected it to individual application.",
+            createdAt=_created_at(),
+        ), "Generated Assignment 6 feedback for individual application."
+
+    if _contains_any(lower_text, ["cip", "continuous improvement", "what worked", "improve"]) and not _contains_any(lower_text, ["management", "priority", "because", "specific"]):
+        return FeedbackItem(
+            type="question",
+            priority="high",
+            section=section,
+            message="Which improvement should management act on first, and why?",
+            reason="The presenter discussed continuous improvement without a clear priority or rationale.",
+            createdAt=_created_at(),
+        ), "Generated Assignment 6 feedback for course improvement planning."
+
+    if _contains_any(lower_text, ["teamwork", "team work", "team building", "team-building", "feedback"]) and not _contains_any(lower_text, ["changed", "improved", "specific", "each other", "how"]):
+        return FeedbackItem(
+            type="question",
+            priority="high",
+            section=section,
+            message="What specific feedback did team members give each other, and how did it change the presentation?",
+            reason="The presenter referenced teamwork or feedback without explaining the exchange and impact.",
+            createdAt=_created_at(),
+        ), "Generated Assignment 6 feedback for team feedback."
+
     if _contains_any(lower_text, CLAIM_TERMS) and not _mentions_metric(lower_text):
         return FeedbackItem(
             type="question",

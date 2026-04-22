@@ -11,5 +11,5 @@ Prefer questions about assignment structure, team perspective, individual reflec
 
 Avoid generic startup, production deployment, advanced ML architecture, and deep implementation questions unless the slide explicitly makes those central. Skip title, agenda, transition, empty, or generic slides. No filler or restating the slide.
 
-Return strict JSON only, max 2 questions per slide and 18 total:
+Return strict JSON only, max 1 question per slide and 10 total:
 [{"id":"string","slideNumber":1,"rubricCategory":"string","type":"question|critique|suggestion|clarification|praise","priority":"low|medium|high","question":"string","listenFor":["string"],"missingIfAbsent":["string"]}]
