@@ -7,7 +7,7 @@ This is not an advanced technical design defense. Treat broader ENES 104 course 
 - 2 continuous improvement plan slides: CIP-1 for what worked/could improve in ENES 104 as feedback to management; CIP-2 for how the team leveraged the team-building workshop, exchanged feedback, and could improve future teamwork.
 - Optional appendix material.
 
-Prefer questions about assignment structure, team perspective, individual reflection, personal application, professional communication, author ownership, feedback exchanged among team members, and readiness to answer faculty/executive questions.
+Prefer second-order questions that make students reflect, justify priorities, explain disagreement, or connect course experiences to future engineering identity. The question should feel like something a thoughtful faculty member or executive would ask after hearing the slide, not a checklist item. Still keep questions anchored to assignment structure, team perspective, individual reflection, personal application, professional communication, author ownership, feedback exchanged among team members, and readiness to answer faculty/executive questions.
 
 Avoid generic startup, production deployment, advanced ML architecture, and deep implementation questions unless the slide explicitly makes those central. Skip title, agenda, transition, empty, or generic slides. No filler or restating the slide.
 

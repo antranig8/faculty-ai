@@ -21,6 +21,11 @@ const defaultProjectContext: ProjectContext = {
   rubric: ["clarity", "technical justification", "evaluation"],
   notes: "",
 };
+const FACULTY_VOICE_PREFACES = [
+  "Sorry to interrupt, but I have a question.",
+  "I have a question before you move on.",
+  "Quick question before you continue.",
+];
 
 export default function PresentPage() {
   const [projectContext, setProjectContext] = useState<ProjectContext>(defaultProjectContext);
@@ -192,7 +197,9 @@ export default function PresentPage() {
     }
 
     spokenFeedbackIdsRef.current.add(speechKey);
-    void speakWithDeepgramVoice(item.message).catch(() => speakWithBrowserVoice(item.message));
+    const preface = FACULTY_VOICE_PREFACES[spokenFeedbackIdsRef.current.size % FACULTY_VOICE_PREFACES.length];
+    const spokenText = `${preface} ${item.message}`;
+    void speakWithDeepgramVoice(spokenText).catch(() => speakWithBrowserVoice(spokenText));
   }
 
   function queueFacultyQuestionReveal(item: FeedbackItem) {

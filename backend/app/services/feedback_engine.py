@@ -123,7 +123,7 @@ def generate_candidate_feedback(text: str, project_title: str = "") -> tuple[Opt
             type="question",
             priority="high",
             section=section,
-            message="What makes this a team perspective rather than a summary of ENES 104 activities?",
+            message="Where did your team disagree about the most important ENES 104 takeaway, and how did that disagreement shape this slide?",
             reason="The presenter discussed takeaways but has not yet distinguished team perspective from summary.",
             createdAt=_created_at(),
         ), "Generated Assignment 6 feedback for team perspective."
@@ -133,7 +133,7 @@ def generate_candidate_feedback(text: str, project_title: str = "") -> tuple[Opt
             type="question",
             priority="high",
             section=section,
-            message="How will this lesson be applied after ENES 104?",
+            message="What changed in your view of engineering because of this lesson, and what specific experience caused that change?",
             reason="The presenter mentioned a lesson but has not yet connected it to individual application.",
             createdAt=_created_at(),
         ), "Generated Assignment 6 feedback for individual application."
@@ -143,7 +143,7 @@ def generate_candidate_feedback(text: str, project_title: str = "") -> tuple[Opt
             type="question",
             priority="high",
             section=section,
-            message="Which improvement should management act on first, and why?",
+            message="If management could only act on one improvement, which one would most change the next ENES 104 student's experience?",
             reason="The presenter discussed continuous improvement without a clear priority or rationale.",
             createdAt=_created_at(),
         ), "Generated Assignment 6 feedback for course improvement planning."
@@ -153,7 +153,7 @@ def generate_candidate_feedback(text: str, project_title: str = "") -> tuple[Opt
             type="question",
             priority="high",
             section=section,
-            message="What specific feedback did team members give each other, and how did it change the presentation?",
+            message="What is one piece of teammate feedback that actually changed the final presentation, and why did you accept it?",
             reason="The presenter referenced teamwork or feedback without explaining the exchange and impact.",
             createdAt=_created_at(),
         ), "Generated Assignment 6 feedback for team feedback."

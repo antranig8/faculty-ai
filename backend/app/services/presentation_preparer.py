@@ -64,6 +64,15 @@ def _rubric_category(project_context: ProjectContext, preferred: str) -> str:
 
 def prepare_questions(project_context: ProjectContext, slides: list[Slide]) -> list[PreparedQuestion]:
     prepared: list[PreparedQuestion] = []
+    context_text = " ".join(
+        [
+            project_context.title,
+            project_context.summary,
+            project_context.notes or "",
+            " ".join(project_context.rubric),
+        ]
+    ).lower()
+    is_assignment6_context = "enes104" in context_text or "enes 104" in context_text or "360" in context_text
 
     for slide in slides:
         text = _slide_text(slide)
@@ -74,6 +83,67 @@ def prepare_questions(project_context: ProjectContext, slides: list[Slide]) -> l
             prepared.extend(questions_for_slide)
             continue
 
+        if is_assignment6_context:
+            if _has_any(text, ["cip-2", "team building", "team-building", "teamwork", "team work", "provided each other"]):
+                prepared.append(
+                    PreparedQuestion(
+                        id=f"slide-{slide.slideNumber}-team-feedback",
+                        slideNumber=slide.slideNumber,
+                        rubricCategory=_rubric_category(project_context, "evidence of feedback exchanged among team members"),
+                        type="question",
+                        priority="high",
+                        question="What is one piece of teammate feedback that actually changed the final presentation, and why did you accept it?",
+                        listenFor=["CIP-2", "team building", "teamwork", "feedback", "provided each other", "collaboration"],
+                        missingIfAbsent=["feedback", "changed", "accepted", "specific", "because"],
+                    )
+                )
+                continue
+
+            if _has_any(text, ["cip-1", "continuous improvement", "what worked", "could be improved", "management"]):
+                prepared.append(
+                    PreparedQuestion(
+                        id=f"slide-{slide.slideNumber}-course-cip",
+                        slideNumber=slide.slideNumber,
+                        rubricCategory=_rubric_category(project_context, "continuous improvement plan for ENES 104"),
+                        type="question",
+                        priority="high",
+                        question="If management could only act on one improvement, which one would most change the next ENES 104 student's experience?",
+                        listenFor=["CIP-1", "continuous improvement", "worked", "improved", "management", "ENES 104"],
+                        missingIfAbsent=["because", "specific", "management", "next student", "priority"],
+                    )
+                )
+                continue
+
+            if _has_any(text, ["takeaway", "takeaways", "lecture", "discussion", "executive summary", "assignment"]):
+                prepared.append(
+                    PreparedQuestion(
+                        id=f"slide-{slide.slideNumber}-team-perspective",
+                        slideNumber=slide.slideNumber,
+                        rubricCategory=_rubric_category(project_context, "team 360-degree perspective on ENES 104"),
+                        type="question",
+                        priority="high",
+                        question="Where did your team disagree about the most important ENES 104 takeaway, and how did that disagreement shape this slide?",
+                        listenFor=["takeaway", "takeaways", "lecture", "discussion", "executive summary", "assignment", "workshop", "speaker series"],
+                        missingIfAbsent=["disagree", "different perspectives", "we chose", "because", "most important", "our group"],
+                    )
+                )
+                continue
+
+            if _has_any(text, ["lesson", "lessons", "learned", "apply", "application", "workshop", "speaker", "career", "future"]):
+                prepared.append(
+                    PreparedQuestion(
+                        id=f"slide-{slide.slideNumber}-individual-application",
+                        slideNumber=slide.slideNumber,
+                        rubricCategory=_rubric_category(project_context, "individual application of lessons to future study, career planning, or engineering practice"),
+                        type="question",
+                        priority="high",
+                        question="What changed in this person's view of engineering because of this lesson, and what specific experience caused that change?",
+                        listenFor=["lesson", "learned", "apply", "application", "workshop", "speaker", "career", "future"],
+                        missingIfAbsent=["changed", "because", "experience", "speaker", "workshop", "specific example"],
+                    )
+                )
+                continue
+
         if _has_any(text, ["takeaway", "takeaways", "lecture", "discussion", "executive summary", "assignment", "workshop", "speaker series"]):
             questions_for_slide.append(
                 PreparedQuestion(
@@ -82,9 +152,9 @@ def prepare_questions(project_context: ProjectContext, slides: list[Slide]) -> l
                     rubricCategory=_rubric_category(project_context, "team 360-degree perspective on ENES 104"),
                     type="question",
                     priority="high",
-                    question="What makes this a team perspective on ENES 104 rather than just a summary of course activities?",
+                    question="Where did your team disagree about the most important ENES 104 takeaway, and how did that disagreement shape this slide?",
                     listenFor=["takeaway", "takeaways", "lecture", "discussion", "executive summary", "assignment", "workshop", "speaker series"],
-                    missingIfAbsent=["team perspective", "we chose", "because", "most important", "our group"],
+                    missingIfAbsent=["disagree", "different perspectives", "we chose", "because", "most important", "our group"],
                 )
             )
 
@@ -96,9 +166,9 @@ def prepare_questions(project_context: ProjectContext, slides: list[Slide]) -> l
                     rubricCategory=_rubric_category(project_context, "individual application of lessons to future study, career planning, or engineering practice"),
                     type="question",
                     priority="high",
-                    question="How will the person named on this slide actually apply this lesson after ENES 104?",
+                    question="What changed in this person's view of engineering because of this lesson, and what specific experience caused that change?",
                     listenFor=["lesson", "learned", "apply", "application", "workshop", "speaker", "career", "future"],
-                    missingIfAbsent=["apply", "future", "career", "engineering practice", "specific example"],
+                    missingIfAbsent=["changed", "because", "experience", "speaker", "workshop", "specific example"],
                 )
             )
 
@@ -110,9 +180,9 @@ def prepare_questions(project_context: ProjectContext, slides: list[Slide]) -> l
                     rubricCategory=_rubric_category(project_context, "continuous improvement plan for ENES 104"),
                     type="question",
                     priority="high",
-                    question="Which improvement would you most want management to act on first, and why?",
+                    question="If management could only act on one improvement, which one would most change the next ENES 104 student's experience?",
                     listenFor=["CIP-1", "continuous improvement", "worked", "improved", "management", "ENES 104"],
-                    missingIfAbsent=["because", "specific", "management", "improve", "priority"],
+                    missingIfAbsent=["because", "specific", "management", "next student", "priority"],
                 )
             )
 
@@ -124,9 +194,9 @@ def prepare_questions(project_context: ProjectContext, slides: list[Slide]) -> l
                     rubricCategory=_rubric_category(project_context, "evidence of feedback exchanged among team members"),
                     type="question",
                     priority="high",
-                    question="What feedback did team members give each other during this assignment, and how did it change the final presentation?",
+                    question="What is one piece of teammate feedback that actually changed the final presentation, and why did you accept it?",
                     listenFor=["CIP-2", "team building", "teamwork", "feedback", "provided each other", "collaboration"],
-                    missingIfAbsent=["feedback", "changed", "improved", "specific", "because"],
+                    missingIfAbsent=["feedback", "changed", "accepted", "specific", "because"],
                 )
             )
 
