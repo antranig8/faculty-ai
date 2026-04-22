@@ -166,6 +166,7 @@ export default function PresentPage() {
     stopSpeaking();
     const url = URL.createObjectURL(audio);
     const element = new Audio(url);
+    element.playbackRate = 1.15;
     speechAudioRef.current = element;
     speechAudioUrlRef.current = url;
     element.addEventListener("ended", () => {
