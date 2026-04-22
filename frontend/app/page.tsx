@@ -1,6 +1,12 @@
 import Link from "next/link";
 
-export default function HomePage() {
+import { requireAccess } from "@/lib/requireAccess";
+
+export const dynamic = "force-dynamic";
+
+export default async function HomePage() {
+  await requireAccess("/");
+
   return (
     <main className="home-screen">
       <section>
