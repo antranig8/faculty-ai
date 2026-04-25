@@ -34,6 +34,7 @@ export function TranscriptPanel({ transcript, activeChunk, livePreview = "", liv
         <div>
           <p className="eyebrow">Live Transcript</p>
           <h2>Presenter audio stream</h2>
+          <p className="muted transcript-subtitle">Watch live speech, chunk timing, and diagnostics in one place.</p>
         </div>
         <div className="transcript-status">
           <span className={`status-pill ${liveStatus}`}>{liveStatusLabel[liveStatus]}</span>

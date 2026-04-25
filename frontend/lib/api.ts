@@ -1,6 +1,5 @@
 import type {
   AnalyzeResponse,
-  FinalEvaluation,
   FeedbackItem,
   PreparedQuestion,
   PresentationPreparation,
@@ -52,6 +51,16 @@ export function getSpeechProxyUrl(): string {
   return `${base}/speech/deepgram/proxy${separator}key=${encodeURIComponent(API_AUTH_KEY)}`;
 }
 
+export function getDeepgramTtsStreamUrl(): string {
+  const base = API_BASE.replace(/^http/, "ws");
+  if (!API_AUTH_KEY) {
+    return `${base}/speech/deepgram/tts/stream`;
+  }
+
+  const separator = base.includes("?") ? "&" : "?";
+  return `${base}/speech/deepgram/tts/stream${separator}key=${encodeURIComponent(API_AUTH_KEY)}`;
+}
+
 export async function startSession(projectContext: ProjectContext): Promise<string> {
   const response = await fetchWithRetry(`${API_BASE}/session/start`, {
     method: "POST",
@@ -74,6 +83,7 @@ export async function analyzeChunk(params: {
   recentFeedback: string[];
   projectContext: ProjectContext;
   currentSlide?: Slide;
+  slideMode?: "auto" | "manual";
   presentationSlides?: Slide[];
   preparedQuestions?: PreparedQuestion[];
 }): Promise<AnalyzeResponse> {
@@ -169,6 +179,8 @@ export async function updateFeedbackResolution(params: {
   createdAt: string;
   resolved: boolean;
   resolutionReason?: string;
+  sourceQuestionId?: string | null;
+  message?: string;
 }): Promise<FeedbackItem[]> {
   const response = await fetch(
     `${API_BASE}/session/${params.sessionId}/feedback/${encodeURIComponent(params.createdAt)}/resolution`,
@@ -178,38 +190,14 @@ export async function updateFeedbackResolution(params: {
       body: JSON.stringify({
         resolved: params.resolved,
         resolutionReason: params.resolutionReason,
+        sourceQuestionId: params.sourceQuestionId,
+        message: params.message,
       }),
     },
   );
 
   if (!response.ok) {
     throw new Error(params.resolved ? "Unable to mark feedback addressed." : "Unable to reopen feedback.");
-  }
-
-  return response.json();
-}
-
-export async function finalizeSession(sessionId: string): Promise<FinalEvaluation> {
-  const response = await fetch(`${API_BASE}/session/${sessionId}/finalize`, {
-    method: "POST",
-    headers: buildHeaders(),
-  });
-
-  if (!response.ok) {
-    const error = await response.json().catch(() => undefined);
-    throw new Error(error?.detail ?? "Unable to finalize presentation.");
-  }
-
-  return response.json();
-}
-
-export async function getResults(): Promise<FinalEvaluation[]> {
-  const response = await fetch(`${API_BASE}/session/results`, {
-    headers: buildHeaders(),
-  });
-
-  if (!response.ok) {
-    throw new Error("Unable to load presentation results.");
   }
 
   return response.json();
