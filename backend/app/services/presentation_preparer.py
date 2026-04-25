@@ -76,6 +76,50 @@ def _fallback_question_for_slide(project_context: ProjectContext, slide: Slide) 
     )
 
 
+def _is_individual_application_slide(text: str) -> bool:
+    return _has_any(text, ["lesson", "lessons", "learned", "apply", "application", "workshop", "speaker", "career", "future"])
+
+
+def _is_takeaways_slide(text: str) -> bool:
+    return _has_any(text, ["takeaway", "takeaways", "lecture", "discussion", "executive summary", "assignment"])
+
+
+def _is_cip_slide(text: str) -> bool:
+    return _has_any(text, ["cip-1", "cip-2", "continuous improvement", "what worked", "could be improved", "management"])
+
+
+def _individual_application_questions(project_context: ProjectContext, slide: Slide) -> list[PreparedQuestion]:
+    return [
+        PreparedQuestion(
+            id=f"slide-{slide.slideNumber}-individual-application",
+            slideNumber=slide.slideNumber,
+            rubricCategory=_rubric_category(project_context, "individual application of lessons to future study, career planning, or engineering practice"),
+            type="question",
+            priority="high",
+            question="What changed in this person's view of engineering because of this lesson, and what specific experience caused that change?",
+            listenFor=["lesson", "learned", "apply", "application", "workshop", "speaker", "career", "future"],
+            missingIfAbsent=["changed", "because", "experience", "speaker", "workshop", "specific example"],
+        ),
+        PreparedQuestion(
+            id=f"slide-{slide.slideNumber}-individual-application-next-step",
+            slideNumber=slide.slideNumber,
+            rubricCategory=_rubric_category(project_context, "individual application of lessons to future study, career planning, or engineering practice"),
+            type="question",
+            priority="high",
+            question="What concrete decision or behavior will this person change next because of that lesson?",
+            listenFor=["lesson", "learned", "apply", "application", "future", "career", "next step"],
+            missingIfAbsent=["change", "next", "because", "specific", "future", "decision"],
+        ),
+    ]
+
+
+def _max_questions_for_slide(project_context: ProjectContext, slide: Slide) -> int:
+    text = _slide_text(slide)
+    if _is_individual_application_slide(text) and not _is_takeaways_slide(text) and not _is_cip_slide(text):
+        return 2
+    return 1
+
+
 def prepare_questions(project_context: ProjectContext, slides: list[Slide]) -> list[PreparedQuestion]:
     prepared: list[PreparedQuestion] = []
     context_text = " ".join(
@@ -143,19 +187,8 @@ def prepare_questions(project_context: ProjectContext, slides: list[Slide]) -> l
                 )
                 continue
 
-            if _has_any(text, ["lesson", "lessons", "learned", "apply", "application", "workshop", "speaker", "career", "future"]):
-                prepared.append(
-                    PreparedQuestion(
-                        id=f"slide-{slide.slideNumber}-individual-application",
-                        slideNumber=slide.slideNumber,
-                        rubricCategory=_rubric_category(project_context, "individual application of lessons to future study, career planning, or engineering practice"),
-                        type="question",
-                        priority="high",
-                        question="What changed in this person's view of engineering because of this lesson, and what specific experience caused that change?",
-                        listenFor=["lesson", "learned", "apply", "application", "workshop", "speaker", "career", "future"],
-                        missingIfAbsent=["changed", "because", "experience", "speaker", "workshop", "specific example"],
-                    )
-                )
+            if _is_individual_application_slide(text):
+                prepared.extend(_individual_application_questions(project_context, slide))
                 continue
 
         if _has_any(text, ["takeaway", "takeaways", "lecture", "discussion", "executive summary", "assignment", "workshop", "speaker series"]):
@@ -172,19 +205,8 @@ def prepare_questions(project_context: ProjectContext, slides: list[Slide]) -> l
                 )
             )
 
-        if _has_any(text, ["lesson", "lessons", "learned", "apply", "application", "workshop", "speaker", "career", "future"]):
-            questions_for_slide.append(
-                PreparedQuestion(
-                    id=f"slide-{slide.slideNumber}-individual-application",
-                    slideNumber=slide.slideNumber,
-                    rubricCategory=_rubric_category(project_context, "individual application of lessons to future study, career planning, or engineering practice"),
-                    type="question",
-                    priority="high",
-                    question="What changed in this person's view of engineering because of this lesson, and what specific experience caused that change?",
-                    listenFor=["lesson", "learned", "apply", "application", "workshop", "speaker", "career", "future"],
-                    missingIfAbsent=["changed", "because", "experience", "speaker", "workshop", "specific example"],
-                )
-            )
+        if _is_individual_application_slide(text):
+            questions_for_slide.extend(_individual_application_questions(project_context, slide))
 
         if _has_any(text, ["cip-1", "continuous improvement", "what worked", "could be improved", "management", "enes104", "enes 104"]):
             questions_for_slide.append(
@@ -273,7 +295,7 @@ def prepare_questions(project_context: ProjectContext, slides: list[Slide]) -> l
         if not questions_for_slide:
             questions_for_slide = [_fallback_question_for_slide(project_context, slide)]
 
-        prepared.extend(questions_for_slide[:3])
+        prepared.extend(questions_for_slide[: max(3, _max_questions_for_slide(project_context, slide))])
 
     return prepared
 
@@ -390,7 +412,10 @@ def _coerce_prepared_questions(parsed: list, project_context: ProjectContext, sl
         slide_number = int(item.get("slideNumber", 0))
         if slide_number not in valid_slide_numbers:
             continue
-        if counts_by_slide.get(slide_number, 0) >= 1:
+        slide = next((candidate for candidate in slides if candidate.slideNumber == slide_number), None)
+        if slide is None:
+            continue
+        if counts_by_slide.get(slide_number, 0) >= _max_questions_for_slide(project_context, slide):
             continue
 
         question = str(item.get("question", "")).strip()

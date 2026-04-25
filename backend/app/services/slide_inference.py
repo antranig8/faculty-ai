@@ -2,6 +2,12 @@ import re
 
 from app.models.response_models import Slide
 
+MIN_CONFIDENT_SCORE = 0.18
+MIN_SWITCH_SCORE = 0.24
+MIN_SWITCH_MARGIN = 0.08
+FAR_JUMP_EXTRA_SCORE = 0.06
+FAR_JUMP_EXTRA_MARGIN = 0.06
+
 
 def _tokenize(text: str) -> set[str]:
     return {token for token in re.findall(r"[a-z0-9]+", text.lower()) if len(token) > 2}
@@ -19,6 +25,7 @@ def infer_current_slide(
     if not transcript_tokens:
         return None
 
+    scores: dict[int, float] = {}
     best_slide: Slide | None = None
     best_score = 0.0
 
@@ -35,11 +42,26 @@ def infer_current_slide(
         elif current_slide_number and abs(current_slide_number - slide.slideNumber) == 1:
             score += 0.03
 
+        scores[slide.slideNumber] = score
         if score > best_score:
             best_slide = slide
             best_score = score
 
-    if best_score < 0.12:
-        return next((slide for slide in slides if slide.slideNumber == current_slide_number), None)
+    current_slide = next((slide for slide in slides if slide.slideNumber == current_slide_number), None)
+    if best_slide is None:
+        return current_slide
+
+    if current_slide is None:
+        return best_slide if best_score >= MIN_CONFIDENT_SCORE else None
+
+    if best_slide.slideNumber == current_slide.slideNumber:
+        return best_slide if best_score >= 0.14 else current_slide
+
+    current_score = scores.get(current_slide.slideNumber, 0.0)
+    distance = abs(best_slide.slideNumber - current_slide.slideNumber)
+    required_score = MIN_SWITCH_SCORE + (FAR_JUMP_EXTRA_SCORE if distance > 1 else 0.0)
+    required_margin = MIN_SWITCH_MARGIN + (FAR_JUMP_EXTRA_MARGIN if distance > 1 else 0.0)
+    if best_score < required_score or (best_score - current_score) < required_margin:
+        return current_slide
 
     return best_slide

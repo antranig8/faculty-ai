@@ -7,9 +7,10 @@ type Props = {
 export function PresentationUpload({ disabled, filename, onUpload }: Props) {
   return (
     <section className="deck-card">
-      <div>
+      <div className="deck-card-header">
         <p className="eyebrow">Deck</p>
         <h2>{filename ? filename : "Upload slides"}</h2>
+        <p className="muted">{filename ? "Prepared concerns stay attached to this deck during the session." : "Upload the deck first so slide-aware questions are ready before the talk starts."}</p>
       </div>
 
       <label className="file-picker">
@@ -26,8 +27,10 @@ export function PresentationUpload({ disabled, filename, onUpload }: Props) {
         />
         <span>{filename ? "Replace deck" : "Choose .pptx"}</span>
       </label>
-
-      <p className="muted">{filename ? "Questions are prepared from this deck." : "PowerPoint only, up to 15 MB."}</p>
+      <div className="deck-card-meta">
+        <span>Format: .pptx</span>
+        <span>Limit: 15 MB</span>
+      </div>
     </section>
   );
 }

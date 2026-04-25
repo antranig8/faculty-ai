@@ -1,4 +1,4 @@
-from typing import List, Optional
+from typing import List, Literal, Optional
 
 from pydantic import BaseModel, Field
 
@@ -25,6 +25,7 @@ class AnalyzeChunkRequest(BaseModel):
     recentFeedback: List[str] = Field(default_factory=list)
     projectContext: ProjectContext
     currentSlide: Optional[Slide] = None
+    slideMode: Literal["auto", "manual"] = "auto"
     presentationSlides: List[Slide] = Field(default_factory=list)
     preparedQuestions: List[PreparedQuestion] = Field(default_factory=list)
 
@@ -41,6 +42,8 @@ class ProfessorConfigRequest(BaseModel):
 class FeedbackResolutionRequest(BaseModel):
     resolved: bool = True
     resolutionReason: Optional[str] = None
+    sourceQuestionId: Optional[str] = None
+    message: Optional[str] = None
 
 
 class TextToSpeechRequest(BaseModel):

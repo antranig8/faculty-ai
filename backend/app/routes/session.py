@@ -3,11 +3,16 @@ from uuid import uuid4
 from fastapi import APIRouter, HTTPException
 
 from app.models.request_models import FeedbackResolutionRequest, SessionStartRequest
-from app.models.response_models import FeedbackItem, FinalEvaluation, SessionStartResponse
-from app.services.final_evaluator import evaluate_presentation
+from app.models.response_models import FeedbackItem, SessionStartResponse
 import app.state as state
 
 router = APIRouter(prefix="/session", tags=["session"])
+
+
+def _normalize_feedback_message(message: str | None) -> str:
+    if not message:
+        return ""
+    return " ".join(message.lower().split())
 
 
 @router.post("/start", response_model=SessionStartResponse)
@@ -26,6 +31,10 @@ def start_session(payload: SessionStartRequest) -> SessionStartResponse:
         "last_feedback_slide_number": None,
         "last_llm_attempt_at": None,
         "llm_backoff_until": None,
+        "active_slide_number": None,
+        "active_slide_chunk_count": 0,
+        "candidate_slide_number": None,
+        "candidate_slide_hits": 0,
     }
     state.save_session(session_id, session)
     return SessionStartResponse(sessionId=session_id)
@@ -46,41 +55,32 @@ def update_feedback_resolution(session_id: str, created_at: str, payload: Feedba
         raise HTTPException(status_code=404, detail="Session not found")
 
     feedback = session["feedback"]
-    matched = False
-    for item in feedback:
-        if item.createdAt != created_at:
-            continue
+    target = next((item for item in feedback if item.createdAt == created_at), None)
+    if target is None and payload.sourceQuestionId:
+        target = next(
+            (
+                item for item in reversed(feedback)
+                if item.sourceQuestionId == payload.sourceQuestionId
+            ),
+            None,
+        )
+    if target is None and payload.message:
+        normalized_message = _normalize_feedback_message(payload.message)
+        target = next(
+            (
+                item for item in reversed(feedback)
+                if _normalize_feedback_message(item.message) == normalized_message
+            ),
+            None,
+        )
 
-        matched = True
-        item.resolved = payload.resolved
-        item.resolvedAt = state.utc_now_iso() if payload.resolved else None
-        item.resolutionReason = payload.resolutionReason if payload.resolved else None
-        break
-
-    if not matched:
+    if target is None:
         raise HTTPException(status_code=404, detail="Feedback item not found")
+
+    target.resolved = payload.resolved
+    target.resolvedAt = state.utc_now_iso() if payload.resolved else None
+    target.resolutionReason = payload.resolutionReason if payload.resolved else None
 
     state.save_session(session_id, session)
     return feedback
-
-
-@router.post("/{session_id}/finalize", response_model=FinalEvaluation)
-def finalize_session(session_id: str) -> FinalEvaluation:
-    session = state.get_session(session_id)
-    if not session:
-        raise HTTPException(status_code=404, detail="Session not found")
-
-    result = evaluate_presentation(
-        session_id=session_id,
-        project_title=session["project_context"].title or "Project Presentation",
-        transcript=session["transcript"],
-        feedback=session["feedback"],
-    )
-    state.save_presentation_result(result)
-    return result
-
-
-@router.get("/results", response_model=list[FinalEvaluation])
-def get_results() -> list[FinalEvaluation]:
-    return state.list_presentation_results()
 

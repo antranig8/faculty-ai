@@ -10,6 +10,7 @@ from fastapi import APIRouter, HTTPException, Response, WebSocket, WebSocketDisc
 from starlette.websockets import WebSocketState
 from websockets.asyncio.client import connect
 from websockets.exceptions import ConnectionClosed
+from websockets.exceptions import InvalidStatus
 
 from app.config import get_settings
 from app.models.request_models import TextToSpeechRequest
@@ -19,6 +20,7 @@ from app.services.speech_provider import SpeechProviderName, get_speech_provider
 router = APIRouter(prefix="/speech", tags=["speech"])
 logger = logging.getLogger("faculty_ai.speech")
 DEEPGRAM_TTS_MODEL = "aura-2-odysseus-en"
+DEEPGRAM_TTS_STREAM_SAMPLE_RATE = 48000
 
 
 def _is_local_host(host: str | None) -> bool:
@@ -52,7 +54,7 @@ def _deepgram_listen_url(model: str, language: str) -> str:
             "model": model,
             "encoding": "linear16",
             "sample_rate": "16000",
-            "smart_format": "true",
+            "eot_threshold": "0.7",
             "eot_timeout_ms": "5000",
         }
     else:
@@ -69,6 +71,15 @@ def _deepgram_listen_url(model: str, language: str) -> str:
         }
         params["language"] = language
     return f"wss://api.deepgram.com/{endpoint}?{urlencode(params)}"
+
+
+def _deepgram_tts_stream_url() -> str:
+    params = {
+        "model": DEEPGRAM_TTS_MODEL,
+        "encoding": "linear16",
+        "sample_rate": str(DEEPGRAM_TTS_STREAM_SAMPLE_RATE),
+    }
+    return f"wss://api.deepgram.com/v1/speak?{urlencode(params)}"
 
 
 def _websocket_open(websocket: WebSocket) -> bool:
@@ -177,6 +188,114 @@ async def deepgram_tts(payload: TextToSpeechRequest) -> Response:
     return Response(content=audio, media_type="audio/mpeg")
 
 
+@router.websocket("/deepgram/tts/stream")
+async def deepgram_tts_stream_proxy(websocket: WebSocket) -> None:
+    await websocket.accept()
+
+    if not _websocket_authorized(websocket):
+        await _safe_send_json(websocket, {"type": "error", "message": "Missing or invalid API key."})
+        await _safe_close(websocket, code=1008)
+        return
+
+    settings = get_settings()
+    if not settings.deepgram_api_key:
+        await _safe_send_json(websocket, {"type": "error", "message": "DEEPGRAM_API_KEY is not configured."})
+        await _safe_close(websocket, code=1011)
+        return
+
+    deepgram_url = _deepgram_tts_stream_url()
+
+    try:
+        async with connect(
+            deepgram_url,
+            additional_headers={"Authorization": f"Token {settings.deepgram_api_key}"},
+            max_size=None,
+        ) as deepgram_ws:
+            await _safe_send_json(
+                websocket,
+                {
+                    "type": "proxy_open",
+                    "model": DEEPGRAM_TTS_MODEL,
+                    "encoding": "linear16",
+                    "sample_rate": DEEPGRAM_TTS_STREAM_SAMPLE_RATE,
+                },
+            )
+
+            async def browser_to_deepgram() -> None:
+                while True:
+                    message = await websocket.receive()
+                    if message.get("text") is not None:
+                        payload = message["text"]
+                        if payload == "__close__":
+                            await _safe_deepgram_send(deepgram_ws, json.dumps({"type": "Close"}))
+                            return
+                        if not await _safe_deepgram_send(deepgram_ws, payload):
+                            return
+                    elif message.get("type") == "websocket.disconnect":
+                        await _safe_deepgram_send(deepgram_ws, json.dumps({"type": "Close"}))
+                        return
+
+            async def deepgram_to_browser() -> None:
+                async for message in deepgram_ws:
+                    if isinstance(message, bytes):
+                        if not _websocket_open(websocket):
+                            return
+                        try:
+                            await websocket.send_bytes(message)
+                        except (RuntimeError, WebSocketDisconnect):
+                            return
+                        continue
+                    if not await _safe_send_text(websocket, message):
+                        return
+
+            done, pending = await asyncio.wait(
+                {
+                    asyncio.create_task(browser_to_deepgram()),
+                    asyncio.create_task(deepgram_to_browser()),
+                },
+                return_when=asyncio.FIRST_COMPLETED,
+            )
+
+            for task in pending:
+                task.cancel()
+            await asyncio.gather(*pending, return_exceptions=True)
+
+            for task in done:
+                if task.cancelled():
+                    continue
+                exc = task.exception()
+                if exc and not isinstance(exc, (WebSocketDisconnect, ConnectionClosed, asyncio.CancelledError)):
+                    raise exc
+
+    except ConnectionClosed as exc:
+        logger.info("Deepgram TTS upstream closed: code=%s reason=%s", exc.code, exc.reason or "")
+        await _safe_send_json(
+            websocket,
+            {
+                "type": "proxy_close",
+                "code": exc.code,
+                "reason": exc.reason or "",
+            },
+        )
+        await _safe_close(websocket)
+    except InvalidStatus as exc:
+        logger.exception("Deepgram TTS upstream handshake failed: %s", deepgram_url)
+        await _safe_send_json(
+            websocket,
+            {
+                "type": "error",
+                "message": f"Deepgram TTS rejected the WebSocket handshake with HTTP {exc.response.status_code}.",
+            },
+        )
+        await _safe_close(websocket, code=1011)
+    except WebSocketDisconnect:
+        return
+    except Exception:
+        logger.exception("deepgram_tts_stream_proxy failed")
+        await _safe_send_json(websocket, {"type": "error", "message": "Deepgram streaming TTS failed."})
+        await _safe_close(websocket, code=1011)
+
+
 @router.websocket("/deepgram/proxy")
 async def deepgram_proxy(websocket: WebSocket) -> None:
     await websocket.accept()
@@ -193,6 +312,7 @@ async def deepgram_proxy(websocket: WebSocket) -> None:
         return
 
     deepgram_url = _deepgram_listen_url(settings.deepgram_model, settings.deepgram_language)
+    is_flux = settings.deepgram_model.startswith("flux-")
 
     try:
         async with connect(
@@ -203,6 +323,8 @@ async def deepgram_proxy(websocket: WebSocket) -> None:
             await _safe_send_json(websocket, {"type": "proxy_open"})
 
             async def keep_alive() -> None:
+                if is_flux:
+                    return
                 while True:
                     await asyncio.sleep(4)
                     if not await _safe_deepgram_send(deepgram_ws, json.dumps({"type": "KeepAlive"})):
@@ -232,12 +354,15 @@ async def deepgram_proxy(websocket: WebSocket) -> None:
                     if not await _safe_send_text(websocket, message):
                         return
 
-            keep_alive_task = asyncio.create_task(keep_alive())
-            browser_task = asyncio.create_task(browser_to_deepgram())
-            upstream_task = asyncio.create_task(deepgram_to_browser())
+            tasks = {
+                asyncio.create_task(browser_to_deepgram()),
+                asyncio.create_task(deepgram_to_browser()),
+            }
+            if not is_flux:
+                tasks.add(asyncio.create_task(keep_alive()))
 
             done, pending = await asyncio.wait(
-                {keep_alive_task, browser_task, upstream_task},
+                tasks,
                 return_when=asyncio.FIRST_COMPLETED,
             )
 
@@ -263,6 +388,16 @@ async def deepgram_proxy(websocket: WebSocket) -> None:
             },
         )
         await _safe_close(websocket)
+    except InvalidStatus as exc:
+        logger.exception("Deepgram upstream handshake failed: %s", deepgram_url)
+        await _safe_send_json(
+            websocket,
+            {
+                "type": "error",
+                "message": f"Deepgram rejected the WebSocket handshake with HTTP {exc.response.status_code}.",
+            },
+        )
+        await _safe_close(websocket, code=1011)
     except WebSocketDisconnect:
         return
     except Exception as exc:

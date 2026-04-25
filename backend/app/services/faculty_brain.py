@@ -70,6 +70,7 @@ def _build_feedback_from_question(
         message=question.question,
         reason=f"Rubric focus: {question.rubricCategory}. {clean_reason}".strip(),
         createdAt=_created_at(),
+        slideNumber=question.slideNumber,
         sourceQuestionId=question.id,
         autoResolutionTerms=question.missingIfAbsent[:8],
     )

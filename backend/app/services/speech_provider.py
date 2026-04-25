@@ -69,19 +69,29 @@ class DeepgramSpeechProvider(SpeechProvider):
         except error.URLError as exc:
             raise RuntimeError("Unable to reach Deepgram to start a transcription session.") from exc
 
+        is_flux = settings.deepgram_model.startswith("flux-")
+        websocket_url = (
+            "wss://api.deepgram.com/v2/listen"
+            f"?model={settings.deepgram_model}"
+            "&encoding=linear16"
+            "&sample_rate=16000"
+            "&eot_threshold=0.7"
+            "&eot_timeout_ms=5000"
+        ) if is_flux else (
+            "wss://api.deepgram.com/v1/listen"
+            f"?model={settings.deepgram_model}"
+            f"&language={settings.deepgram_language}"
+            "&smart_format=true"
+            "&interim_results=true"
+            "&vad_events=true"
+            "&endpointing=300"
+        )
+
         return SpeechSession(
             provider=self.name,
             access_token=body["access_token"],
             expires_in=body.get("expires_in"),
-            websocket_url=(
-                "wss://api.deepgram.com/v1/listen"
-                f"?model={settings.deepgram_model}"
-                f"&language={settings.deepgram_language}"
-                "&smart_format=true"
-                "&interim_results=true"
-                "&vad_events=true"
-                "&endpointing=300"
-            ),
+            websocket_url=websocket_url,
             model=settings.deepgram_model,
             language=settings.deepgram_language,
         )

@@ -1,14 +1,28 @@
 import type { PreparedQuestion, Slide } from "@/lib/types";
 
+type SlideMode = "auto" | "manual";
+
 type Props = {
   slides: Slide[];
   preparedQuestions: PreparedQuestion[];
   currentSlideIndex: number;
+  slideMode: SlideMode;
+  onModeChange: (mode: SlideMode) => void;
+  onJumpToSlide: (slideNumber: number) => void;
   onPrevious: () => void;
   onNext: () => void;
 };
 
-export function SlideTracker({ slides, preparedQuestions, currentSlideIndex, onPrevious, onNext }: Props) {
+export function SlideTracker({
+  slides,
+  preparedQuestions,
+  currentSlideIndex,
+  slideMode,
+  onModeChange,
+  onJumpToSlide,
+  onPrevious,
+  onNext,
+}: Props) {
   const currentSlide = slides[currentSlideIndex];
   const currentQuestions = currentSlide
     ? preparedQuestions.filter((question) => question.slideNumber === currentSlide.slideNumber)
@@ -22,7 +36,27 @@ export function SlideTracker({ slides, preparedQuestions, currentSlideIndex, onP
           <h2>{currentSlide ? `Slide ${currentSlide.slideNumber}` : "No slide selected"}</h2>
           <p className="muted">{currentSlide ? currentSlide.title || "Untitled slide" : "Upload a deck to prepare tracking."}</p>
         </div>
-        <span>{slides.length ? `${currentSlideIndex + 1} / ${slides.length}` : "0 / 0"}</span>
+        <div className="slide-tracker-badges">
+          <span>{slides.length ? `${currentSlideIndex + 1} / ${slides.length}` : "0 / 0"}</span>
+          <span className={`mode-badge ${slideMode}`}>{slideMode === "manual" ? "Manual lock" : "Auto follow"}</span>
+        </div>
+      </div>
+
+      <div className="mode-switcher" role="tablist" aria-label="Slide tracking mode">
+        <button
+          className={slideMode === "manual" ? "mode-button active" : "mode-button"}
+          onClick={() => onModeChange("manual")}
+          type="button"
+        >
+          Manual
+        </button>
+        <button
+          className={slideMode === "auto" ? "mode-button active" : "mode-button"}
+          onClick={() => onModeChange("auto")}
+          type="button"
+        >
+          Auto
+        </button>
       </div>
 
       <div className="slide-controls">
@@ -33,6 +67,22 @@ export function SlideTracker({ slides, preparedQuestions, currentSlideIndex, onP
           Next
         </button>
       </div>
+
+      {slides.length > 0 ? (
+        <div className="slide-chip-strip" aria-label="Slide jump controls">
+          {slides.map((slide, index) => (
+            <button
+              key={slide.slideNumber}
+              className={index === currentSlideIndex ? "slide-chip active" : "slide-chip"}
+              onClick={() => onJumpToSlide(slide.slideNumber)}
+              type="button"
+            >
+              <span>Slide {slide.slideNumber}</span>
+              <strong>{slide.title || "Untitled"}</strong>
+            </button>
+          ))}
+        </div>
+      ) : null}
 
       <div className="current-concerns">
         <div className="concern-header">

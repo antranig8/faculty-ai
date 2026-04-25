@@ -74,6 +74,7 @@ def _feedback_from_prepared_question(question: PreparedQuestion, section: str, r
         message=question.question,
         reason=f"Rubric focus: {question.rubricCategory}. {reason}",
         createdAt=_created_at(),
+        slideNumber=question.slideNumber,
         sourceQuestionId=question.id,
         autoResolutionTerms=question.missingIfAbsent[:8],
     )

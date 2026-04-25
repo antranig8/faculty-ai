@@ -25,6 +25,7 @@ export type FeedbackItem = {
   message: string;
   reason: string;
   createdAt: string;
+  slideNumber?: number | null;
   resolved?: boolean;
   resolvedAt?: string | null;
   resolutionReason?: string | null;
@@ -54,25 +55,6 @@ export type PresentationPreparation = {
   preparedQuestions: PreparedQuestion[];
   questionSource: "llm" | "heuristic";
   cacheHit: boolean;
-};
-
-export type RubricScore = {
-  criterion: string;
-  score: number;
-  justification: string;
-};
-
-export type FinalEvaluation = {
-  sessionId: string;
-  projectTitle: string;
-  courseName: string;
-  overallGrade: string;
-  numericScore: number;
-  summary: string;
-  strongestPoints: string[];
-  biggestQuestions: string[];
-  rubricScores: RubricScore[];
-  createdAt: string;
 };
 
 export type ProfessorConfig = {

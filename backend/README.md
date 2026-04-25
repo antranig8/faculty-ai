@@ -28,7 +28,7 @@ uvicorn app.main:app --reload --port 8000
 
 The backend reads configuration from the repo-root `.env` file. Localhost HTTP requests are allowed without an app API key. Non-local HTTP requests require `FACULTY_AI_APP_API_KEY` sent as `x-facultyai-key`; the Deepgram WebSocket proxy accepts the same key as either the `key` query parameter or `x-facultyai-key` header.
 
-Set `DEEPGRAM_API_KEY` and `FACULTY_AI_SPEECH_PROVIDER=deepgram` to enable live microphone transcription through the backend proxy. The recommended demo model is `DEEPGRAM_MODEL=nova-3`.
+Set `DEEPGRAM_API_KEY` and `FACULTY_AI_SPEECH_PROVIDER=deepgram` to enable live microphone transcription through the backend proxy. The recommended demo model is `DEEPGRAM_MODEL=flux-general-en`.
 
 Set `GROQ_API_KEY`, `FACULTY_AI_LLM_PROVIDER=groq`, and `FACULTY_AI_LLM_MODEL=qwen/qwen3-32b` to enable Groq-backed faculty reasoning and prepared-question generation. Without a Groq key, the backend falls back to deterministic heuristic question generation and evaluation.
 
