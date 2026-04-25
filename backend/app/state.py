@@ -28,6 +28,8 @@ def _connection() -> sqlite3.Connection:
 
 
 def _init_db() -> None:
+    # Keep state in a tiny SQLite schema so the app can survive restarts without
+    # introducing a heavier database dependency during local development.
     with _connection() as conn:
         conn.execute(
             """
@@ -65,6 +67,8 @@ def _persist_value(table: str, key_column: str, key: str, payload: str) -> None:
 
 
 def _serialize_session(session: dict[str, Any]) -> str:
+    # Sessions mix pydantic models with datetime objects, so they need an
+    # explicit JSON shape before they can be persisted to SQLite.
     return json.dumps(
         {
             "project_context": session["project_context"].model_dump(mode="json"),
@@ -88,6 +92,8 @@ def _serialize_session(session: dict[str, Any]) -> str:
 
 
 def _deserialize_session(payload: str) -> dict[str, Any]:
+    # Rehydrate persisted JSON back into the in-memory session structure the
+    # live analysis pipeline expects.
     raw = json.loads(payload)
     return {
         "project_context": ProjectContext(**raw["project_context"]),
@@ -119,6 +125,8 @@ def _deserialize_preparation(payload: str) -> PresentationPrepareResponse:
 
 def load_persisted_state() -> None:
     global professor_config
+    # Startup loads defaults from the prompt-backed rubric template first, then
+    # overlays any explicitly saved state from SQLite.
     _init_db()
     template_config = load_professor_config_from_template()
     if template_config:
@@ -146,6 +154,8 @@ def persist_professor_config(config: ProfessorConfig) -> None:
 
 
 def build_preparation_cache_key(project_context: ProjectContext, slides: list[Slide]) -> str:
+    # Prepared-question generation is expensive enough to cache, so the key is a
+    # stable hash over both project context and the extracted slide contents.
     payload = {
         "version": PREPARED_QUESTION_CACHE_VERSION,
         "projectContext": project_context.model_dump(mode="json"),

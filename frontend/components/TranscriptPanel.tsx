@@ -71,7 +71,7 @@ export function TranscriptPanel({ transcript, activeChunk, livePreview = "", liv
 
       <div className="transcript-body">
         {transcript.length === 0 ? (
-          <p className="muted">Start live mic or demo mode to send transcript chunks for analysis.</p>
+          <p className="muted">Start live mic to send transcript chunks for analysis.</p>
         ) : (
           transcript.map((chunk, index) => (
             <p className={chunk === activeChunk ? "active-line" : ""} key={`${chunk}-${index}`}>

@@ -1,861 +1,289 @@
-# Faculty AI Live Feedback — Build README
+# FacultyAI Live Feedback
 
 ## Project Summary
 
-Build a presentation assistant that listens to a student presenting live, analyzes what they are saying in near real time, and surfaces faculty-style feedback as on-screen alerts.
+FacultyAI is a live presentation critique assistant for ENES 104 style presentations.
 
-The first version should **not** interrupt with voice.  
-It should:
+It lets a professor define the assignment framing and rubric, lets a student upload a `.pptx` deck, listens to the student's live microphone audio, and surfaces selective faculty-style questions when the spoken presentation leaves an important gap.
 
-- listen to the presenter through the microphone
-- transcribe speech live
-- analyze transcript chunks with AI
-- decide whether feedback is worth surfacing
-- show a visible **"!"** on screen when feedback is triggered
-- let the user open the feedback card to see:
-  - a question
-  - a critique
-  - a suggestion
-  - a clarification request
+The current version is not a generic presentation helper. It is designed to behave like a skeptical but fair faculty examiner that only interrupts when there is a concrete academic reason.
 
-This is the safest and strongest MVP.
+## Current Goal
 
----
+The project currently aims to support live rehearsal for slide-based presentations by combining:
 
-## Goal
+- professor rubric and assignment context
+- uploaded slide content
+- prepared slide-aware faculty questions
+- live transcript chunks
+- selective interruption logic
 
-Create a demo where a student can present a project and an on-screen **Faculty AI** reacts with relevant questions or critiques based on what the student has actually said.
+The intended output is the kind of question a faculty member or executive audience member might actually ask during a presentation, such as:
 
-The output should feel like:
+- "What evidence shows that this is a real problem for your target users?"
+- "Why was this the right approach instead of a simpler alternative?"
+- "What metric supports that claim?"
+- "What exactly is the AI deciding here?"
 
-- “How are you measuring that outcome?”
-- “You mentioned personalization. What exactly is being personalized?”
-- “Why did you choose this architecture over an alternative?”
-- “That claim sounds important, but it needs evidence.”
+The system should avoid filler, duplication, and over-triggering.
 
-The system should **not** spam, repeat itself, or ask generic filler questions.
+## What Exists Now
 
----
+### User-Facing Flow
 
-## MVP Definition
+1. A professor configures the course framing, rubric, and questioning style at `/professor`.
+2. A student opens `/present`.
+3. The student uploads a `.pptx` deck.
+4. The backend parses slide text and prepares likely faculty concerns for the deck.
+5. The student starts live microphone mode.
+6. FacultyAI streams audio to the backend speech proxy, receives transcript events, analyzes transcript chunks, and raises faculty questions when warranted.
+7. The presenter can mark a question addressed or reopen it later.
 
-### Required
-- live microphone input
-- live transcript
-- transcript chunking every few seconds
-- project context loaded beforehand
-- AI analysis of transcript chunks
-- structured feedback generation
-- on-screen alert system with feedback history
-- cooldown logic to avoid too many alerts
+### Current Capabilities
 
-### Not required for v1
-- voice output
-- avatar
-- realistic interruption timing
-- slide parsing automation
-- full grading system
-- multi-user support
-- polished auth
+- professor-owned rubric and assignment setup
+- `.pptx` upload and slide text extraction
+- slide-aware prepared faculty question generation
+- prepared-question caching
+- live microphone transcription through Deepgram
+- automatic slide inference from transcript content
+- manual slide override in the UI
+- selective faculty-question triggering
+- cooldown and dedupe logic
+- one-question-per-slide enforcement
+- question resolution and reopen flow
+- faculty voice playback through Deepgram TTS with HTTP fallback
+- SQLite persistence for professor config, session state, feedback, and prepared-question cache
 
----
+### What Does Not Exist
 
-## Core User Flow
+- demo mode
+- standalone results/history page
+- final grading flow
+- multi-user collaboration
+- deck viewer with rendered slides inside the app
 
-1. User uploads or pastes project context
-   - project title
-   - summary
-   - stack
-   - goals
-   - optional rubric
-   - optional slide notes
+`/results` currently redirects back to `/present`.
 
-2. User enters presentation mode
-
-3. App starts listening and transcribing
-
-4. Every 5–10 seconds:
-   - collect a transcript chunk
-   - send recent transcript + project context + recent feedback history to backend
-
-5. Backend decides:
-   - no feedback
-   - or generate one useful feedback item
-
-6. Frontend shows:
-   - a floating **"!"**
-   - feedback panel or drawer
-   - feedback type and message
-
-7. Presenter can respond or keep going
-
----
-
-## Recommended Stack
+## Current Stack
 
 ### Frontend
-- Next.js
-- React
+
+- Next.js 16
+- React 19
 - TypeScript
-- Tailwind CSS
+
+Frontend responsibilities:
+
+- access-code gate when enabled
+- professor setup page
+- presentation cockpit UI
+- deck upload
+- slide tracker
+- live transcript display
+- faculty alert and feedback drawer
+- mic/session controls
+- resolution controls for faculty questions
 
 ### Backend
-Choose one:
 
-#### Option A
-- FastAPI (Python)
+- FastAPI
+- Python
+- SQLite
 
-#### Option B
-- Node.js + Express or Next API routes
+Backend responsibilities:
 
-For this project, **FastAPI** is a strong choice if you want fast prototyping and clean AI orchestration.
+- load professor config and prompt assets
+- parse uploaded `.pptx` files
+- prepare slide-aware questions
+- receive transcript analysis requests
+- infer slide position from transcript content
+- trigger or suppress faculty feedback
+- proxy live Deepgram speech streams
+- proxy/synthesize Deepgram TTS
+- persist app state and cache
 
-### AI / LLM
-- OpenAI API or equivalent LLM provider
+### Providers
 
-### Speech-to-Text
-Two approaches:
+- Deepgram for live speech-to-text and TTS
+- Groq optionally for prepared-question generation and live faculty reasoning
+- deterministic heuristic fallback when Groq is unavailable
 
-#### Easier MVP
-- browser speech recognition if supported
+## Architecture
 
-#### Better / more controllable
-- streaming speech-to-text provider
-- or backend transcription pipeline
+## High-Level Flow
 
-For the first demo, browser-based speech recognition can be enough if reliability is acceptable.
+1. The professor configuration is loaded from persisted backend state.
+2. The student uploads a `.pptx`.
+3. The backend extracts slide text and prepares a question set for the deck.
+4. The frontend starts a presentation session and opens a live speech WebSocket to the backend.
+5. The backend proxies the audio stream to Deepgram.
+6. Final transcript events are chunked and analyzed against:
+   - recent transcript
+   - recent feedback
+   - current slide
+   - all slides
+   - prepared questions
+   - professor-owned assignment context
+7. The backend either:
+   - does nothing
+   - auto-resolves a previously asked question
+   - emits one faculty question
+8. The frontend shows the alert, opens the drawer, and optionally speaks the question aloud.
 
-### Storage
-- local JSON or lightweight DB for MVP
-- optional: Supabase later
+## Decision Model
 
----
+The live decision model is now closer to:
 
-## Best Architecture for V1
+```text
+Professor rubric + prepared slide concerns + inferred current slide + recent transcript
+= decide whether a faculty question should be asked now
+```
 
-## High-Level Architecture
+The project no longer relies on a generic "ask anything interesting" model. Prepared slide-aware concerns are the primary source material, with heuristic and optional LLM logic deciding whether the moment is strong enough to interrupt.
+
+## Repository Layout
+
+```text
+FacultyAI/
+|- backend/
+|  |- app/
+|  |  |- main.py
+|  |  |- config.py
+|  |  |- state.py
+|  |  |- models/
+|  |  |- prompts/
+|  |  |- routes/
+|  |  `- services/
+|  |- requirements.txt
+|  `- README.md
+|- frontend/
+|  |- app/
+|  |- components/
+|  |- lib/
+|  |- package.json
+|  `- README.md
+|- docs/
+|  |- faculty_ai_live_feedback_README.md
+|  |- slide_aware_faculty_examiner_direction.md
+|  `- speech_provider_split.md
+|- faculty_ai.db
+|- package.json
+`- README.md
+```
+
+## Important Routes
+
+### Frontend Routes
+
+- `/`
+- `/access`
+- `/professor`
+- `/present`
+- `/results` redirected to `/present`
+
+### Backend Routes
+
+- `GET /`
+- `GET /health`
+- `POST /session/start`
+- `GET /session/{session_id}/feedback`
+- `PATCH /session/{session_id}/feedback/{created_at}/resolution`
+- `POST /analyze-chunk`
+- `POST /presentation/upload`
+- `POST /presentation/prepare`
+- `GET /professor/config`
+- `POST /professor/config`
+- `POST /speech/{provider_name}/session`
+- `GET /speech/deepgram/tts/preview`
+- `POST /speech/deepgram/tts`
+- `WS /speech/deepgram/proxy`
+- `WS /speech/deepgram/tts/stream`
+
+## Persistence
+
+State is persisted in `faculty_ai.db` at the repository root.
+
+Persisted data currently includes:
+
+- professor config
+- session payloads
+- feedback history
+- prepared-question cache
+
+## Configuration
+
+Important environment variables:
+
+- `NEXT_PUBLIC_API_BASE_URL`
+- `NEXT_PUBLIC_FACULTY_AI_APP_API_KEY`
+- `FACULTY_AI_ACCESS_CODE`
+- `FACULTY_AI_ALLOWED_ORIGINS`
+- `FACULTY_AI_APP_API_KEY`
+- `DEEPGRAM_API_KEY`
+- `DEEPGRAM_MODEL`
+- `DEEPGRAM_LANGUAGE`
+- `FACULTY_AI_SPEECH_PROVIDER`
+- `GROQ_API_KEY`
+- `FACULTY_AI_LLM_PROVIDER`
+- `FACULTY_AI_LLM_MODEL`
+
+Localhost backend access is allowed without `FACULTY_AI_APP_API_KEY`. Non-local HTTP and WebSocket access requires the key.
+
+## How To Run
+
+### Backend
+
+```powershell
+cd backend
+python -m venv .venv
+.\.venv\Scripts\Activate.ps1
+pip install -r requirements.txt
+uvicorn app.main:app --reload --port 8000
+```
 
 ### Frontend
-Responsible for:
-- microphone capture
-- live transcript display
-- session controls
-- faculty alert UI
-- feedback history
 
-### Backend
-Responsible for:
-- receiving transcript chunks
-- combining chunks with project context
-- deciding if feedback should trigger
-- generating structured faculty-style feedback
-- preventing duplicate / low-quality alerts
-
-### AI Layer
-Responsible for:
-- section awareness
-- identifying vague claims
-- spotting missing justification
-- asking project-aware questions
-- producing short, specific outputs
-
----
-
-## Suggested File Structure
-
-```text
-faculty-ai-live-feedback/
-│
-├── frontend/
-│   ├── app/
-│   │   ├── page.tsx
-│   │   ├── present/
-│   │   │   └── page.tsx
-│   │   └── api/
-│   ├── components/
-│   │   ├── TranscriptPanel.tsx
-│   │   ├── FacultyAlert.tsx
-│   │   ├── FeedbackDrawer.tsx
-│   │   ├── SessionControls.tsx
-│   │   └── ProjectContextForm.tsx
-│   ├── lib/
-│   │   ├── speech.ts
-│   │   ├── api.ts
-│   │   └── types.ts
-│   └── styles/
-│
-├── backend/
-│   ├── app/
-│   │   ├── main.py
-│   │   ├── routes/
-│   │   │   ├── analyze.py
-│   │   │   └── session.py
-│   │   ├── services/
-│   │   │   ├── llm_service.py
-│   │   │   ├── feedback_engine.py
-│   │   │   ├── cooldown.py
-│   │   │   └── section_tracker.py
-│   │   ├── models/
-│   │   │   ├── request_models.py
-│   │   │   └── response_models.py
-│   │   └── utils/
-│   │       └── prompt_templates.py
-│   └── requirements.txt
-│
-├── docs/
-│   ├── prompts.md
-│   ├── demo-script.md
-│   └── rubric-ideas.md
-│
-├── .env.example
-├── README.md
-└── package.json
+```powershell
+cd frontend
+npm install
+npm run dev
 ```
 
----
+Open `http://localhost:3000/`.
 
-## Core Data Models
+You can also use the root scripts:
 
-### Project Context
-```json
-{
-  "title": "CodeMaxx",
-  "summary": "AI-powered platform for structured programming learning",
-  "stack": ["React", "FastAPI", "Supabase"],
-  "goals": [
-    "generate personalized learning paths",
-    "create quizzes and lessons",
-    "track progression"
-  ],
-  "rubric": [
-    "clarity",
-    "technical justification",
-    "impact",
-    "evaluation"
-  ]
-}
+```powershell
+npm run backend:dev
+npm run frontend:dev
 ```
 
-### Transcript Chunk
-```json
-{
-  "sessionId": "abc123",
-  "timestampStart": 120,
-  "timestampEnd": 130,
-  "text": "Our platform improves learning efficiency by giving users structured guidance and adaptive content."
-}
-```
+## Product Rules
 
-### Feedback Response
-```json
-{
-  "trigger": true,
-  "type": "question",
-  "priority": "medium",
-  "section": "solution",
-  "message": "How are you defining or measuring learning efficiency here?",
-  "reason": "A strong claim was made without a metric or evaluation detail."
-}
-```
+The current product should follow these rules:
 
----
+- interrupt only when there is a specific faculty reason
+- prefer prepared slide-aware concerns over generic questioning
+- avoid repeated questions
+- do not ask multiple questions on the same slide
+- do not interrupt immediately on slide arrival
+- give the presenter time to answer before asking another question
+- treat transcript content as timing evidence, not a reason to freestyle harsher questions
 
-## Faculty Feedback Categories
+## Current Gaps
 
-Use only a few feedback types for clarity.
+The strongest missing pieces in the current build are:
 
-### Recommended types
-- `question`
-- `critique`
-- `suggestion`
-- `clarification`
-- `praise` (use rarely)
+- a real session history/results page
+- clearer visibility into why a question triggered or auto-resolved
+- stronger observability for provider/model status
+- richer review of past rehearsals after the live session ends
 
-### Examples
+## Related Docs
 
-#### Question
-- “How does your system handle edge cases?”
-- “What evidence supports that claim?”
-
-#### Critique
-- “This explanation is clear conceptually, but the technical tradeoff is missing.”
-
-#### Suggestion
-- “Consider naming one alternative you rejected and why.”
-
-#### Clarification
-- “You mentioned personalization. What exactly changes per user?”
-
-#### Praise
-- “Strong problem framing. The motivation is clear.”
-Do not overuse praise or it will stop feeling like faculty feedback.
-
----
-
-## Feedback Trigger Logic
-
-This matters a lot.
-
-The app should **not** generate feedback for every chunk.
-
-### Trigger only if:
-- a strong claim is made without evidence
-- a design choice is mentioned without justification
-- a vague phrase appears
-- a metric is implied but not explained
-- a new important section starts
-- a missing tradeoff is obvious
-- a very strong explanation deserves positive reinforcement
-
-### Do not trigger if:
-- the transcript is too short
-- the content is repetitive
-- a similar question was already asked recently
-- the speaker is clearly mid-sentence
-- the generated feedback is generic
-
----
-
-## Cooldown Rules
-
-These rules are required.
-
-### Suggested defaults
-- minimum 15–20 seconds between alerts
-- maximum 1 active alert at a time
-- maximum 5–7 alerts per presentation
-- block near-duplicate questions
-- avoid same feedback type 3 times in a row
-
-Without this, the product will feel broken.
-
----
-
-## Section Tracking
-
-The app should try to infer what part of the presentation the student is in.
-
-### Useful sections
-- introduction
-- problem
-- solution
-- architecture
-- demo
-- evaluation
-- future work
-- conclusion
-
-This can be inferred from transcript content.
-
-Examples:
-- “The problem we noticed...” → `problem`
-- “Our architecture uses...” → `architecture`
-- “To evaluate this...” → `evaluation`
-
-This helps the feedback be much smarter.
-
----
-
-## Backend API Design
-
-### POST `/session/start`
-Starts a new presentation session.
-
-#### Request
-```json
-{
-  "projectContext": {
-    "title": "CodeMaxx",
-    "summary": "AI-powered platform for structured programming learning"
-  }
-}
-```
-
-#### Response
-```json
-{
-  "sessionId": "abc123"
-}
-```
-
----
-
-### POST `/analyze-chunk`
-Send transcript chunk for AI analysis.
-
-#### Request
-```json
-{
-  "sessionId": "abc123",
-  "transcriptChunk": "Our system improves learning efficiency by adapting the content path to the user.",
-  "recentTranscript": [
-    "We built an AI-powered learning platform.",
-    "Users enter a topic and goal."
-  ],
-  "recentFeedback": [
-    "What metric defines user improvement here?"
-  ],
-  "projectContext": {
-    "title": "CodeMaxx",
-    "summary": "AI-powered platform for structured programming learning"
-  }
-}
-```
-
-#### Response
-```json
-{
-  "trigger": true,
-  "feedback": {
-    "type": "clarification",
-    "priority": "medium",
-    "section": "solution",
-    "message": "What specific parts of the path are adapted per user?",
-    "reason": "The concept of adaptation was mentioned but not explained."
-  }
-}
-```
-
----
-
-### GET `/session/{id}/feedback`
-Returns feedback history.
-
----
-
-## Frontend Components
-
-### 1. ProjectContextForm
-Collect:
-- title
-- summary
-- stack
-- goals
-- rubric
-- optional notes
-
-### 2. TranscriptPanel
-Show:
-- live transcript
-- maybe highlight recent chunk
-
-### 3. FacultyAlert
-A floating UI with:
-- exclamation mark
-- subtle animation
-- badge count if multiple items are queued
-
-### 4. FeedbackDrawer
-Shows:
-- latest feedback
-- type
-- time
-- history
-
-### 5. SessionControls
-Buttons:
-- start
-- pause
-- stop
-- clear transcript
-- manual test alert
-
----
-
-## UI Notes
-
-Keep the UI clean.
-
-### Layout idea
-- left: live transcript
-- right: faculty feedback panel
-- top: session state
-- floating: “!” alert
-
-### Colors
-Keep them simple:
-- question = blue-ish
-- critique = orange / red-ish
-- suggestion = yellow-ish
-- praise = green-ish
-
-No need for a complex dashboard in v1.
-
----
-
-## Prompt Design
-
-This is one of the most important parts.
-
-Your prompt should force the model to behave like a faculty member who is:
-- brief
-- specific
-- grounded in the project
-- slightly critical
-- not overly friendly
-- not generic
-
-### System Prompt Draft
-
-```text
-You are simulating a faculty reviewer listening to a student present a technical project.
-
-Your job is to decide whether the student's latest spoken content deserves feedback.
-
-Only trigger feedback if there is a meaningful reason:
-- vague claim
-- missing evidence
-- unexplained metric
-- unexamined tradeoff
-- unsupported technical decision
-- need for clarification
-- especially strong explanation worth brief praise
-
-Avoid generic questions.
-Avoid repeating earlier feedback.
-Avoid interrupting too often.
-Keep feedback short and specific.
-
-Return strict JSON with:
-- trigger: boolean
-- type: question | critique | suggestion | clarification | praise
-- priority: low | medium | high
-- section: introduction | problem | solution | architecture | demo | evaluation | future_work | conclusion | unknown
-- message: short faculty-style feedback
-- reason: short explanation for why this feedback was triggered
-```
-
-### User Prompt Template
-
-```text
-Project context:
-{project_context}
-
-Recent transcript:
-{recent_transcript}
-
-Latest transcript chunk:
-{latest_chunk}
-
-Recent feedback history:
-{recent_feedback}
-
-Decide whether feedback should be triggered now.
-If not, return trigger=false.
-If yes, produce one strong feedback item only.
-```
-
----
-
-## Example Feedback Outputs
-
-### Good
-```json
-{
-  "trigger": true,
-  "type": "question",
-  "priority": "medium",
-  "section": "evaluation",
-  "message": "What metric are you using to support the claim that users improve faster?",
-  "reason": "A performance claim was made without evaluation details."
-}
-```
-
-### Good
-```json
-{
-  "trigger": true,
-  "type": "critique",
-  "priority": "medium",
-  "section": "architecture",
-  "message": "The stack is named clearly, but the reason for choosing it over alternatives is still missing.",
-  "reason": "A technical choice was described without justification."
-}
-```
-
-### Bad
-```json
-{
-  "trigger": true,
-  "type": "question",
-  "priority": "low",
-  "section": "unknown",
-  "message": "Can you elaborate?",
-  "reason": "More detail may help."
-}
-```
-
-That last one is too generic and should be filtered out.
-
----
-
-## Quality Filters
-
-Before sending feedback to frontend, run filters:
-
-### Reject if:
-- message length is too short and generic
-- message is nearly identical to recent feedback
-- reason is weak
-- chunk does not contain enough signal
-- cooldown is active
-
-### Optional score-based filtering
-You can score:
-- specificity
-- novelty
-- usefulness
-
-Only show feedback above a threshold.
-
----
-
-## Suggested Build Order
-
-## Phase 1 — Static Demo
-Build a fake demo first.
-
-### Goal
-Prove the concept without live audio.
-
-### Steps
-1. Create UI
-2. Add hardcoded transcript chunks
-3. Send chunks to backend manually
-4. Show generated faculty feedback
-5. Add alert icon and feedback drawer
-
-If this feels good, move on.
-
----
-
-## Phase 2 — Live Transcript MVP
-### Goal
-Make it work with real speaking.
-
-### Steps
-1. Add microphone input
-2. Add live transcription
-3. Chunk transcript every 5–10 seconds
-4. Send chunks to backend
-5. Show alerts
-6. Add cooldown logic
-
----
-
-## Phase 3 — Better Context and Smarter Feedback
-### Goal
-Improve relevance.
-
-### Steps
-1. Add project context form
-2. Add rubric-aware prompts
-3. Add section tracking
-4. Add duplicate detection
-5. Improve UI clarity
-
----
-
-## Phase 4 — Demo Polish
-### Goal
-Make it presentation-ready.
-
-### Steps
-1. Add session history
-2. Add manual alert test button
-3. Add fallback canned outputs
-4. Improve styling
-5. Create demo script
-
----
-
-## Suggested First Sprint
-
-If starting from zero, do this first:
-
-### Day 1
-- set up frontend
-- set up backend
-- define request/response schema
-- create project context form
-- build feedback drawer
-- build fake “!” alert
-
-### Day 2
-- connect backend to LLM
-- send manual transcript chunks
-- render real AI feedback
-
-### Day 3
-- add speech transcription
-- chunk transcript automatically
-- add cooldown and feedback history
-
-### Day 4
-- test with your actual project presentation
-- improve prompt
-- reduce bad feedback
-- add fallback demo mode
-
----
-
-## Demo Mode Fallback
-
-This is extremely important for class.
-
-Build a **demo mode** where:
-- transcript chunks are preloaded
-- faculty feedback is pre-generated or cached
-- alerts trigger on button press or timeline
-
-That way, if live audio fails, the demo still works.
-
-Do not rely 100% on live APIs during a class presentation.
-
----
-
-## Common Failure Points
-
-### 1. Too much feedback
-Fix with cooldown, max alerts, and stronger trigger threshold.
-
-### 2. Generic questions
-Fix with better prompting and stricter output filtering.
-
-### 3. Slow response time
-Fix by:
-- smaller transcript chunks
-- lighter prompts
-- less context
-- cached project summary
-
-### 4. Repetitive questions
-Fix with recent feedback history and duplicate checks.
-
-### 5. Wrong section detection
-Fix by allowing `unknown` section and using rules before AI.
-
----
-
-## Nice Add-Ons Later
-
-After MVP works, you can add:
-
-- voice output
-- faculty persona selection
-  - skeptical professor
-  - technical reviewer
-  - supportive mentor
-- rubric scoring
-- end-of-presentation summary
-- slide-aware feedback
-- session replay with transcript timeline
-- export feedback report
-
-Do not build these first.
-
----
-
-## Example Demo Script
-
-### Intro
-“I built a prototype that simulates live faculty feedback during a student presentation.”
-
-### While presenting
-Speak normally about the project.
-
-### When alert appears
-Click the **“!”** and say:
-“This is the type of question a faculty member might ask in response to what I just said.”
-
-### Then answer it live
-That interaction is the most impressive part.
-
----
-
-## Success Criteria
-
-The MVP is successful if it can:
-- listen live or semi-live
-- generate relevant feedback at least a few times
-- avoid spamming
-- feel grounded in the project
-- make the audience immediately understand the concept
-
-It does **not** need to be perfect.
-
----
-
-## Recommended Initial Prompt Rules
-
-Use these rules inside your logic:
-
-- minimum transcript chunk length: 20–30 words
-- minimum cooldown: 15 seconds
-- no duplicate message within last 5 feedback items
-- one feedback item max per analysis cycle
-- no praise unless truly earned
-- prioritize question or clarification over praise
-
----
-
-## Possible Tech Decisions
-
-### Easiest end-to-end stack
-- Next.js frontend
-- FastAPI backend
-- OpenAI API
-- browser speech recognition
-- local in-memory session state
-
-### Better but more work
-- Next.js frontend
-- FastAPI backend
-- streaming STT provider
-- Supabase for session persistence
-- websocket updates
-
-Start with the easiest end-to-end version.
-
----
-
-## Immediate Next Steps
-
-1. Create repo
-2. Build frontend shell
-3. Create backend `/analyze-chunk`
-4. Hardcode project context
-5. Send sample transcript chunk
-6. Render first faculty feedback card
-7. Add floating “!”
-8. Only then add live microphone transcription
-
----
-
-## Notes for Another Chat
-
-If continuing this project in another chat, say:
-
-> I am building a presentation tool called Faculty AI Live Feedback.  
-> It listens to a student presenting, transcribes speech in real time, analyzes transcript chunks, and surfaces faculty-style questions or critiques as on-screen “!” alerts.  
-> I want to start with a Next.js frontend and FastAPI backend.  
-> Please help me implement the MVP in this order:
-> 1. UI shell
-> 2. backend analysis endpoint
-> 3. fake transcript demo
-> 4. live transcription
-> 5. cooldown logic
-> 6. prompt improvement
-
----
-
-## Final Build Principle
-
-Do not try to make it impressive by making it complicated.
-
-Make it impressive by making it:
-- clear
-- controlled
-- relevant
-- demo-safe
-- believable
+- `README.md`: current project overview and run instructions
+- `backend/README.md`: backend routes, config, and persistence
+- `frontend/README.md`: frontend routes and current behavior
+- `docs/slide_aware_faculty_examiner_direction.md`: design intent
+- `docs/speech_provider_split.md`: provider separation rationale

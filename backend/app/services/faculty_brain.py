@@ -109,6 +109,8 @@ def _select_confident_candidate(
     asked_messages: list[str],
     evidence: TranscriptEvidence,
 ) -> tuple[PreparedQuestion, list[str], list[str]] | None:
+    # Prefer deterministic selection when a prepared question is already a clear
+    # live match. This keeps the common path fast, cheap, and stable.
     if len(payload.recentTranscript) + 1 < 3:
         return None
 
@@ -152,6 +154,9 @@ def _build_messages(
     recent_feedback: list[str],
     asked_messages: list[str],
 ) -> list[dict[str, str]]:
+    # The LLM sees a compact runtime snapshot rather than the full transcript or
+    # deck. That keeps token usage under control while still exposing the active
+    # slide, evidence markers, and top prepared-question candidates.
     rubric = load_professor_config_from_template()
     recent_text = " ".join([*payload.recentTranscript[-3:], payload.transcriptChunk]).strip()
     transcript_evidence = extract_transcript_evidence(payload.recentTranscript, payload.transcriptChunk)
@@ -226,6 +231,9 @@ def decide_faculty_feedback(
     recent_feedback: list[str],
     asked_messages: list[str],
 ) -> FacultyBrainDecision:
+    # Faculty-brain reasoning is constrained to the active slide's prepared
+    # concerns. It is an arbitration layer for timing and confidence, not a
+    # freeform question generator.
     if current_slide is None:
         return FacultyBrainDecision(feedback=None, reason="No active slide available for faculty-brain reasoning.", terminal=False)
 
@@ -274,6 +282,8 @@ def decide_faculty_feedback(
         )
         return FacultyBrainDecision(feedback=feedback, reason=feedback.reason, terminal=True)
 
+    # If deterministic matching is not decisive, ask the LLM to choose between
+    # the active slide's candidate questions and return a strict JSON decision.
     client = build_groq_client(settings.groq_api_key)
     completion = client.chat.completions.create(
         model=settings.faculty_ai_llm_model,
@@ -322,6 +332,8 @@ def decide_faculty_feedback(
     if decision == "skip":
         return FacultyBrainDecision(feedback=None, reason=reason, terminal=True)
 
+    # `ask_now` is the only path where the model is allowed to select a specific
+    # prepared question and optionally tighten its wording.
     if decision != "ask_now":
         raise RuntimeError("Faculty brain returned an unsupported decision.")
 
