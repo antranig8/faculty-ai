@@ -119,6 +119,8 @@ def analyze_chunk(payload: AnalyzeChunkRequest) -> AnalyzeChunkResponse:
     if not session:
         raise HTTPException(status_code=404, detail="Session not found")
 
+    # Normalize and persist the chunk immediately so downstream reasoning works
+    # against a stable session transcript and duplicate live events are ignored.
     normalized_chunk = _normalize_chunk(payload.transcriptChunk)
     if not normalized_chunk:
         return AnalyzeChunkResponse(trigger=False, reason="Transcript chunk is empty.")
@@ -130,6 +132,10 @@ def analyze_chunk(payload: AnalyzeChunkRequest) -> AnalyzeChunkResponse:
     session["transcript"].append(payload.transcriptChunk)
     state.save_session(payload.sessionId, session)
     previous_slide_number = session.get("active_slide_number")
+
+    # Slide inference is intentionally conservative. Auto mode requires repeated
+    # evidence before switching slides so a single noisy transcript chunk does
+    # not thrash the active-slide context.
     if payload.slideMode == "manual":
         inferred_slide = payload.currentSlide
         session["candidate_slide_number"] = None
@@ -168,6 +174,8 @@ def analyze_chunk(payload: AnalyzeChunkRequest) -> AnalyzeChunkResponse:
             session["candidate_slide_hits"] = 0
             effective_slide = inferred_slide or payload.currentSlide
 
+    # Keep a per-slide warm-up counter so the backend can wait for enough spoken
+    # context before interrupting on a newly active slide.
     current_slide_number = effective_slide.slideNumber if effective_slide else None
     slide_changed = current_slide_number is not None and current_slide_number != previous_slide_number
     if current_slide_number is None:
@@ -188,6 +196,9 @@ def analyze_chunk(payload: AnalyzeChunkRequest) -> AnalyzeChunkResponse:
         recent_transcript=payload.recentTranscript,
         prepared_questions=payload.preparedQuestions,
     )
+    # Auto-resolution short-circuits the rest of the pipeline because once the
+    # presenter has answered the latest question, the correct action is usually
+    # to clear the answer window rather than ask a new question immediately.
     if resolved_feedback:
         session["awaiting_answer_until"] = None
         state.save_session(payload.sessionId, session)
@@ -198,6 +209,9 @@ def analyze_chunk(payload: AnalyzeChunkRequest) -> AnalyzeChunkResponse:
             inferredCurrentSlide=inferred_slide,
         )
 
+    # Candidate selection is layered from cheapest/safest to most expensive:
+    # slide handoff heuristics, slide-aware prepared questions, optional LLM
+    # arbitration, then a final generic fallback if nothing else matches.
     candidate, reason = generate_slide_handoff_feedback(
         payload.transcriptChunk,
         recent_transcript=payload.recentTranscript,
@@ -218,6 +232,8 @@ def analyze_chunk(payload: AnalyzeChunkRequest) -> AnalyzeChunkResponse:
         _mark_live_llm_attempt(session)
         state.save_session(payload.sessionId, session)
         try:
+            # The faculty-brain path is used as an arbiter over prepared
+            # questions, not as a general-purpose source of new harsher prompts.
             faculty_brain = decide_faculty_feedback(
                 payload=payload,
                 current_slide=effective_slide,
@@ -287,6 +303,8 @@ def analyze_chunk(payload: AnalyzeChunkRequest) -> AnalyzeChunkResponse:
             inferredCurrentSlide=inferred_slide,
         )
 
+    # Once a question has been asked on the active slide, hold a short answer
+    # window before allowing another interruption on that same slide.
     awaiting_answer_until = session.get("awaiting_answer_until")
     if awaiting_answer_until and utc_now() < awaiting_answer_until:
         if session.get("last_feedback_slide_number") == current_slide_number:
@@ -357,6 +375,9 @@ def analyze_chunk(payload: AnalyzeChunkRequest) -> AnalyzeChunkResponse:
             if _slide_already_has_feedback(session, number)
         ]
 
+    # The cooldown filter is the final global safety gate after all slide/topic
+    # checks pass. It prevents the live experience from feeling spammy even if
+    # the transcript repeatedly matches valid faculty concerns.
     allowed, filter_reason = can_emit_feedback(session, candidate.message)
     if not allowed:
         return AnalyzeChunkResponse(

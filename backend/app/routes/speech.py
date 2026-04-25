@@ -211,6 +211,8 @@ async def deepgram_tts_stream_proxy(websocket: WebSocket) -> None:
             additional_headers={"Authorization": f"Token {settings.deepgram_api_key}"},
             max_size=None,
         ) as deepgram_ws:
+            # This proxy keeps the browser isolated from provider credentials
+            # while still supporting streaming TTS over a browser-friendly socket.
             await _safe_send_json(
                 websocket,
                 {
@@ -221,6 +223,9 @@ async def deepgram_tts_stream_proxy(websocket: WebSocket) -> None:
                 },
             )
 
+            # Browser messages are control or text payloads headed upstream to
+            # Deepgram. Deepgram messages are streamed back to the browser as
+            # either PCM audio bytes or JSON control events.
             async def browser_to_deepgram() -> None:
                 while True:
                     message = await websocket.receive()
@@ -320,6 +325,9 @@ async def deepgram_proxy(websocket: WebSocket) -> None:
             additional_headers={"Authorization": f"Token {settings.deepgram_api_key}"},
             max_size=None,
         ) as deepgram_ws:
+            # The speech proxy bridges raw browser audio to Deepgram and returns
+            # transcript/control events without exposing provider credentials to
+            # the frontend.
             await _safe_send_json(websocket, {"type": "proxy_open"})
 
             async def keep_alive() -> None:
@@ -347,6 +355,8 @@ async def deepgram_proxy(websocket: WebSocket) -> None:
                         await _safe_deepgram_send(deepgram_ws, json.dumps({"type": "CloseStream"}))
                         return
 
+            # The proxy runs the browser->Deepgram and Deepgram->browser loops in
+            # parallel and stops the whole bridge when either side closes first.
             async def deepgram_to_browser() -> None:
                 async for message in deepgram_ws:
                     if isinstance(message, bytes):

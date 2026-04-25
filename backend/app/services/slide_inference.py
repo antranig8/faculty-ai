@@ -29,6 +29,8 @@ def infer_current_slide(
     best_slide: Slide | None = None
     best_score = 0.0
 
+    # Score each slide by transcript-token overlap, then bias gently toward the
+    # current slide and its immediate neighbors so slide tracking feels stable.
     for slide in slides:
         slide_tokens = _tokenize(f"{slide.title} {slide.content}")
         if not slide_tokens:
@@ -51,6 +53,8 @@ def infer_current_slide(
     if best_slide is None:
         return current_slide
 
+    # Switching slides requires both a minimum score and a margin over the
+    # current slide, with stricter thresholds for larger jumps.
     if current_slide is None:
         return best_slide if best_score >= MIN_CONFIDENT_SCORE else None
 

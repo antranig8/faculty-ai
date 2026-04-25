@@ -5,7 +5,6 @@ from app.models.response_models import ProfessorConfig
 
 
 _PROMPT_RUBRIC_PATH = Path(__file__).resolve().parents[1] / "prompts" / "professor_rubric_template.md"
-_DOCS_RUBRIC_PATH = Path(__file__).resolve().parents[3] / "docs" / "professor_rubric_template.md"
 
 
 def _extract_section(text: str, heading: str) -> str:
@@ -15,11 +14,10 @@ def _extract_section(text: str, heading: str) -> str:
 
 
 def load_professor_config_from_template() -> ProfessorConfig | None:
-    rubric_path = _PROMPT_RUBRIC_PATH if _PROMPT_RUBRIC_PATH.exists() else _DOCS_RUBRIC_PATH
-    if not rubric_path.exists():
+    if not _PROMPT_RUBRIC_PATH.exists():
         return None
 
-    text = rubric_path.read_text(encoding="utf-8")
+    text = _PROMPT_RUBRIC_PATH.read_text(encoding="utf-8")
     course_name = _extract_section(text, "Course").splitlines()[0].strip() if _extract_section(text, "Course") else "ENES 104"
     assignment_name = _extract_section(text, "Assignment").splitlines()[0].strip() if _extract_section(text, "Assignment") else "Project Presentation"
     rubric_section = _extract_section(text, "Rubric Criteria")

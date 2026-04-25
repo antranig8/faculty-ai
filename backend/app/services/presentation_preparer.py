@@ -20,6 +20,8 @@ def _clip_text(value: str, limit: int) -> str:
 
 
 def parse_slide_outline(slide_outline: str) -> list[Slide]:
+    # Accept a loose text outline format for non-file preparation flows and
+    # normalize it into the same Slide model used by `.pptx` uploads.
     blocks = re.split(r"(?=^slide\s+\d+\s*:)", slide_outline.strip(), flags=re.IGNORECASE | re.MULTILINE)
     slides: list[Slide] = []
 
@@ -132,6 +134,8 @@ def prepare_questions(project_context: ProjectContext, slides: list[Slide]) -> l
     ).lower()
     is_assignment6_context = "enes104" in context_text or "enes 104" in context_text or "360" in context_text
 
+    # Deterministic preparation gives every slide at least one usable concern
+    # and adds assignment-specific questions for the ENES 104 Assignment 6 flow.
     for slide in slides:
         text = _slide_text(slide)
         questions_for_slide: list[PreparedQuestion] = []
@@ -301,6 +305,8 @@ def prepare_questions(project_context: ProjectContext, slides: list[Slide]) -> l
 
 
 def _llm_prompt(project_context: ProjectContext, slides: list[Slide]) -> str:
+    # The generation prompt is clipped aggressively so large decks can still be
+    # prepared within a predictable token budget.
     rubric = load_professor_config_from_template()
     slide_payload = [
         {
@@ -377,6 +383,8 @@ def _parse_prepared_question_json(raw_content: str) -> list:
 
 
 def _repair_prepared_question_json(client, settings, raw_content: str) -> list | None:
+    # When the model returns almost-correct JSON, issue a repair pass instead of
+    # throwing away the whole prepared-question response.
     repair_prompt = (
         "Repair this malformed JSON into a valid JSON array only. "
         "Do not add commentary. Preserve the existing fields and values as much as possible. "
@@ -400,6 +408,8 @@ def _repair_prepared_question_json(client, settings, raw_content: str) -> list |
 
 
 def _coerce_prepared_questions(parsed: list, project_context: ProjectContext, slides: list[Slide]) -> list[PreparedQuestion]:
+    # Coerce model output back into the strict PreparedQuestion schema and drop
+    # malformed or over-budget items rather than trusting raw provider output.
     prepared: list[PreparedQuestion] = []
     counts_by_slide: dict[int, int] = {}
     valid_slide_numbers = {slide.slideNumber for slide in slides}
@@ -452,6 +462,8 @@ def prepare_questions_with_llm(project_context: ProjectContext, slides: list[Sli
     if not settings.groq_api_key or not slides:
         return None
 
+    # Stream the provider response, parse it as JSON, and repair it once if the
+    # model drifts slightly off schema.
     client = build_groq_client(settings.groq_api_key)
     completion = client.chat.completions.create(
         model=settings.faculty_ai_llm_model,
