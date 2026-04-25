@@ -3,31 +3,50 @@ import logging
 
 from fastapi import APIRouter, HTTPException
 
+import app.state as state
 from app.models.request_models import AnalyzeChunkRequest
-from app.models.response_models import AnalyzeChunkResponse
-from app.services.answer_resolution import resolve_latest_feedback_if_answered
+from app.models.response_models import AnalyzeChunkResponse, FeedbackItem
+from app.services.answer_resolution import evaluate_latest_feedback_answer
 from app.services.cooldown import _normalize_message, can_emit_feedback, utc_now
 from app.services.faculty_brain import decide_faculty_feedback
 from app.services.feedback_engine import (
-    generate_candidate_feedback,
-    generate_slide_aware_feedback,
+    generate_hybrid_feedback,
     generate_slide_handoff_feedback,
     is_slide_handoff,
 )
 from app.services.llm_errors import classify_llm_error, log_llm_exception
 from app.services.llm_feedback import generate_llm_feedback
 from app.services.slide_inference import infer_current_slide
-import app.state as state
+from app.services.student_profiles import update_student_profiles
 
 router = APIRouter(tags=["analysis"])
 logger = logging.getLogger("faculty_ai.analysis")
 LIVE_LLM_MIN_GAP_SECONDS = 20
 LIVE_LLM_BACKOFF_SECONDS = 90
 NEW_SLIDE_WARMUP_CHUNKS = 3
+HIGH_PRIORITY_MIN_SECONDS_ON_SLIDE = 8
+MEDIUM_PRIORITY_MIN_SECONDS_ON_SLIDE = 14
+LOW_PRIORITY_MIN_SECONDS_ON_SLIDE = 18
+QUEUED_RELEASE_MIN_SECONDS_ON_SLIDE = 10
 
 
 def _normalize_chunk(text: str) -> str:
     return " ".join(text.lower().split())
+
+
+def _priority_rank(priority: str) -> int:
+    return {"high": 3, "medium": 2, "low": 1}.get(priority, 0)
+
+
+def _feedback_key(item: FeedbackItem) -> str:
+    return item.sourceQuestionId or _normalize_message(item.message)
+
+
+def _seconds_on_current_slide(session: dict) -> float:
+    slide_started_at = session.get("slide_started_at")
+    if not slide_started_at:
+        return 0
+    return max(0.0, (utc_now() - slide_started_at).total_seconds())
 
 
 def _llm_backoff_active(session: dict) -> bool:
@@ -85,6 +104,15 @@ def _feedback_topic_key(item) -> str | None:
     if "ai-specificity" in source:
         return "ai-specificity"
 
+    if any(term in message for term in ["professionalism expectation", "enes 104 sessions", "why that one first"]):
+        return "cip-course-professionalism"
+    if any(term in message for term in ["little collaboration", "teambuilding workshop", "team-building workshop"]):
+        return "cip-team-collaboration"
+    if any(term in message for term in ["teammate feedback", "changed the final presentation", "accept it"]):
+        return "team-feedback"
+    if any(term in message for term in ["single most important lesson", "future engineering projects"]):
+        return "closing-synthesis"
+
     if any(term in message for term in ["most important enes 104 takeaway", "team disagree", "disagreement shape this slide"]):
         return "takeaways-team-perspective"
     if any(term in message for term in ["professionalism", "perseverance", "key takeaways", "lessons to prioritize", "most impactful for future engineers"]):
@@ -93,8 +121,6 @@ def _feedback_topic_key(item) -> str | None:
         return "individual-application"
     if any(term in message for term in ["management could only act on one improvement", "next enes 104 student's experience"]):
         return "course-improvement"
-    if any(term in message for term in ["piece of teammate feedback", "changed the final presentation"]):
-        return "team-feedback"
     if any(term in message for term in ["architecture", "simpler alternative"]):
         return "architecture"
     if any(term in message for term in ["what metric will show", "metric supports the claim"]):
@@ -113,6 +139,116 @@ def _topic_already_covered(session: dict, candidate) -> bool:
     return any(_feedback_topic_key(item) == candidate_topic for item in session.get("feedback", []))
 
 
+def _response(
+    session: dict,
+    *,
+    trigger: bool,
+    feedback: FeedbackItem | None = None,
+    resolved_feedback: FeedbackItem | None = None,
+    reason: str | None = None,
+    inferred_current_slide=None,
+    answer_evaluation=None,
+) -> AnalyzeChunkResponse:
+    return AnalyzeChunkResponse(
+        trigger=trigger,
+        feedback=feedback,
+        queuedFeedback=session.get("queued_feedback"),
+        resolvedFeedback=resolved_feedback,
+        answerEvaluation=answer_evaluation,
+        reason=reason,
+        inferredCurrentSlide=inferred_current_slide,
+    )
+
+
+def _queue_feedback(session: dict, candidate: FeedbackItem, queue_reason: str) -> FeedbackItem:
+    queued = candidate.model_copy(
+        update={
+            "deliveryStatus": "queued",
+            "reason": queue_reason,
+        }
+    )
+    existing = session.get("queued_feedback")
+    if existing is None:
+        session["queued_feedback"] = queued
+        return queued
+
+    if _feedback_key(existing) == _feedback_key(queued):
+        return existing
+
+    # Keep the stronger pending concern if multiple candidates collide before
+    # the presenter reaches a clean moment for delivery.
+    if _priority_rank(queued.priority) > _priority_rank(existing.priority):
+        session["queued_feedback"] = queued
+        return queued
+
+    return existing
+
+
+def _activate_queued_feedback(
+    session: dict,
+    *,
+    current_slide_number: int | None,
+    slide_chunk_count: int,
+    handoff_detected: bool,
+) -> tuple[FeedbackItem | None, str]:
+    queued = session.get("queued_feedback")
+    if queued is None:
+        return None, "No queued faculty question is waiting."
+
+    if queued.slideNumber is not None and current_slide_number is not None and queued.slideNumber != current_slide_number:
+        session["queued_feedback"] = None
+        return None, "Dropped stale queued question after the presentation moved to a different slide."
+
+    awaiting_answer_until = session.get("awaiting_answer_until")
+    if awaiting_answer_until and utc_now() < awaiting_answer_until:
+        return None, "Queued faculty question is waiting for the current answer window to finish."
+
+    seconds_on_slide = _seconds_on_current_slide(session)
+    if slide_chunk_count < NEW_SLIDE_WARMUP_CHUNKS and seconds_on_slide < QUEUED_RELEASE_MIN_SECONDS_ON_SLIDE and not handoff_detected:
+        return None, "Queued faculty question is waiting for enough spoken context and time on the slide."
+
+    session["queued_feedback"] = None
+    activated = queued.model_copy(update={"deliveryStatus": "active"})
+    return activated, "Delivered a previously queued faculty question once timing conditions were safe."
+
+
+def _record_feedback(session: dict, candidate: FeedbackItem, current_slide_number: int | None) -> None:
+    candidate.deliveryStatus = "active"
+    session["feedback"].append(candidate)
+    session["last_feedback_at"] = utc_now()
+    session.setdefault("asked_feedback_messages", []).append(_normalize_message(candidate.message))
+    if candidate.sourceQuestionId:
+        session.setdefault("asked_feedback_question_ids", []).append(candidate.sourceQuestionId)
+    if current_slide_number is not None:
+        session.setdefault("asked_feedback_slide_numbers", []).append(current_slide_number)
+    if candidate.targetStudent:
+        student_coverage = session.setdefault("student_coverage", {})
+        student_coverage[candidate.targetStudent] = int(student_coverage.get(candidate.targetStudent, 0)) + 1
+    session["awaiting_answer_until"] = utc_now() + timedelta(seconds=15)
+    session["last_feedback_slide_number"] = current_slide_number
+
+
+def _timing_gate_reason(session: dict, candidate: FeedbackItem, handoff_detected: bool) -> str | None:
+    if handoff_detected:
+        return None
+    if session.get("active_slide_number") is None:
+        return None
+
+    seconds_on_slide = _seconds_on_current_slide(session)
+    min_seconds = {
+        "high": HIGH_PRIORITY_MIN_SECONDS_ON_SLIDE,
+        "medium": MEDIUM_PRIORITY_MIN_SECONDS_ON_SLIDE,
+        "low": LOW_PRIORITY_MIN_SECONDS_ON_SLIDE,
+    }.get(candidate.priority, MEDIUM_PRIORITY_MIN_SECONDS_ON_SLIDE)
+
+    if seconds_on_slide >= min_seconds:
+        return None
+    return (
+        "Timing gate: waiting for the presenter to spend longer on the slide "
+        f"before interrupting ({round(seconds_on_slide, 1)}s so far, target {min_seconds}s)."
+    )
+
+
 @router.post("/analyze-chunk", response_model=AnalyzeChunkResponse)
 def analyze_chunk(payload: AnalyzeChunkRequest) -> AnalyzeChunkResponse:
     session = state.get_session(payload.sessionId)
@@ -123,13 +259,14 @@ def analyze_chunk(payload: AnalyzeChunkRequest) -> AnalyzeChunkResponse:
     # against a stable session transcript and duplicate live events are ignored.
     normalized_chunk = _normalize_chunk(payload.transcriptChunk)
     if not normalized_chunk:
-        return AnalyzeChunkResponse(trigger=False, reason="Transcript chunk is empty.")
+        return _response(session, trigger=False, reason="Transcript chunk is empty.")
 
     if session.get("last_transcript_chunk") == normalized_chunk:
-        return AnalyzeChunkResponse(trigger=False, reason="Duplicate transcript chunk ignored.")
+        return _response(session, trigger=False, reason="Duplicate transcript chunk ignored.")
 
     session["last_transcript_chunk"] = normalized_chunk
     session["transcript"].append(payload.transcriptChunk)
+    session["last_transcript_at"] = utc_now()
     state.save_session(payload.sessionId, session)
     previous_slide_number = session.get("active_slide_number")
 
@@ -160,10 +297,7 @@ def analyze_chunk(payload: AnalyzeChunkRequest) -> AnalyzeChunkResponse:
                 session["candidate_slide_hits"] = 1
 
             if int(session.get("candidate_slide_hits", 0)) < 2:
-                effective_slide = (
-                    _find_slide(payload.presentationSlides, previous_slide_number)
-                    or payload.currentSlide
-                )
+                effective_slide = _find_slide(payload.presentationSlides, previous_slide_number) or payload.currentSlide
                 inferred_slide = effective_slide
             else:
                 session["candidate_slide_number"] = None
@@ -184,29 +318,98 @@ def analyze_chunk(payload: AnalyzeChunkRequest) -> AnalyzeChunkResponse:
     elif slide_changed:
         session["active_slide_number"] = current_slide_number
         session["active_slide_chunk_count"] = 1
+        session["slide_started_at"] = utc_now()
     else:
         session["active_slide_number"] = current_slide_number
         session["active_slide_chunk_count"] = int(session.get("active_slide_chunk_count", 0)) + 1
+        session["slide_started_at"] = session.get("slide_started_at") or utc_now()
+
+    if payload.simulatedSecondsOnSlide is not None and current_slide_number is not None:
+        # Eval replays run much faster than real speaking, so allow the harness
+        # to inject simulated slide time without changing live behavior.
+        session["slide_started_at"] = utc_now() - timedelta(seconds=max(0.0, payload.simulatedSecondsOnSlide))
+
     slide_chunk_count = int(session.get("active_slide_chunk_count", 0))
+    handoff_detected = is_slide_handoff(payload.transcriptChunk)
     recent_feedback_messages = [item.message for item in session.get("feedback", [])][-5:]
     asked_messages = list(session.get("asked_feedback_messages", []))
-    resolved_feedback = resolve_latest_feedback_if_answered(
-        feedback_items=session.get("feedback", []),
-        transcript_chunk=payload.transcriptChunk,
-        recent_transcript=payload.recentTranscript,
-        prepared_questions=payload.preparedQuestions,
+    session["student_profiles"] = update_student_profiles(
+        session.get("student_profiles", {}),
+        payload.transcriptChunk,
+        effective_slide,
     )
-    # Auto-resolution short-circuits the rest of the pipeline because once the
-    # presenter has answered the latest question, the correct action is usually
-    # to clear the answer window rather than ask a new question immediately.
+    runtime_student_profiles = session.get("student_profiles", {})
+    state.save_session(payload.sessionId, session)
+
+    resolved_feedback = None
+    answer_evaluation = None
+    follow_up_feedback = None
+    latest_feedback_slide_number = session.get("last_feedback_slide_number")
+    if (
+        latest_feedback_slide_number is not None
+        and current_slide_number == latest_feedback_slide_number
+    ):
+        resolved_feedback, answer_evaluation, follow_up_feedback = evaluate_latest_feedback_answer(
+            feedback_items=session.get("feedback", []),
+            transcript_chunk=payload.transcriptChunk,
+            recent_transcript=payload.recentTranscript,
+            prepared_questions=payload.preparedQuestions,
+            follow_up_attempts=session.get("follow_up_attempts", {}),
+        )
+
     if resolved_feedback:
         session["awaiting_answer_until"] = None
         state.save_session(payload.sessionId, session)
-        return AnalyzeChunkResponse(
+        return _response(
+            session,
             trigger=False,
-            resolvedFeedback=resolved_feedback,
+            resolved_feedback=resolved_feedback,
             reason=resolved_feedback.resolutionReason,
-            inferredCurrentSlide=inferred_slide,
+            inferred_current_slide=inferred_slide,
+            answer_evaluation=answer_evaluation,
+        )
+
+    if follow_up_feedback is not None:
+        session.setdefault("follow_up_attempts", {})[follow_up_feedback.followUpToQuestionId or follow_up_feedback.createdAt] = 1
+        _queue_feedback(
+            session,
+            follow_up_feedback,
+            (
+                "Queued one follow-up because the presenter partially answered the earlier faculty concern. "
+                f"Still missing: {', '.join(answer_evaluation.missingPoints) if answer_evaluation else 'key detail'}."
+            ),
+        )
+        state.save_session(payload.sessionId, session)
+        return _response(
+            session,
+            trigger=False,
+            reason="Partial presenter answer detected. FacultyAI queued one follow-up rather than interrupting immediately.",
+            inferred_current_slide=inferred_slide,
+            answer_evaluation=answer_evaluation,
+        )
+
+    queued_candidate, queued_reason = _activate_queued_feedback(
+        session,
+        current_slide_number=current_slide_number,
+        slide_chunk_count=slide_chunk_count,
+        handoff_detected=handoff_detected,
+    )
+    if queued_candidate is not None:
+        _record_feedback(session, queued_candidate, current_slide_number)
+        state.save_session(payload.sessionId, session)
+        logger.info(
+            "triggered queued feedback session=%s slide=%s source=%s",
+            payload.sessionId[:8],
+            current_slide_number,
+            queued_candidate.sourceQuestionId or "heuristic",
+        )
+        return _response(
+            session,
+            trigger=True,
+            feedback=queued_candidate,
+            reason=queued_reason,
+            inferred_current_slide=inferred_slide,
+            answer_evaluation=answer_evaluation,
         )
 
     # Candidate selection is layered from cheapest/safest to most expensive:
@@ -218,14 +421,19 @@ def analyze_chunk(payload: AnalyzeChunkRequest) -> AnalyzeChunkResponse:
         prepared_questions=payload.preparedQuestions,
         current_slide_number=current_slide_number,
         asked_question_ids=list(session.get("asked_feedback_question_ids", [])),
+        current_slide=effective_slide,
+        project_title=payload.projectContext.title,
+        student_profiles=runtime_student_profiles,
     )
 
     if candidate is None and slide_chunk_count >= NEW_SLIDE_WARMUP_CHUNKS:
-        candidate, reason = generate_slide_aware_feedback(
+        candidate, reason = generate_hybrid_feedback(
             payload.transcriptChunk,
             recent_transcript=payload.recentTranscript,
             prepared_questions=payload.preparedQuestions,
-            current_slide_number=current_slide_number,
+            current_slide=effective_slide,
+            project_title=payload.projectContext.title,
+            student_profiles=runtime_student_profiles,
         )
 
     if candidate is None and slide_chunk_count >= NEW_SLIDE_WARMUP_CHUNKS and _can_attempt_live_llm(session):
@@ -235,25 +443,32 @@ def analyze_chunk(payload: AnalyzeChunkRequest) -> AnalyzeChunkResponse:
             # The faculty-brain path is used as an arbiter over prepared
             # questions, not as a general-purpose source of new harsher prompts.
             faculty_brain = decide_faculty_feedback(
-                payload=payload,
+                payload=payload.model_copy(
+                    update={
+                        "studentCoverage": session.get("student_coverage", {}),
+                        "studentProfiles": runtime_student_profiles,
+                    }
+                ),
                 current_slide=effective_slide,
                 recent_feedback=recent_feedback_messages,
                 asked_messages=asked_messages,
             )
         except Exception as exc:
             log_llm_exception("decide_faculty_feedback", exc)
-            if "rate limit" in classify_llm_error(exc).lower() or "429" in classify_llm_error(exc):
+            classified = classify_llm_error(exc)
+            if "rate limit" in classified.lower() or "429" in classified:
                 _mark_live_llm_backoff(session)
                 state.save_session(payload.sessionId, session)
             faculty_brain = None
 
         if faculty_brain and faculty_brain.terminal:
             if faculty_brain.feedback is None:
-                return AnalyzeChunkResponse(
+                return _response(
+                    session,
                     trigger=False,
-                    resolvedFeedback=resolved_feedback,
                     reason=faculty_brain.reason,
-                    inferredCurrentSlide=inferred_slide,
+                    inferred_current_slide=inferred_slide,
+                    answer_evaluation=answer_evaluation,
                 )
             candidate, reason = faculty_brain.feedback, faculty_brain.reason
         elif candidate is None and not payload.preparedQuestions:
@@ -275,95 +490,124 @@ def analyze_chunk(payload: AnalyzeChunkRequest) -> AnalyzeChunkResponse:
         reason = "LLM backoff active after provider rate limit. Using deterministic faculty logic only."
 
     if candidate is None:
-        candidate, reason = generate_candidate_feedback(payload.transcriptChunk, project_title=payload.projectContext.title)
-
-    if candidate is None:
-        return AnalyzeChunkResponse(
+        state.save_session(payload.sessionId, session)
+        return _response(
+            session,
             trigger=False,
-            resolvedFeedback=resolved_feedback,
-            reason=reason,
-            inferredCurrentSlide=inferred_slide,
+            reason=reason or queued_reason,
+            inferred_current_slide=inferred_slide,
+            answer_evaluation=answer_evaluation,
         )
 
-    if slide_changed and not is_slide_handoff(payload.transcriptChunk):
-        state.save_session(payload.sessionId, session)
-        return AnalyzeChunkResponse(
+    normalized_message = _normalize_message(candidate.message)
+    if normalized_message in session.get("asked_feedback_messages", []):
+        return _response(
+            session,
             trigger=False,
-            resolvedFeedback=resolved_feedback,
-            reason="Slide warm-up: waiting for more spoken context before interrupting on the new slide.",
-            inferredCurrentSlide=inferred_slide,
+            reason="This faculty question was already asked earlier in the session.",
+            inferred_current_slide=inferred_slide,
+            answer_evaluation=answer_evaluation,
+        )
+
+    if candidate.sourceQuestionId and candidate.sourceQuestionId in session.get("asked_feedback_question_ids", []):
+        return _response(
+            session,
+            trigger=False,
+            reason="This prepared faculty concern was already asked earlier in the session.",
+            inferred_current_slide=inferred_slide,
+            answer_evaluation=answer_evaluation,
+        )
+
+    if any(_normalize_message(item.message) == normalized_message for item in session.get("feedback", [])):
+        return _response(
+            session,
+            trigger=False,
+            reason="This faculty question is already in the feedback history.",
+            inferred_current_slide=inferred_slide,
+            answer_evaluation=answer_evaluation,
+        )
+
+    if candidate.sourceQuestionId and any(item.sourceQuestionId == candidate.sourceQuestionId for item in session.get("feedback", [])):
+        return _response(
+            session,
+            trigger=False,
+            reason="This prepared faculty concern is already in the feedback history.",
+            inferred_current_slide=inferred_slide,
+            answer_evaluation=answer_evaluation,
+        )
+
+    if _topic_already_covered(session, candidate):
+        return _response(
+            session,
+            trigger=False,
+            reason="A faculty question on this same topic was already asked earlier in the session.",
+            inferred_current_slide=inferred_slide,
+            answer_evaluation=answer_evaluation,
+        )
+
+    if _slide_already_has_feedback(session, current_slide_number):
+        return _response(
+            session,
+            trigger=False,
+            reason="This slide already received its one faculty question for this presentation.",
+            inferred_current_slide=inferred_slide,
+            answer_evaluation=answer_evaluation,
+        )
+
+    timing_gate_reason = _timing_gate_reason(session, candidate, handoff_detected)
+    if slide_changed and not handoff_detected:
+        _queue_feedback(
+            session,
+            candidate,
+            "Queued until the presenter gives more context on the new slide before FacultyAI interrupts.",
+        )
+        state.save_session(payload.sessionId, session)
+        return _response(
+            session,
+            trigger=False,
+            reason="Slide warm-up: FacultyAI queued the question instead of interrupting on slide arrival.",
+            inferred_current_slide=inferred_slide,
+            answer_evaluation=answer_evaluation,
+        )
+
+    if timing_gate_reason is not None:
+        _queue_feedback(session, candidate, timing_gate_reason)
+        state.save_session(payload.sessionId, session)
+        return _response(
+            session,
+            trigger=False,
+            reason=timing_gate_reason,
+            inferred_current_slide=inferred_slide,
+            answer_evaluation=answer_evaluation,
         )
 
     # Let the presenter establish context before lower-priority interruptions fire.
     if len(session["transcript"]) < 2 and candidate.priority == "low":
-        return AnalyzeChunkResponse(
+        state.save_session(payload.sessionId, session)
+        return _response(
+            session,
             trigger=False,
-            resolvedFeedback=resolved_feedback,
             reason="Warm-up window: waiting for more live context before interrupting.",
-            inferredCurrentSlide=inferred_slide,
+            inferred_current_slide=inferred_slide,
+            answer_evaluation=answer_evaluation,
         )
 
     # Once a question has been asked on the active slide, hold a short answer
     # window before allowing another interruption on that same slide.
     awaiting_answer_until = session.get("awaiting_answer_until")
-    if awaiting_answer_until and utc_now() < awaiting_answer_until:
-        if session.get("last_feedback_slide_number") == current_slide_number:
-            return AnalyzeChunkResponse(
-                trigger=False,
-                resolvedFeedback=resolved_feedback,
-                reason="Answer window active: waiting for the presenter to respond before asking another question.",
-                inferredCurrentSlide=inferred_slide,
-            )
-
-    normalized_message = _normalize_message(candidate.message)
-    if normalized_message in session.get("asked_feedback_messages", []):
-        return AnalyzeChunkResponse(
-            trigger=False,
-            resolvedFeedback=resolved_feedback,
-            reason="This faculty question was already asked earlier in the session.",
-            inferredCurrentSlide=inferred_slide,
+    if awaiting_answer_until and utc_now() < awaiting_answer_until and session.get("last_feedback_slide_number") == current_slide_number:
+        _queue_feedback(
+            session,
+            candidate,
+            "Queued while FacultyAI waits for the presenter to finish answering the earlier question.",
         )
-
-    if candidate.sourceQuestionId and candidate.sourceQuestionId in session.get("asked_feedback_question_ids", []):
-        return AnalyzeChunkResponse(
+        state.save_session(payload.sessionId, session)
+        return _response(
+            session,
             trigger=False,
-            resolvedFeedback=resolved_feedback,
-            reason="This prepared faculty concern was already asked earlier in the session.",
-            inferredCurrentSlide=inferred_slide,
-        )
-
-    if any(_normalize_message(item.message) == normalized_message for item in session.get("feedback", [])):
-        return AnalyzeChunkResponse(
-            trigger=False,
-            resolvedFeedback=resolved_feedback,
-            reason="This faculty question is already in the feedback history.",
-            inferredCurrentSlide=inferred_slide,
-        )
-
-    if candidate.sourceQuestionId and any(
-        item.sourceQuestionId == candidate.sourceQuestionId for item in session.get("feedback", [])
-    ):
-        return AnalyzeChunkResponse(
-            trigger=False,
-            resolvedFeedback=resolved_feedback,
-            reason="This prepared faculty concern is already in the feedback history.",
-            inferredCurrentSlide=inferred_slide,
-        )
-
-    if _topic_already_covered(session, candidate):
-        return AnalyzeChunkResponse(
-            trigger=False,
-            resolvedFeedback=resolved_feedback,
-            reason="A faculty question on this same topic was already asked earlier in the session.",
-            inferredCurrentSlide=inferred_slide,
-        )
-
-    if _slide_already_has_feedback(session, current_slide_number):
-        return AnalyzeChunkResponse(
-            trigger=False,
-            resolvedFeedback=resolved_feedback,
-            reason="This slide already received its one faculty question for this presentation.",
-            inferredCurrentSlide=inferred_slide,
+            reason="Answer window active: FacultyAI queued the next question instead of stacking interruptions.",
+            inferred_current_slide=inferred_slide,
+            answer_evaluation=answer_evaluation,
         )
 
     # Older sessions may still rely on the side-list. Trim any stale entries once
@@ -380,22 +624,21 @@ def analyze_chunk(payload: AnalyzeChunkRequest) -> AnalyzeChunkResponse:
     # the transcript repeatedly matches valid faculty concerns.
     allowed, filter_reason = can_emit_feedback(session, candidate.message)
     if not allowed:
-        return AnalyzeChunkResponse(
+        _queue_feedback(
+            session,
+            candidate,
+            f"Queued because the global feedback cooldown blocked immediate delivery. {filter_reason}",
+        )
+        state.save_session(payload.sessionId, session)
+        return _response(
+            session,
             trigger=False,
-            resolvedFeedback=resolved_feedback,
             reason=filter_reason,
-            inferredCurrentSlide=inferred_slide,
+            inferred_current_slide=inferred_slide,
+            answer_evaluation=answer_evaluation,
         )
 
-    session["feedback"].append(candidate)
-    session["last_feedback_at"] = utc_now()
-    session.setdefault("asked_feedback_messages", []).append(normalized_message)
-    if candidate.sourceQuestionId:
-        session.setdefault("asked_feedback_question_ids", []).append(candidate.sourceQuestionId)
-    if current_slide_number is not None:
-        session.setdefault("asked_feedback_slide_numbers", []).append(current_slide_number)
-    session["awaiting_answer_until"] = utc_now() + timedelta(seconds=15)
-    session["last_feedback_slide_number"] = current_slide_number
+    _record_feedback(session, candidate, current_slide_number)
     state.save_session(payload.sessionId, session)
     logger.info(
         "triggered feedback session=%s slide=%s source=%s reason=%s",
@@ -404,10 +647,11 @@ def analyze_chunk(payload: AnalyzeChunkRequest) -> AnalyzeChunkResponse:
         candidate.sourceQuestionId or "heuristic",
         reason,
     )
-    return AnalyzeChunkResponse(
+    return _response(
+        session,
         trigger=True,
         feedback=candidate,
-        resolvedFeedback=resolved_feedback,
         reason=reason,
-        inferredCurrentSlide=inferred_slide,
+        inferred_current_slide=inferred_slide,
+        answer_evaluation=answer_evaluation,
     )

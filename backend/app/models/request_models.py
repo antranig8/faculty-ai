@@ -18,6 +18,12 @@ class SessionStartRequest(BaseModel):
     projectContext: ProjectContext
 
 
+class StudentProfile(BaseModel):
+    major: Optional[str] = None
+    interests: List[str] = Field(default_factory=list)
+    evidence: List[str] = Field(default_factory=list)
+
+
 class AnalyzeChunkRequest(BaseModel):
     sessionId: str
     transcriptChunk: str
@@ -28,6 +34,9 @@ class AnalyzeChunkRequest(BaseModel):
     slideMode: Literal["auto", "manual"] = "auto"
     presentationSlides: List[Slide] = Field(default_factory=list)
     preparedQuestions: List[PreparedQuestion] = Field(default_factory=list)
+    studentCoverage: dict[str, int] = Field(default_factory=dict)
+    studentProfiles: dict[str, StudentProfile] = Field(default_factory=dict)
+    simulatedSecondsOnSlide: Optional[float] = None
 
 
 class PresentationPrepareRequest(BaseModel):

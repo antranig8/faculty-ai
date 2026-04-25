@@ -5,7 +5,7 @@ from pathlib import Path
 import sqlite3
 from typing import Any
 
-from app.models.request_models import ProjectContext
+from app.models.request_models import ProjectContext, StudentProfile
 from app.models.response_models import FeedbackItem, PresentationPrepareResponse, ProfessorConfig, Slide
 from app.services.rubric_loader import load_professor_config_from_template
 
@@ -87,6 +87,15 @@ def _serialize_session(session: dict[str, Any]) -> str:
             "active_slide_chunk_count": session.get("active_slide_chunk_count", 0),
             "candidate_slide_number": session.get("candidate_slide_number"),
             "candidate_slide_hits": session.get("candidate_slide_hits", 0),
+            "queued_feedback": session["queued_feedback"].model_dump(mode="json") if session.get("queued_feedback") else None,
+            "follow_up_attempts": dict(session.get("follow_up_attempts", {})),
+            "slide_started_at": session["slide_started_at"].isoformat() if session.get("slide_started_at") else None,
+            "last_transcript_at": session["last_transcript_at"].isoformat() if session.get("last_transcript_at") else None,
+            "student_coverage": dict(session.get("student_coverage", {})),
+            "student_profiles": {
+                name: profile.model_dump(mode="json")
+                for name, profile in session.get("student_profiles", {}).items()
+            },
         }
     )
 
@@ -112,6 +121,15 @@ def _deserialize_session(payload: str) -> dict[str, Any]:
         "active_slide_chunk_count": raw.get("active_slide_chunk_count", 0),
         "candidate_slide_number": raw.get("candidate_slide_number"),
         "candidate_slide_hits": raw.get("candidate_slide_hits", 0),
+        "queued_feedback": FeedbackItem(**raw["queued_feedback"]) if raw.get("queued_feedback") else None,
+        "follow_up_attempts": dict(raw.get("follow_up_attempts", {})),
+        "slide_started_at": datetime.fromisoformat(raw["slide_started_at"]) if raw.get("slide_started_at") else None,
+        "last_transcript_at": datetime.fromisoformat(raw["last_transcript_at"]) if raw.get("last_transcript_at") else None,
+        "student_coverage": dict(raw.get("student_coverage", {})),
+        "student_profiles": {
+            name: StudentProfile(**profile)
+            for name, profile in raw.get("student_profiles", {}).items()
+        },
     }
 
 
@@ -187,6 +205,12 @@ def get_session(session_id: str) -> dict[str, Any] | None:
     session = _deserialize_session(row["payload"])
     sessions[session_id] = session
     return session
+
+
+def delete_session(session_id: str) -> None:
+    sessions.pop(session_id, None)
+    with _connection() as conn:
+        conn.execute("DELETE FROM sessions WHERE session_id = ?", (session_id,))
 
 
 def professor_config_to_project_context() -> ProjectContext:

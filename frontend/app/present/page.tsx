@@ -59,6 +59,7 @@ export default function PresentPage() {
   const [slideMode, setSlideMode] = useState<SlideMode>("auto");
   const [transcript, setTranscript] = useState<string[]>([]);
   const [feedback, setFeedback] = useState<FeedbackItem[]>([]);
+  const [queuedFeedback, setQueuedFeedback] = useState<FeedbackItem>();
   const [activeChunk, setActiveChunk] = useState("");
   const [livePreview, setLivePreview] = useState("");
   const [drawerOpen, setDrawerOpen] = useState(false);
@@ -96,6 +97,7 @@ export default function PresentPage() {
   const projectContextRef = useRef<ProjectContext>(defaultProjectContext);
   const preparedQuestionsRef = useRef<PreparedQuestion[]>([]);
   const latestFeedbackRef = useRef<FeedbackItem | undefined>(undefined);
+  const studentCoverageRef = useRef<Record<string, number>>({});
   const slideModeRef = useRef<SlideMode>("auto");
   const sessionIdRef = useRef<string | undefined>(undefined);
   const liveStateRef = useRef({ connected: false, connecting: false });
@@ -118,7 +120,7 @@ export default function PresentPage() {
   const lastForcedTurnWordCountRef = useRef(0);
   const liveRunTokenRef = useRef(0);
 
-  const latestFeedback = [...feedback].reverse().find((item) => !item.resolved);
+  const latestFeedback = [...feedback].reverse().find((item) => !item.resolved && item.deliveryStatus !== "queued");
   const recentFeedback = useMemo(() => feedback.slice(-5).map((item) => item.message), [feedback]);
   const currentSlide = slides[currentSlideIndex];
   const LIVE_ANALYZE_MIN_GAP_MS = 1400;
@@ -477,6 +479,8 @@ export default function PresentPage() {
     setTranscript([]);
     transcriptRef.current = [];
     setFeedback([]);
+    setQueuedFeedback(undefined);
+    studentCoverageRef.current = {};
     latestFeedbackRef.current = undefined;
     spokenFeedbackIdsRef.current = new Set();
     stopSpeaking();
@@ -650,6 +654,7 @@ export default function PresentPage() {
       slideMode: slideModeRef.current,
       presentationSlides: slidesForAnalysis(),
       preparedQuestions: questionsForAnalysis(currentSlideRef.current),
+      studentCoverage: studentCoverageRef.current,
     });
     if (runToken !== liveRunTokenRef.current) {
       return;
@@ -662,6 +667,7 @@ export default function PresentPage() {
       }
     }
 
+    setQueuedFeedback(result.queuedFeedback);
     applyResolvedFeedback(result.resolvedFeedback);
     const acknowledgedResolution = acknowledgeResolvedQuestion(nextChunk, result.resolvedFeedback);
     const acknowledgedUnresolved = !result.resolvedFeedback && await acknowledgeUnresolvedQuestion(nextChunk);
@@ -670,6 +676,12 @@ export default function PresentPage() {
     }
 
     if (result.trigger && result.feedback) {
+      if (result.feedback.targetStudent) {
+        studentCoverageRef.current = {
+          ...studentCoverageRef.current,
+          [result.feedback.targetStudent]: (studentCoverageRef.current[result.feedback.targetStudent] ?? 0) + 1,
+        };
+      }
       setFeedback((current) => [...current, result.feedback as FeedbackItem]);
       queueFacultyQuestionReveal(result.feedback as FeedbackItem);
       setStatus("Live faculty question triggered.");
@@ -685,6 +697,12 @@ export default function PresentPage() {
         ? (acknowledgedResolution ? "Faculty acknowledged the presenter response." : "Faculty question auto-marked addressed.")
         : acknowledgedUnresolved
           ? "Faculty accepted the presenter response and closed the question."
+        : result.queuedFeedback
+          ? (
+            result.answerEvaluation?.shouldAskFollowUp
+              ? "FacultyAI queued one follow-up after a partial answer."
+              : result.reason ?? "FacultyAI queued a question for a better moment."
+          )
         : result.reason ?? "No feedback triggered for this chunk.",
     );
   }
@@ -1228,6 +1246,7 @@ export default function PresentPage() {
 
       <FeedbackDrawer
         feedback={feedback}
+        queuedFeedback={queuedFeedback}
         latestFeedback={latestFeedback}
         open={drawerOpen}
         onClose={() => setDrawerOpen(false)}

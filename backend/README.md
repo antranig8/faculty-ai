@@ -2,6 +2,8 @@
 
 FastAPI service for presentation upload, slide-aware question preparation, transcript analysis, speech proxying, TTS, and persisted session state.
 
+The backend also contains the offline replay harness at `app/services/eval_runner.py` for tuning transcript scenarios without running a live microphone demo.
+
 ## Routes
 
 - `GET /`
@@ -58,5 +60,8 @@ State is stored in `faculty_ai.db` at the repository root:
 - professor config
 - session payloads and feedback history
 - prepared-question cache
+- queued/follow-up timing state
+- lightweight student coverage state
+- lightweight student profile memory for major / interest cues
 
 Without a `GROQ_API_KEY`, the backend falls back to deterministic heuristic preparation and feedback generation.

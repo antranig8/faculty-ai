@@ -10,6 +10,7 @@ const typeLabels: Record<FeedbackItem["type"], string> = {
 
 type Props = {
   feedback: FeedbackItem[];
+  queuedFeedback?: FeedbackItem;
   open: boolean;
   latestFeedback?: FeedbackItem;
   onClose: () => void;
@@ -28,7 +29,7 @@ function uniqueFeedbackItems(items: FeedbackItem[]): FeedbackItem[] {
   });
 }
 
-export function FeedbackDrawer({ feedback, open, latestFeedback, onClose, onResolve }: Props) {
+export function FeedbackDrawer({ feedback, queuedFeedback, open, latestFeedback, onClose, onResolve }: Props) {
   const visibleFeedback = uniqueFeedbackItems(
     latestFeedback
       ? [...feedback].reverse().filter((item) => item.createdAt !== latestFeedback.createdAt)
@@ -54,9 +55,23 @@ export function FeedbackDrawer({ feedback, open, latestFeedback, onClose, onReso
             <span>{latestFeedback.section.replace("_", " ")}</span>
           </div>
           <h3>{latestFeedback.message}</h3>
+          {latestFeedback.targetStudent ? <small>Targeted student: {latestFeedback.targetStudent}</small> : null}
+          <small>{latestFeedback.reason}</small>
           <button className="resolved-button" onClick={() => onResolve(latestFeedback, true)} type="button">
             Mark addressed
           </button>
+        </section>
+      ) : null}
+
+      {queuedFeedback ? (
+        <section className="live-feedback-preview">
+          <div className="feedback-meta">
+            <span>Queued Faculty Question</span>
+            <span>{queuedFeedback.section.replace("_", " ")}</span>
+          </div>
+          <h3>{queuedFeedback.message}</h3>
+          {queuedFeedback.targetStudent ? <small>Targeted student: {queuedFeedback.targetStudent}</small> : null}
+          <small>{queuedFeedback.reason}</small>
         </section>
       ) : null}
 
@@ -73,7 +88,10 @@ export function FeedbackDrawer({ feedback, open, latestFeedback, onClose, onReso
                 <span>{item.resolved ? "addressed" : item.section.replace("_", " ")}</span>
               </div>
               <p>{item.message}</p>
+              {item.targetStudent ? <small>Targeted student: {item.targetStudent}</small> : null}
               <small>{item.reason}</small>
+              {item.answerQuality ? <small>Answer quality: {item.answerQuality}</small> : null}
+              {item.followUpToQuestionId ? <small>Follow-up to earlier faculty question.</small> : null}
               {item.resolved ? (
                 <>
                   <small>{item.resolutionReason ?? "Marked addressed."}</small>

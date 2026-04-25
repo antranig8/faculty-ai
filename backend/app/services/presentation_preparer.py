@@ -12,6 +12,10 @@ MAX_LLM_SLIDES = 16
 MAX_SLIDE_CONTENT_CHARS = 700
 PREPARED_QUESTION_MAX_TOKENS = 1400
 PREPARED_QUESTION_REPAIR_MAX_TOKENS = 1100
+AUTHOR_PATTERNS = [
+    re.compile(r"\b(?:author|presented by|presenter|speaker)\s*[:\-]\s*([A-Z][A-Za-z]+(?:\s+[A-Z][A-Za-z]+){0,2})"),
+    re.compile(r"\b([A-Z][A-Za-z]+(?:\s+[A-Z][A-Za-z]+){0,2})\s*[:\-]\s*(?:lesson|lessons|reflection|application|speaker|workshop)\b"),
+]
 
 
 def _clip_text(value: str, limit: int) -> str:
@@ -35,7 +39,7 @@ def parse_slide_outline(slide_outline: str) -> list[Slide]:
         slide_number = int(match.group(1)) if match else fallback_index
         title = match.group(2).strip() if match and match.group(2).strip() else f"Slide {slide_number}"
         content = "\n".join(lines[1:]) if match else "\n".join(lines)
-        slides.append(Slide(slideNumber=slide_number, title=title, content=content))
+        slides.append(_build_slide(slide_number, title, content))
 
     if slides:
         return slides
@@ -45,12 +49,62 @@ def parse_slide_outline(slide_outline: str) -> list[Slide]:
             slideNumber=1,
             title="Presentation",
             content=slide_outline.strip(),
+            slideCategory=_infer_slide_category("Presentation", slide_outline.strip(), 1),
+            slideAuthor=_extract_slide_author("Presentation", slide_outline.strip()),
         )
     ] if slide_outline.strip() else []
 
 
 def _slide_text(slide: Slide) -> str:
     return f"{slide.title} {slide.content}".lower()
+
+
+def _extract_slide_author(title: str, content: str) -> str | None:
+    combined = "\n".join(part for part in [title.strip(), content.strip()] if part).strip()
+    if not combined:
+        return None
+
+    for pattern in AUTHOR_PATTERNS:
+        match = pattern.search(combined)
+        if match:
+            return match.group(1).strip()
+
+    for line in [title, *content.splitlines()[:4]]:
+        stripped = line.strip()
+        if not stripped:
+            continue
+        if re.fullmatch(r"[A-Z][A-Za-z]+(?:\s+[A-Z][A-Za-z]+){0,2}", stripped):
+            return stripped
+    return None
+
+
+def _infer_slide_category(title: str, content: str, slide_number: int) -> str:
+    text = f"{title} {content}".lower()
+    if slide_number == 1 or _has_any(text, ["title", "group members"]) and len(text.split()) < 35:
+        return "title"
+    if _has_any(text, ["appendix", "backup", "supplement", "extra material"]):
+        return "appendix"
+    if _has_any(text, ["cip-1", "continuous improvement", "what worked", "management"]) and not _has_any(text, ["team building", "feedback each other", "teamwork"]):
+        return "cip_course_feedback"
+    if _has_any(text, ["cip-2", "team building", "team-building", "teamwork", "team work", "provided each other", "feedback each other"]):
+        return "cip_team_feedback"
+    if _is_individual_application_slide(text) and not _is_takeaways_slide(text) and not _is_cip_slide(text):
+        return "individual_lesson"
+    if _has_any(text, ["takeaway", "takeaways", "executive summary", "discussion", "speaker series", "our group", "team perspective"]):
+        return "team_takeaway"
+    return "unknown"
+
+
+def _build_slide(slide_number: int, title: str, content: str) -> Slide:
+    # Store lightweight structural metadata on the slide so the live runtime can
+    # target Assignment 6 slide types without recomputing brittle heuristics.
+    return Slide(
+        slideNumber=slide_number,
+        title=title,
+        content=content,
+        slideCategory=_infer_slide_category(title, content, slide_number),
+        slideAuthor=_extract_slide_author(title, content),
+    )
 
 
 def _has_any(text: str, terms: list[str]) -> bool:
@@ -91,6 +145,7 @@ def _is_cip_slide(text: str) -> bool:
 
 
 def _individual_application_questions(project_context: ProjectContext, slide: Slide) -> list[PreparedQuestion]:
+    author_prefix = f"{slide.slideAuthor}, " if slide.slideAuthor else ""
     return [
         PreparedQuestion(
             id=f"slide-{slide.slideNumber}-individual-application",
@@ -98,8 +153,8 @@ def _individual_application_questions(project_context: ProjectContext, slide: Sl
             rubricCategory=_rubric_category(project_context, "individual application of lessons to future study, career planning, or engineering practice"),
             type="question",
             priority="high",
-            question="What changed in this person's view of engineering because of this lesson, and what specific experience caused that change?",
-            listenFor=["lesson", "learned", "apply", "application", "workshop", "speaker", "career", "future"],
+            question=f"{author_prefix}what changed in your view of engineering because of this lesson, and what specific experience caused that change?",
+            listenFor=[*[value for value in [slide.slideAuthor, "lesson", "learned", "apply", "application", "workshop", "speaker", "career", "future"] if value]],
             missingIfAbsent=["changed", "because", "experience", "speaker", "workshop", "specific example"],
         ),
         PreparedQuestion(
@@ -108,8 +163,8 @@ def _individual_application_questions(project_context: ProjectContext, slide: Sl
             rubricCategory=_rubric_category(project_context, "individual application of lessons to future study, career planning, or engineering practice"),
             type="question",
             priority="high",
-            question="What concrete decision or behavior will this person change next because of that lesson?",
-            listenFor=["lesson", "learned", "apply", "application", "future", "career", "next step"],
+            question=f"{author_prefix}what concrete decision or behavior will you change next because of that lesson?",
+            listenFor=[*[value for value in [slide.slideAuthor, "lesson", "learned", "apply", "application", "future", "career", "next step"] if value]],
             missingIfAbsent=["change", "next", "because", "specific", "future", "decision"],
         ),
     ]
@@ -313,6 +368,8 @@ def _llm_prompt(project_context: ProjectContext, slides: list[Slide]) -> str:
             "slideNumber": slide.slideNumber,
             "title": _clip_text(slide.title, 120),
             "content": _clip_text(slide.content, MAX_SLIDE_CONTENT_CHARS),
+            "slideCategory": slide.slideCategory,
+            "slideAuthor": slide.slideAuthor,
         }
         for slide in slides[:MAX_LLM_SLIDES]
         if slide.title.strip() or slide.content.strip()

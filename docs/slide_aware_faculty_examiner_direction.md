@@ -1,5 +1,17 @@
 # Slide-Aware Faculty Examiner Direction
 
+## Status
+
+This is an earlier design-direction document.
+
+It is still useful for understanding the original slide-aware product intent, but some specifics are now older than the current runtime.
+
+For the current system, use these docs first:
+
+- `docs/faculty_ai_how_it_thinks.md`
+- `docs/faculty_ai_interaction_model.md`
+- `docs/faculty_ai_live_feedback_README.md`
+
 ## Product Direction
 
 FacultyAI should act like a live stand-in faculty member, not a general presentation helper.

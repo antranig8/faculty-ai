@@ -11,11 +11,16 @@ FacultyAI is a live presentation critique assistant for ENES 104 style demos. Pr
 - Presentation cockpit at `/present`
 - Optional access-code gate across frontend routes via `FACULTY_AI_ACCESS_CODE`
 - `.pptx` upload with slide parsing and slide-aware prepared questions
+- slide category and lightweight slide author inference
 - Automatic slide inference from transcript content, with manual slide override
 - Live microphone transcription through the backend Deepgram proxy
 - Deepgram-backed faculty question voice playback with HTTP fallback
+- queued questions when timing is not right for immediate interruption
+- answer evaluation with weak/partial/strong outcomes and one follow-up max
+- timing-aware delivery based on time spent on the active slide
 - Faculty question resolution and reopen flow
 - SQLite persistence for professor config, sessions, and prepared-question cache in `faculty_ai.db`
+- lightweight student-profile memory for major / interest cues on individual reflection slides
 
 ## Run
 
@@ -83,9 +88,23 @@ Without `GROQ_API_KEY`, the app falls back to deterministic heuristic question g
 - The backend allows localhost access without `x-facultyai-key`.
 - Non-local requests must send `x-facultyai-key`, and the speech proxies also accept `?key=...`.
 - Prepared questions are cached by project context + slide content.
+- The live runtime is hybrid: prepared concerns are anchors, but deterministic and optional LLM paths can choose a better freeform question when the moment supports it.
 
-Direction docs remain in `docs/`, including:
+## Docs
 
+Use the docs in `docs/` like this:
+
+- `docs/faculty_ai_how_it_thinks.md`
+  - plain-English explanation of how the runtime listens, waits, chooses, and asks questions
+- `docs/faculty_ai_interaction_model.md`
+  - current architecture direction: prepared questions as anchors, not shackles
+- `docs/faculty_ai_live_feedback_README.md`
+  - current-state product and architecture summary
+- `docs/faculty_ai_eval_harness.md`
+  - how to replay saved scenarios offline
+- `docs/what_i_need_from_you_for_eval.md`
+  - concise handoff checklist for preparing eval scenarios
+- `docs/faculty_ai_POTENTIAL.md`
+  - roadmap / next-step priorities
 - `docs/slide_aware_faculty_examiner_direction.md`
-- `docs/project_update_2026-04-20.md`
-- `docs/speech_provider_split.md`
+  - earlier design-direction document; useful for historical context, but not the main current-state source

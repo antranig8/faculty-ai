@@ -13,12 +13,13 @@ from app.services.prompt_loader import load_prompt
 from app.services.question_matching import prepared_question_is_answered, prepared_question_is_topically_ready
 from app.services.rubric_loader import load_professor_config_from_template
 from app.services.section_tracker import infer_section
+from app.services.student_profiles import profile_hint
 from app.services.transcript_evidence import TranscriptEvidence, extract_transcript_evidence
 
 _FALLBACK_PROMPT = (
     "You are FacultyAI's runtime faculty-brain.\n"
-    "Choose from the prepared slide concerns when deciding whether to interrupt.\n"
-    "Use the live transcript to decide timing, not to invent a different question.\n"
+    "Choose the most useful professional faculty move from the live presentation context.\n"
+    "Use prepared slide concerns as strong anchors, but allow one concise freeform question when it is better.\n"
     "Return strict JSON only."
 )
 LIVE_FACULTY_MAX_COMPLETION_TOKENS = 170
@@ -62,6 +63,11 @@ def _build_feedback_from_question(
 ) -> FeedbackItem:
     section = infer_section(" ".join([*payload.recentTranscript[-5:], payload.transcriptChunk]))
     clean_reason = reason.split("Heard:", 1)[0].split("Missing:", 1)[0].strip()
+    target_student = None
+    if question.question and "," in question.question:
+        possible_name = question.question.split(",", 1)[0].strip()
+        if possible_name and all(part[:1].isupper() for part in possible_name.split() if part):
+            target_student = possible_name
 
     return FeedbackItem(
         type=question.type,
@@ -73,6 +79,31 @@ def _build_feedback_from_question(
         slideNumber=question.slideNumber,
         sourceQuestionId=question.id,
         autoResolutionTerms=question.missingIfAbsent[:8],
+        targetStudent=target_student,
+    )
+
+
+def _build_freeform_feedback(
+    payload: AnalyzeChunkRequest,
+    current_slide: Slide,
+    message: str,
+    reason: str,
+    evidence_missing: list[str] | None = None,
+) -> FeedbackItem:
+    # Freeform questions are still slide-aware and professional, but they are
+    # not tied to a pre-generated concern id.
+    section = infer_section(" ".join([*payload.recentTranscript[-5:], payload.transcriptChunk]))
+    target_student = current_slide.slideAuthor if current_slide.slideCategory == "individual_lesson" else None
+    return FeedbackItem(
+        type="question",
+        priority="medium",
+        section=section,
+        message=message,
+        reason=reason.strip(),
+        createdAt=_created_at(),
+        slideNumber=current_slide.slideNumber,
+        autoResolutionTerms=(evidence_missing or [])[:6],
+        targetStudent=target_student,
     )
 
 
@@ -165,7 +196,7 @@ def _build_messages(
         for question in prepared_questions
     ]
     candidate_payload.sort(key=lambda item: item["matchScore"], reverse=True)
-    top_candidates = candidate_payload[:2]
+    top_candidates = candidate_payload[:3]
 
     runtime_context = {
         "courseName": rubric.courseName if rubric else "ENES 104",
@@ -180,7 +211,10 @@ def _build_messages(
         "currentSlide": {
             "slideNumber": current_slide.slideNumber,
             "title": _clip_text(current_slide.title, 120),
+            "slideCategory": current_slide.slideCategory,
+            "slideAuthor": current_slide.slideAuthor,
         },
+        "currentStudentProfile": profile_hint(payload.studentProfiles, current_slide.slideAuthor),
         "transcriptEvidence": {
             "summary": _clip_text(transcript_evidence.summary, 180),
             "claims": _clip_list(transcript_evidence.claims, 2, 120),
@@ -195,10 +229,14 @@ def _build_messages(
         "latestTranscriptChunk": _clip_text(payload.transcriptChunk, 220),
         "recentFeedback": _clip_list(recent_feedback[-1:], 1, 120),
         "transcriptChunkCount": len(payload.recentTranscript) + 1,
+        "studentCoverage": payload.studentCoverage,
     }
 
     user_prompt = (
-        'Choose ask_now, wait, or skip. Use only candidateQuestions ids. Prefer wait if uncertain.\n'
+        "Choose ask_now, wait, or skip. "
+        "If you choose ask_now, set interactionType to prepared_question or freeform_question. "
+        "Use candidateQuestions ids only when interactionType is prepared_question. "
+        "Prefer wait if uncertain.\n"
         f"Runtime context: {json.dumps(runtime_context)}"
     )
 
@@ -240,12 +278,6 @@ def decide_faculty_feedback(
     prepared_for_slide = [
         question for question in payload.preparedQuestions if question.slideNumber == current_slide.slideNumber
     ]
-    if not prepared_for_slide:
-        return FacultyBrainDecision(
-            feedback=None,
-            reason="No prepared slide concerns exist for the active slide.",
-            terminal=False,
-        )
 
     recent_text = " ".join([*payload.recentTranscript[-4:], payload.transcriptChunk])
     timely_prepared_questions = [
@@ -254,15 +286,15 @@ def decide_faculty_feedback(
         if prepared_question_is_topically_ready(question, recent_text)
         and not prepared_question_is_answered(question, recent_text)
     ]
-    if not timely_prepared_questions:
-        return FacultyBrainDecision(
-            feedback=None,
-            reason="Prepared slide concerns are waiting for the presenter to mention their specific topic.",
-            terminal=True,
-        )
 
     settings = get_settings()
     if settings.faculty_ai_llm_provider not in {"groq", "openai"} or not settings.groq_api_key:
+        if not timely_prepared_questions:
+            return FacultyBrainDecision(
+                feedback=None,
+                reason="Faculty-brain LLM is unavailable and no timely prepared concern is strong enough yet.",
+                terminal=False,
+            )
         return FacultyBrainDecision(
             feedback=None,
             reason="Faculty-brain LLM is unavailable, falling back to deterministic reasoning.",
@@ -314,6 +346,7 @@ def decide_faculty_feedback(
 
     parsed = _parse_json_object(raw_content)
     decision = str(parsed.get("decision", "skip")).strip().lower()
+    interaction_type = str(parsed.get("interactionType", "")).strip().lower() or None
     reason = str(parsed.get("reason", "")).strip() or "Faculty brain declined to interrupt."
     if decision == "wait":
         confident_candidate = _select_confident_candidate(payload, timely_prepared_questions, asked_messages, transcript_evidence)
@@ -332,11 +365,30 @@ def decide_faculty_feedback(
     if decision == "skip":
         return FacultyBrainDecision(feedback=None, reason=reason, terminal=True)
 
-    # `ask_now` is the only path where the model is allowed to select a specific
-    # prepared question and optionally tighten its wording.
     if decision != "ask_now":
         raise RuntimeError("Faculty brain returned an unsupported decision.")
 
+    evidence_heard = [str(item).strip() for item in parsed.get("evidenceHeard", []) if str(item).strip()]
+    evidence_missing = [str(item).strip() for item in parsed.get("evidenceMissing", []) if str(item).strip()]
+    suggested_message = str(parsed.get("suggestedMessage", "")).strip()
+
+    if interaction_type == "freeform_question":
+        if not suggested_message:
+            raise RuntimeError("Faculty brain returned a freeform question without wording.")
+        feedback = _build_freeform_feedback(
+            payload=payload,
+            current_slide=current_slide,
+            message=suggested_message,
+            reason=reason,
+            evidence_missing=evidence_missing,
+        )
+        return FacultyBrainDecision(feedback=feedback, reason=reason, terminal=True)
+
+    if interaction_type not in {None, "prepared_question"}:
+        raise RuntimeError("Faculty brain returned an unsupported interaction type.")
+
+    # Prepared-question mode keeps the older behavior: the model must choose an
+    # existing prepared concern and may tighten its wording slightly.
     selected_id = str(parsed.get("selectedQuestionId", "")).strip()
     if not selected_id:
         raise RuntimeError("Faculty brain returned ask_now without a selected question id.")
@@ -345,14 +397,10 @@ def decide_faculty_feedback(
     if selected_question is None:
         raise RuntimeError("Faculty brain selected an unknown question id.")
 
-    evidence_heard = [str(item).strip() for item in parsed.get("evidenceHeard", []) if str(item).strip()]
-    evidence_missing = [str(item).strip() for item in parsed.get("evidenceMissing", []) if str(item).strip()]
-    suggested_message = str(parsed.get("suggestedMessage", "")).strip() or selected_question.question
-
     try:
         feedback = _build_feedback_from_question(
             payload=payload,
-            question=selected_question.model_copy(update={"question": suggested_message}),
+            question=selected_question.model_copy(update={"question": suggested_message or selected_question.question}),
             reason=reason,
             evidence_heard=evidence_heard,
             evidence_missing=evidence_missing,

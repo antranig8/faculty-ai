@@ -27,6 +27,7 @@ export function SlideTracker({
   const currentQuestions = currentSlide
     ? preparedQuestions.filter((question) => question.slideNumber === currentSlide.slideNumber)
     : [];
+  const categoryLabel = currentSlide?.slideCategory ? currentSlide.slideCategory.replaceAll("_", " ") : "unknown";
 
   return (
     <section className="slide-tracker-compact">
@@ -35,6 +36,12 @@ export function SlideTracker({
           <p className="eyebrow">Slide Tracker</p>
           <h2>{currentSlide ? `Slide ${currentSlide.slideNumber}` : "No slide selected"}</h2>
           <p className="muted">{currentSlide ? currentSlide.title || "Untitled slide" : "Upload a deck to prepare tracking."}</p>
+          {currentSlide ? (
+            <p className="muted">
+              {categoryLabel}
+              {currentSlide.slideAuthor ? ` · ${currentSlide.slideAuthor}` : ""}
+            </p>
+          ) : null}
         </div>
         <div className="slide-tracker-badges">
           <span>{slides.length ? `${currentSlideIndex + 1} / ${slides.length}` : "0 / 0"}</span>
