@@ -31,12 +31,18 @@ export type FeedbackItem = {
   resolutionReason?: string | null;
   sourceQuestionId?: string | null;
   autoResolutionTerms?: string[];
+  deliveryStatus?: "queued" | "active" | "resolved";
+  followUpToQuestionId?: string | null;
+  answerQuality?: "weak" | "partial" | "strong" | null;
+  targetStudent?: string | null;
 };
 
 export type Slide = {
   slideNumber: number;
   title: string;
   content: string;
+  slideCategory?: "title" | "team_takeaway" | "individual_lesson" | "cip_course_feedback" | "cip_team_feedback" | "appendix" | "unknown";
+  slideAuthor?: string | null;
 };
 
 export type PreparedQuestion = {
@@ -68,7 +74,16 @@ export type ProfessorConfig = {
 export type AnalyzeResponse = {
   trigger: boolean;
   feedback?: FeedbackItem;
+  queuedFeedback?: FeedbackItem;
   resolvedFeedback?: FeedbackItem;
+  answerEvaluation?: {
+    questionId: string;
+    answered: boolean;
+    answerQuality: "weak" | "partial" | "strong";
+    missingPoints: string[];
+    shouldAskFollowUp: boolean;
+    followUpQuestion?: string | null;
+  };
   reason?: string;
   inferredCurrentSlide?: Slide;
 };

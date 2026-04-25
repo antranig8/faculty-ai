@@ -5,6 +5,8 @@ from pydantic import BaseModel, Field
 
 FeedbackType = Literal["question", "critique", "suggestion", "clarification", "praise"]
 Priority = Literal["low", "medium", "high"]
+DeliveryStatus = Literal["queued", "active", "resolved"]
+AnswerQuality = Literal["weak", "partial", "strong"]
 Section = Literal[
     "introduction",
     "problem",
@@ -14,6 +16,15 @@ Section = Literal[
     "evaluation",
     "future_work",
     "conclusion",
+    "unknown",
+]
+SlideCategory = Literal[
+    "title",
+    "team_takeaway",
+    "individual_lesson",
+    "cip_course_feedback",
+    "cip_team_feedback",
+    "appendix",
     "unknown",
 ]
 
@@ -35,12 +46,18 @@ class FeedbackItem(BaseModel):
     resolutionReason: Optional[str] = None
     sourceQuestionId: Optional[str] = None
     autoResolutionTerms: list[str] = Field(default_factory=list)
+    deliveryStatus: DeliveryStatus = "active"
+    followUpToQuestionId: Optional[str] = None
+    answerQuality: Optional[AnswerQuality] = None
+    targetStudent: Optional[str] = None
 
 
 class Slide(BaseModel):
     slideNumber: int
     title: str
     content: str
+    slideCategory: SlideCategory = "unknown"
+    slideAuthor: Optional[str] = None
 
 
 class PreparedQuestion(BaseModel):
@@ -77,10 +94,21 @@ class ProfessorConfig(BaseModel):
     assignmentContext: str = ""
 
 
+class AnswerEvaluation(BaseModel):
+    questionId: str
+    answered: bool
+    answerQuality: AnswerQuality
+    missingPoints: list[str] = Field(default_factory=list)
+    shouldAskFollowUp: bool = False
+    followUpQuestion: Optional[str] = None
+
+
 class AnalyzeChunkResponse(BaseModel):
     trigger: bool
     feedback: Optional[FeedbackItem] = None
+    queuedFeedback: Optional[FeedbackItem] = None
     resolvedFeedback: Optional[FeedbackItem] = None
+    answerEvaluation: Optional[AnswerEvaluation] = None
     reason: Optional[str] = None
     inferredCurrentSlide: Optional[Slide] = None
 

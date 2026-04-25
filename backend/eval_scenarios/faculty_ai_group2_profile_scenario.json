@@ -1,0 +1,86 @@
+{
+  "pptxPath": "Group2-ENES104-360 S26 UPDATED.pptx",
+  "slideMode": "manual",
+  "forceHeuristicRuntime": true,
+  "defaultChunkDurationSeconds": 4,
+  "slideSequence": [
+    1,
+    1,
+    2,
+    2,
+    2,
+    3,
+    3,
+    3,
+    3,
+    3,
+    5,
+    5,
+    5,
+    5,
+    5,
+    6,
+    6,
+    6,
+    7,
+    7,
+    7,
+    7,
+    7
+  ],
+  "transcriptChunks": [
+    "Today we are presenting our final ENES 104 group reflection. Our group members are Antranig Tatarian, Joshua Fawole, and Natneal Belete.",
+    "Our goal is to explain the lessons we took from the speakers and how those lessons changed the way we think about engineering, professionalism, and teamwork.",
+    "Across the semester, a few themes stood out to us as a group: professionalism, problem-solving, team collaboration, perseverance in industry, and the pursuit of knowledge.",
+    "Those themes kept showing up in different speakers' stories even when they came from very different industries and career paths.",
+    "For us, the biggest point was that success in engineering is not only technical ability. It also depends on how you communicate, adapt, learn, and contribute to a team.",
+    "For my personal reflection, the speaker who stood out most was Dr. Joseph Varghese because he gave a real perspective on working in Silicon Valley and in industry overall.",
+    "As a Computer Science major, I connected with that because software teams often have to make decisions under deadlines instead of chasing perfect code forever.",
+    "Another lesson was that industry often works with a 'good enough' standard. That does not mean doing poor work; it means knowing when something meets the actual requirement instead of chasing perfection forever.",
+    "That especially changed how I think about building software systems, because you still need reliability, but you also need judgment about when iteration matters more than polish.",
+    "From Dr. Islam, I also took away the importance of being reliable and being comfortable saying 'I do not know.' In a team setting that honesty can matter more than pretending to have every answer.",
+    "Joshua's reflection focused a lot on impact. He connected Dr. Varghese's resume advice to the idea that your work should show what actually changed because of your effort.",
+    "As someone interested in product and entrepreneurship, he also connected that to how early opportunities can still matter if they build judgment, communication, and career direction.",
+    "From Dr. Daniel Juliano, Joshua took away the importance of maximizing every opportunity, even when the opportunity does not look impressive at first.",
+    "Dr. Rashid Islam's hovercraft example also showed that useful knowledge can come from people with different backgrounds, so being open-minded matters in team settings.",
+    "Dr. Faranak Nekoogar's example showed the importance of solving practical problems. Her RFID idea came from listening to a real issue firefighters faced, and that later became useful in shipping and tracking systems.",
+    "For CIP-1, one thing that worked in ENES 104 was hearing from professionals with different experiences. It made the course feel more connected to real industry instead of only classroom concepts.",
+    "One thing that could be improved is setting clearer professionalism expectations earlier in the semester. If students understood the expected structure and behavior from the start, the class could feel more organized.",
+    "For example, the first few sessions could include clearer expectations for participation, speaker questions, and how students should connect the speaker lessons to their own goals. Any questions on that?",
+    "For CIP-2, we used the team-building workshop mainly to understand how each person preferred to contribute. That helped us divide the reflection work based on what each person connected with most.",
+    "For feedback, we compared our main takeaways and discussed which points overlapped. Then we combined the strongest themes into one group message instead of keeping three separate reflections.",
+    "One thing we could improve is making the group presentation more balanced. Some slides have more detail than others, so the final version should make each person's section feel equally developed.",
+    "We could also improve the visual design by cutting down text and using the slides more as speaking guides rather than full notes.",
+    "Overall, ENES 104 helped us see that engineering success depends on technical skill, but also on professionalism, adaptability, impact, and the ability to keep learning from every opportunity."
+  ],
+  "facultyAINotes": [
+    {
+      "afterChunk": 5,
+      "recommendation": "stay_quiet",
+      "reason": "The team slide is still framing shared takeaways and should not be interrupted yet."
+    },
+    {
+      "afterChunk": 9,
+      "recommendation": "ask_freeform_question",
+      "question": "As a Computer Science major, can you give one example of how 'good enough' in industry is different from doing low-quality work?",
+      "reason": "This scenario is meant to test profile-aware wording on an individual slide."
+    },
+    {
+      "afterChunk": 18,
+      "recommendation": "ask_freeform_question",
+      "question": "What specific professionalism expectation would you add to the first few ENES 104 sessions, and why that one first?",
+      "reason": "This should test the sharper CIP-1 handoff question."
+    },
+    {
+      "afterChunk": 21,
+      "recommendation": "stay_quiet",
+      "reason": "The team is already critiquing slide balance and visuals, so interruption here should usually be avoided."
+    },
+    {
+      "afterChunk": 23,
+      "recommendation": "ask_freeform_question",
+      "question": "What is the single most important lesson your group would carry into future engineering projects?",
+      "reason": "This should test the closing-synthesis path."
+    }
+  ]
+}

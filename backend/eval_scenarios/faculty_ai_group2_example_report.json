@@ -1,0 +1,1111 @@
+{
+  "scenario": "C:\\Users\\Anto\\Desktop\\GithubFiles\\FacultyAI\\backend\\eval_scenarios\\faculty_ai_group2_example_scenario.json",
+  "questionSource": "llm",
+  "runtimeMode": "heuristic",
+  "slideCount": 7,
+  "preparedQuestionCount": 6,
+  "facultyAINotes": [
+    {
+      "afterChunk": 5,
+      "recommendation": "stay_quiet",
+      "reason": "The intro and framing are still building context; interruption here would disrupt flow."
+    },
+    {
+      "afterChunk": 9,
+      "recommendation": "ask_prepared_question",
+      "question": "Can you give one example of how 'good enough' in industry is different from doing low-quality work?",
+      "reason": "The speaker introduced a concept that could be misunderstood and benefits from clarification."
+    },
+    {
+      "afterChunk": 15,
+      "recommendation": "ask_freeform_question",
+      "question": "How do the speaker examples connect back to your own career goals or future teamwork?",
+      "reason": "The reflections mention multiple lessons but could be pushed toward personal application."
+    },
+    {
+      "afterChunk": 18,
+      "recommendation": "ask_prepared_question",
+      "question": "What specific professionalism expectation would you add to the first few ENES 104 sessions?",
+      "reason": "The CIP-1 improvement is valid but vague; a targeted question would make it more actionable."
+    },
+    {
+      "afterChunk": 21,
+      "recommendation": "stay_quiet",
+      "reason": "The speaker is already identifying weaknesses and improvements; interrupting here may be redundant."
+    },
+    {
+      "afterChunk": 23,
+      "recommendation": "ask_freeform_question",
+      "question": "What is the single most important lesson your group would carry into future engineering projects?",
+      "reason": "This is a good final reflection moment and would test whether the conclusion is specific enough."
+    }
+  ],
+  "rows": [
+    {
+      "index": 0,
+      "chunk": "Today we are presenting our final ENES 104 group reflection. Our group members are Antranig Tatarian, Joshua Fawole, and Natneal Belete.",
+      "currentSlideNumber": 1,
+      "decision": "no_trigger",
+      "feedback": null,
+      "queuedFeedback": null,
+      "resolvedFeedback": null,
+      "answerEvaluation": null,
+      "reason": "No end-of-slide question handoff detected.",
+      "diagnostics": {
+        "preparedCandidates": [],
+        "freeformCandidates": [],
+        "selectedCandidate": null
+      }
+    },
+    {
+      "index": 1,
+      "chunk": "Our goal is to explain the main lessons we took from the course speakers and how those lessons changed the way we think about engineering, professionalism, and teamwork.",
+      "currentSlideNumber": 1,
+      "decision": "no_trigger",
+      "feedback": null,
+      "queuedFeedback": null,
+      "resolvedFeedback": null,
+      "answerEvaluation": null,
+      "reason": "No end-of-slide question handoff detected.",
+      "diagnostics": {
+        "preparedCandidates": [],
+        "freeformCandidates": [],
+        "selectedCandidate": null
+      }
+    },
+    {
+      "index": 2,
+      "chunk": "Across the semester, a few themes stood out to us as a group: professionalism, problem-solving, team collaboration, perseverance in industry, and the pursuit of knowledge.",
+      "currentSlideNumber": 2,
+      "decision": "no_trigger",
+      "feedback": null,
+      "queuedFeedback": null,
+      "resolvedFeedback": null,
+      "answerEvaluation": null,
+      "reason": "No end-of-slide question handoff detected.",
+      "diagnostics": {
+        "preparedCandidates": [],
+        "freeformCandidates": [],
+        "selectedCandidate": null
+      }
+    },
+    {
+      "index": 3,
+      "chunk": "These ideas kept showing up in different speakers' stories, even when they came from different industries or career paths.",
+      "currentSlideNumber": 2,
+      "decision": "no_trigger",
+      "feedback": null,
+      "queuedFeedback": null,
+      "resolvedFeedback": null,
+      "answerEvaluation": null,
+      "reason": "No end-of-slide question handoff detected.",
+      "diagnostics": {
+        "preparedCandidates": [],
+        "freeformCandidates": [],
+        "selectedCandidate": null
+      }
+    },
+    {
+      "index": 4,
+      "chunk": "For us, the biggest point was that success in engineering is not only about technical ability. It also depends on how you communicate, adapt, learn, and contribute to a team.",
+      "currentSlideNumber": 2,
+      "decision": "no_trigger",
+      "feedback": null,
+      "queuedFeedback": null,
+      "resolvedFeedback": null,
+      "answerEvaluation": null,
+      "reason": "No strong deterministic faculty move was found.",
+      "diagnostics": {
+        "preparedCandidates": [],
+        "freeformCandidates": [],
+        "selectedCandidate": null
+      }
+    },
+    {
+      "index": 5,
+      "chunk": "For my personal reflection, the speaker who stood out most was Dr. Joseph Varghese because he gave a very real perspective on working in Silicon Valley and in industry overall.",
+      "currentSlideNumber": 3,
+      "decision": "no_trigger",
+      "feedback": null,
+      "queuedFeedback": null,
+      "resolvedFeedback": null,
+      "answerEvaluation": null,
+      "reason": "No end-of-slide question handoff detected.",
+      "diagnostics": {
+        "preparedCandidates": [
+          {
+            "interactionType": "prepared_question",
+            "score": 12,
+            "priority": "medium",
+            "message": "Antranig, you highlighted Dr. Varghese's 'good enough' concept and Dr. Islam's 'wild-card' perspective. How do you reconcile these potentially conflicting ideas when applying them to your own engineering decisions?",
+            "reason": "Prepared concern from rubric category 'individual_lesson'.",
+            "sourceQuestionId": "slide3_antranig_speaker_application"
+          }
+        ],
+        "freeformCandidates": [
+          {
+            "interactionType": "freeform_question",
+            "score": 19,
+            "priority": "high",
+            "message": "Antranig, what changed in your view of engineering because of this lesson, and what specific experience caused that change?",
+            "reason": "Generated Assignment 6 feedback for individual application.",
+            "sourceQuestionId": null
+          }
+        ],
+        "selectedCandidate": {
+          "interactionType": "freeform_question",
+          "score": 19,
+          "priority": "high",
+          "message": "Antranig, what changed in your view of engineering because of this lesson, and what specific experience caused that change?",
+          "reason": "Generated Assignment 6 feedback for individual application.",
+          "sourceQuestionId": null
+        }
+      }
+    },
+    {
+      "index": 6,
+      "chunk": "One idea I took from him was the importance of interviewing the interviewer. Instead of only trying to impress a company, you also need to understand whether that environment is the right place for you to grow.",
+      "currentSlideNumber": 3,
+      "decision": "no_trigger",
+      "feedback": null,
+      "queuedFeedback": null,
+      "resolvedFeedback": null,
+      "answerEvaluation": null,
+      "reason": "No end-of-slide question handoff detected.",
+      "diagnostics": {
+        "preparedCandidates": [
+          {
+            "interactionType": "prepared_question",
+            "score": 14,
+            "priority": "medium",
+            "message": "Antranig, you highlighted Dr. Varghese's 'good enough' concept and Dr. Islam's 'wild-card' perspective. How do you reconcile these potentially conflicting ideas when applying them to your own engineering decisions?",
+            "reason": "Prepared concern from rubric category 'individual_lesson'.",
+            "sourceQuestionId": "slide3_antranig_speaker_application"
+          }
+        ],
+        "freeformCandidates": [
+          {
+            "interactionType": "freeform_question",
+            "score": 19,
+            "priority": "high",
+            "message": "Antranig, what changed in your view of engineering because of this lesson, and what specific experience caused that change?",
+            "reason": "Generated Assignment 6 feedback for individual application.",
+            "sourceQuestionId": null
+          }
+        ],
+        "selectedCandidate": {
+          "interactionType": "freeform_question",
+          "score": 19,
+          "priority": "high",
+          "message": "Antranig, what changed in your view of engineering because of this lesson, and what specific experience caused that change?",
+          "reason": "Generated Assignment 6 feedback for individual application.",
+          "sourceQuestionId": null
+        }
+      }
+    },
+    {
+      "index": 7,
+      "chunk": "Another lesson was that industry often works with a 'good enough' standard. That does not mean doing poor work; it means knowing when something meets the real requirement instead of chasing perfection forever.",
+      "currentSlideNumber": 3,
+      "decision": "no_trigger",
+      "feedback": null,
+      "queuedFeedback": {
+        "type": "question",
+        "priority": "medium",
+        "section": "demo",
+        "message": "Antranig, you highlighted Dr. Varghese's 'good enough' concept and Dr. Islam's 'wild-card' perspective. How do you reconcile these potentially conflicting ideas when applying them to your own engineering decisions?",
+        "reason": "Timing gate: waiting for the presenter to spend longer on the slide before interrupting (12.0s so far, target 14s).",
+        "createdAt": "2026-04-25T19:56:17.742458+00:00",
+        "slideNumber": 3,
+        "resolved": false,
+        "resolvedAt": null,
+        "resolutionReason": null,
+        "sourceQuestionId": "slide3_antranig_speaker_application",
+        "autoResolutionTerms": [
+          "Clear conflict resolution strategy",
+          "Concrete application examples"
+        ],
+        "deliveryStatus": "queued",
+        "followUpToQuestionId": null,
+        "answerQuality": null,
+        "targetStudent": "Antranig"
+      },
+      "resolvedFeedback": null,
+      "answerEvaluation": null,
+      "reason": "Timing gate: waiting for the presenter to spend longer on the slide before interrupting (12.0s so far, target 14s).",
+      "diagnostics": {
+        "preparedCandidates": [
+          {
+            "interactionType": "prepared_question",
+            "score": 14,
+            "priority": "medium",
+            "message": "Antranig, you highlighted Dr. Varghese's 'good enough' concept and Dr. Islam's 'wild-card' perspective. How do you reconcile these potentially conflicting ideas when applying them to your own engineering decisions?",
+            "reason": "Prepared concern from rubric category 'individual_lesson'.",
+            "sourceQuestionId": "slide3_antranig_speaker_application"
+          }
+        ],
+        "freeformCandidates": [
+          {
+            "interactionType": "freeform_question",
+            "score": 22,
+            "priority": "high",
+            "message": "Antranig, can you give one example of how 'good enough' in industry is different from doing low-quality work?",
+            "reason": "Generated Assignment 6 feedback for clarifying the 'good enough' concept.",
+            "sourceQuestionId": null
+          },
+          {
+            "interactionType": "freeform_question",
+            "score": 19,
+            "priority": "high",
+            "message": "Antranig, what changed in your view of engineering because of this lesson, and what specific experience caused that change?",
+            "reason": "Generated Assignment 6 feedback for individual application.",
+            "sourceQuestionId": null
+          }
+        ],
+        "selectedCandidate": {
+          "interactionType": "freeform_question",
+          "score": 22,
+          "priority": "high",
+          "message": "Antranig, can you give one example of how 'good enough' in industry is different from doing low-quality work?",
+          "reason": "Generated Assignment 6 feedback for clarifying the 'good enough' concept.",
+          "sourceQuestionId": null
+        }
+      }
+    },
+    {
+      "index": 8,
+      "chunk": "Dr. Varghese also emphasized that what you know today can become outdated quickly. That made me think differently about engineering because continuous learning is not optional; it is part of the career.",
+      "currentSlideNumber": 3,
+      "decision": "trigger",
+      "feedback": {
+        "type": "question",
+        "priority": "medium",
+        "section": "demo",
+        "message": "Antranig, you highlighted Dr. Varghese's 'good enough' concept and Dr. Islam's 'wild-card' perspective. How do you reconcile these potentially conflicting ideas when applying them to your own engineering decisions?",
+        "reason": "Timing gate: waiting for the presenter to spend longer on the slide before interrupting (12.0s so far, target 14s).",
+        "createdAt": "2026-04-25T19:56:17.742458+00:00",
+        "slideNumber": 3,
+        "resolved": false,
+        "resolvedAt": null,
+        "resolutionReason": null,
+        "sourceQuestionId": "slide3_antranig_speaker_application",
+        "autoResolutionTerms": [
+          "Clear conflict resolution strategy",
+          "Concrete application examples"
+        ],
+        "deliveryStatus": "active",
+        "followUpToQuestionId": null,
+        "answerQuality": null,
+        "targetStudent": "Antranig"
+      },
+      "queuedFeedback": null,
+      "resolvedFeedback": null,
+      "answerEvaluation": null,
+      "reason": "Delivered a previously queued faculty question once timing conditions were safe.",
+      "diagnostics": {
+        "preparedCandidates": [
+          {
+            "interactionType": "prepared_question",
+            "score": 14,
+            "priority": "medium",
+            "message": "Antranig, you highlighted Dr. Varghese's 'good enough' concept and Dr. Islam's 'wild-card' perspective. How do you reconcile these potentially conflicting ideas when applying them to your own engineering decisions?",
+            "reason": "Prepared concern from rubric category 'individual_lesson'.",
+            "sourceQuestionId": "slide3_antranig_speaker_application"
+          }
+        ],
+        "freeformCandidates": [],
+        "selectedCandidate": {
+          "interactionType": "prepared_question",
+          "score": 14,
+          "priority": "medium",
+          "message": "Antranig, you highlighted Dr. Varghese's 'good enough' concept and Dr. Islam's 'wild-card' perspective. How do you reconcile these potentially conflicting ideas when applying them to your own engineering decisions?",
+          "reason": "Prepared concern from rubric category 'individual_lesson'.",
+          "sourceQuestionId": "slide3_antranig_speaker_application"
+        }
+      }
+    },
+    {
+      "index": 9,
+      "chunk": "From Dr. Islam, I took away the importance of being reliable and being comfortable saying 'I do not know.' In a team or startup environment, being honest and willing to learn can matter more than pretending to have every answer.",
+      "currentSlideNumber": 3,
+      "decision": "no_trigger",
+      "feedback": null,
+      "queuedFeedback": null,
+      "resolvedFeedback": null,
+      "answerEvaluation": {
+        "questionId": "slide3_antranig_speaker_application",
+        "answered": false,
+        "answerQuality": "weak",
+        "missingPoints": [
+          "Clear conflict resolution strategy",
+          "Concrete application examples"
+        ],
+        "shouldAskFollowUp": false,
+        "followUpQuestion": null
+      },
+      "reason": "This slide already received its one faculty question for this presentation.",
+      "diagnostics": {
+        "preparedCandidates": [
+          {
+            "interactionType": "prepared_question",
+            "score": 14,
+            "priority": "medium",
+            "message": "Antranig, you highlighted Dr. Varghese's 'good enough' concept and Dr. Islam's 'wild-card' perspective. How do you reconcile these potentially conflicting ideas when applying them to your own engineering decisions?",
+            "reason": "Prepared concern from rubric category 'individual_lesson'.",
+            "sourceQuestionId": "slide3_antranig_speaker_application"
+          }
+        ],
+        "freeformCandidates": [
+          {
+            "interactionType": "freeform_question",
+            "score": 19,
+            "priority": "high",
+            "message": "Antranig, what changed in your view of engineering because of this lesson, and what specific experience caused that change?",
+            "reason": "Generated Assignment 6 feedback for individual application.",
+            "sourceQuestionId": null
+          },
+          {
+            "interactionType": "freeform_question",
+            "score": 18,
+            "priority": "high",
+            "message": "Antranig, how does this lesson change the way you would approach a future engineering project or team decision?",
+            "reason": "Generated Assignment 6 feedback for future engineering application.",
+            "sourceQuestionId": null
+          }
+        ],
+        "selectedCandidate": {
+          "interactionType": "freeform_question",
+          "score": 19,
+          "priority": "high",
+          "message": "Antranig, what changed in your view of engineering because of this lesson, and what specific experience caused that change?",
+          "reason": "Generated Assignment 6 feedback for individual application.",
+          "sourceQuestionId": null
+        }
+      }
+    },
+    {
+      "index": 10,
+      "chunk": "Joshua's reflection also connected strongly to the idea of impact. From Dr. Joseph Varghese, we learned that simply listing participation or accomplishments on a resume is not enough.",
+      "currentSlideNumber": 5,
+      "decision": "no_trigger",
+      "feedback": null,
+      "queuedFeedback": null,
+      "resolvedFeedback": null,
+      "answerEvaluation": null,
+      "reason": "No end-of-slide question handoff detected.",
+      "diagnostics": {
+        "preparedCandidates": [
+          {
+            "interactionType": "prepared_question",
+            "score": 18,
+            "priority": "high",
+            "message": "Joshua, you emphasized maximizing early opportunities and embracing diverse knowledge sources. Can you describe a specific scenario where these principles might lead to different outcomes compared to traditional career advancement strategies?",
+            "reason": "Prepared concern from rubric category 'individual_lesson'.",
+            "sourceQuestionId": "slide5_joshua_opportunity_maximization"
+          }
+        ],
+        "freeformCandidates": [
+          {
+            "interactionType": "freeform_question",
+            "score": 19,
+            "priority": "high",
+            "message": "Joshua, what changed in your view of engineering because of this lesson, and what specific experience caused that change?",
+            "reason": "Generated Assignment 6 feedback for individual application.",
+            "sourceQuestionId": null
+          },
+          {
+            "interactionType": "freeform_question",
+            "score": 18,
+            "priority": "high",
+            "message": "Joshua, how does this lesson change the way you would approach a future engineering project or team decision?",
+            "reason": "Generated Assignment 6 feedback for future engineering application.",
+            "sourceQuestionId": null
+          },
+          {
+            "interactionType": "freeform_question",
+            "score": 17,
+            "priority": "high",
+            "message": "If management could only act on one improvement, which one would most change the next ENES 104 student's experience?",
+            "reason": "Generated Assignment 6 feedback for course improvement planning.",
+            "sourceQuestionId": null
+          }
+        ],
+        "selectedCandidate": {
+          "interactionType": "freeform_question",
+          "score": 19,
+          "priority": "high",
+          "message": "Joshua, what changed in your view of engineering because of this lesson, and what specific experience caused that change?",
+          "reason": "Generated Assignment 6 feedback for individual application.",
+          "sourceQuestionId": null
+        }
+      }
+    },
+    {
+      "index": 11,
+      "chunk": "The stronger approach is to ask what changed because of your work. If you can show numerical, personal, or professional impact, then your experience becomes more meaningful.",
+      "currentSlideNumber": 5,
+      "decision": "no_trigger",
+      "feedback": null,
+      "queuedFeedback": null,
+      "resolvedFeedback": null,
+      "answerEvaluation": null,
+      "reason": "No end-of-slide question handoff detected.",
+      "diagnostics": {
+        "preparedCandidates": [
+          {
+            "interactionType": "prepared_question",
+            "score": 15,
+            "priority": "high",
+            "message": "Joshua, you emphasized maximizing early opportunities and embracing diverse knowledge sources. Can you describe a specific scenario where these principles might lead to different outcomes compared to traditional career advancement strategies?",
+            "reason": "Prepared concern from rubric category 'individual_lesson'.",
+            "sourceQuestionId": "slide5_joshua_opportunity_maximization"
+          }
+        ],
+        "freeformCandidates": [
+          {
+            "interactionType": "freeform_question",
+            "score": 19,
+            "priority": "high",
+            "message": "Joshua, what changed in your view of engineering because of this lesson, and what specific experience caused that change?",
+            "reason": "Generated Assignment 6 feedback for individual application.",
+            "sourceQuestionId": null
+          },
+          {
+            "interactionType": "freeform_question",
+            "score": 18,
+            "priority": "high",
+            "message": "Joshua, how does this lesson change the way you would approach a future engineering project or team decision?",
+            "reason": "Generated Assignment 6 feedback for future engineering application.",
+            "sourceQuestionId": null
+          }
+        ],
+        "selectedCandidate": {
+          "interactionType": "freeform_question",
+          "score": 19,
+          "priority": "high",
+          "message": "Joshua, what changed in your view of engineering because of this lesson, and what specific experience caused that change?",
+          "reason": "Generated Assignment 6 feedback for individual application.",
+          "sourceQuestionId": null
+        }
+      }
+    },
+    {
+      "index": 12,
+      "chunk": "From Dr. Daniel Juliano, Joshua took away the importance of maximizing every opportunity. Some early opportunities may not look impressive at first, but they can still build skills, confidence, and professional growth.",
+      "currentSlideNumber": 5,
+      "decision": "trigger",
+      "feedback": {
+        "type": "question",
+        "priority": "high",
+        "section": "demo",
+        "message": "Joshua, you emphasized maximizing early opportunities and embracing diverse knowledge sources. Can you describe a specific scenario where these principles might lead to different outcomes compared to traditional career advancement strategies?",
+        "reason": "Rubric focus: individual_lesson. The current slide has enough spoken context for this prepared concern, but the explanation has not addressed it yet.",
+        "createdAt": "2026-04-25T19:56:17.817591+00:00",
+        "slideNumber": 5,
+        "resolved": false,
+        "resolvedAt": null,
+        "resolutionReason": null,
+        "sourceQuestionId": "slide5_joshua_opportunity_maximization",
+        "autoResolutionTerms": [
+          "Concrete situational example",
+          "Critical evaluation of approaches"
+        ],
+        "deliveryStatus": "active",
+        "followUpToQuestionId": null,
+        "answerQuality": null,
+        "targetStudent": "Joshua"
+      },
+      "queuedFeedback": null,
+      "resolvedFeedback": null,
+      "answerEvaluation": null,
+      "reason": "Generated proactive feedback from prepared slide question. Selected prepared faculty move over freeform alternative.",
+      "diagnostics": {
+        "preparedCandidates": [
+          {
+            "interactionType": "prepared_question",
+            "score": 14,
+            "priority": "high",
+            "message": "Joshua, you emphasized maximizing early opportunities and embracing diverse knowledge sources. Can you describe a specific scenario where these principles might lead to different outcomes compared to traditional career advancement strategies?",
+            "reason": "Prepared concern from rubric category 'individual_lesson'.",
+            "sourceQuestionId": "slide5_joshua_opportunity_maximization"
+          }
+        ],
+        "freeformCandidates": [
+          {
+            "interactionType": "freeform_question",
+            "score": 19,
+            "priority": "high",
+            "message": "Joshua, what changed in your view of engineering because of this lesson, and what specific experience caused that change?",
+            "reason": "Generated Assignment 6 feedback for individual application.",
+            "sourceQuestionId": null
+          },
+          {
+            "interactionType": "freeform_question",
+            "score": 18,
+            "priority": "high",
+            "message": "Joshua, how does this lesson change the way you would approach a future engineering project or team decision?",
+            "reason": "Generated Assignment 6 feedback for future engineering application.",
+            "sourceQuestionId": null
+          }
+        ],
+        "selectedCandidate": {
+          "interactionType": "freeform_question",
+          "score": 19,
+          "priority": "high",
+          "message": "Joshua, what changed in your view of engineering because of this lesson, and what specific experience caused that change?",
+          "reason": "Generated Assignment 6 feedback for individual application.",
+          "sourceQuestionId": null
+        }
+      }
+    },
+    {
+      "index": 13,
+      "chunk": "Dr. Rashid Islam's hovercraft example showed that useful knowledge can come from people with different backgrounds. That reminded us that teamwork works best when people stay open to ideas outside their own specialty.",
+      "currentSlideNumber": 5,
+      "decision": "no_trigger",
+      "feedback": null,
+      "queuedFeedback": null,
+      "resolvedFeedback": null,
+      "answerEvaluation": {
+        "questionId": "slide5_joshua_opportunity_maximization",
+        "answered": false,
+        "answerQuality": "weak",
+        "missingPoints": [
+          "Concrete situational example",
+          "Critical evaluation of approaches",
+          "metric"
+        ],
+        "shouldAskFollowUp": false,
+        "followUpQuestion": null
+      },
+      "reason": "This faculty question was already asked earlier in the session.",
+      "diagnostics": {
+        "preparedCandidates": [
+          {
+            "interactionType": "prepared_question",
+            "score": 16,
+            "priority": "high",
+            "message": "Joshua, you emphasized maximizing early opportunities and embracing diverse knowledge sources. Can you describe a specific scenario where these principles might lead to different outcomes compared to traditional career advancement strategies?",
+            "reason": "Prepared concern from rubric category 'individual_lesson'.",
+            "sourceQuestionId": "slide5_joshua_opportunity_maximization"
+          }
+        ],
+        "freeformCandidates": [
+          {
+            "interactionType": "freeform_question",
+            "score": 19,
+            "priority": "high",
+            "message": "Joshua, what changed in your view of engineering because of this lesson, and what specific experience caused that change?",
+            "reason": "Generated Assignment 6 feedback for individual application.",
+            "sourceQuestionId": null
+          }
+        ],
+        "selectedCandidate": {
+          "interactionType": "freeform_question",
+          "score": 19,
+          "priority": "high",
+          "message": "Joshua, what changed in your view of engineering because of this lesson, and what specific experience caused that change?",
+          "reason": "Generated Assignment 6 feedback for individual application.",
+          "sourceQuestionId": null
+        }
+      }
+    },
+    {
+      "index": 14,
+      "chunk": "Dr. Faranak Nekoogar's example also showed the importance of solving practical problems. Her RFID idea came from listening to a real issue firefighters faced, and that solution later became useful in shipping and tracking systems.",
+      "currentSlideNumber": 5,
+      "decision": "no_trigger",
+      "feedback": null,
+      "queuedFeedback": null,
+      "resolvedFeedback": null,
+      "answerEvaluation": {
+        "questionId": "slide5_joshua_opportunity_maximization",
+        "answered": false,
+        "answerQuality": "weak",
+        "missingPoints": [
+          "Concrete situational example",
+          "Critical evaluation of approaches",
+          "metric"
+        ],
+        "shouldAskFollowUp": false,
+        "followUpQuestion": null
+      },
+      "reason": "This faculty question was already asked earlier in the session.",
+      "diagnostics": {
+        "preparedCandidates": [
+          {
+            "interactionType": "prepared_question",
+            "score": 16,
+            "priority": "high",
+            "message": "Joshua, you emphasized maximizing early opportunities and embracing diverse knowledge sources. Can you describe a specific scenario where these principles might lead to different outcomes compared to traditional career advancement strategies?",
+            "reason": "Prepared concern from rubric category 'individual_lesson'.",
+            "sourceQuestionId": "slide5_joshua_opportunity_maximization"
+          }
+        ],
+        "freeformCandidates": [
+          {
+            "interactionType": "freeform_question",
+            "score": 19,
+            "priority": "high",
+            "message": "Joshua, what changed in your view of engineering because of this lesson, and what specific experience caused that change?",
+            "reason": "Generated Assignment 6 feedback for individual application.",
+            "sourceQuestionId": null
+          }
+        ],
+        "selectedCandidate": {
+          "interactionType": "freeform_question",
+          "score": 19,
+          "priority": "high",
+          "message": "Joshua, what changed in your view of engineering because of this lesson, and what specific experience caused that change?",
+          "reason": "Generated Assignment 6 feedback for individual application.",
+          "sourceQuestionId": null
+        }
+      }
+    },
+    {
+      "index": 15,
+      "chunk": "For CIP-1, one thing that worked in ENES 104 was hearing from professionals with different experiences. It made the course feel more connected to real industry instead of only classroom concepts.",
+      "currentSlideNumber": 6,
+      "decision": "no_trigger",
+      "feedback": null,
+      "queuedFeedback": null,
+      "resolvedFeedback": null,
+      "answerEvaluation": null,
+      "reason": "No end-of-slide question handoff detected.",
+      "diagnostics": {
+        "preparedCandidates": [
+          {
+            "interactionType": "prepared_question",
+            "score": 12,
+            "priority": "medium",
+            "message": "Your CIP-1 suggests enforcing professionalism structure early. What specific metrics or indicators would you use to measure whether this change successfully improves student outcomes?",
+            "reason": "Prepared concern from rubric category 'cip_course_feedback'.",
+            "sourceQuestionId": "slide6_cip_course_feedback"
+          }
+        ],
+        "freeformCandidates": [
+          {
+            "interactionType": "freeform_question",
+            "score": 17,
+            "priority": "high",
+            "message": "If management could only act on one improvement, which one would most change the next ENES 104 student's experience?",
+            "reason": "Generated Assignment 6 feedback for course improvement planning.",
+            "sourceQuestionId": null
+          }
+        ],
+        "selectedCandidate": {
+          "interactionType": "freeform_question",
+          "score": 17,
+          "priority": "high",
+          "message": "If management could only act on one improvement, which one would most change the next ENES 104 student's experience?",
+          "reason": "Generated Assignment 6 feedback for course improvement planning.",
+          "sourceQuestionId": null
+        }
+      }
+    },
+    {
+      "index": 16,
+      "chunk": "One thing that could be improved is setting clearer professionalism expectations earlier in the semester. If students understood the expected structure and behavior from the start, the class could feel more organized.",
+      "currentSlideNumber": 6,
+      "decision": "no_trigger",
+      "feedback": null,
+      "queuedFeedback": null,
+      "resolvedFeedback": null,
+      "answerEvaluation": null,
+      "reason": "No end-of-slide question handoff detected.",
+      "diagnostics": {
+        "preparedCandidates": [
+          {
+            "interactionType": "prepared_question",
+            "score": 12,
+            "priority": "medium",
+            "message": "Your CIP-1 suggests enforcing professionalism structure early. What specific metrics or indicators would you use to measure whether this change successfully improves student outcomes?",
+            "reason": "Prepared concern from rubric category 'cip_course_feedback'.",
+            "sourceQuestionId": "slide6_cip_course_feedback"
+          }
+        ],
+        "freeformCandidates": [
+          {
+            "interactionType": "freeform_question",
+            "score": 22,
+            "priority": "high",
+            "message": "What specific professionalism expectation would you add to the first few ENES 104 sessions, and why that one first?",
+            "reason": "Generated Assignment 6 feedback for a more actionable CIP-1 recommendation.",
+            "sourceQuestionId": null
+          },
+          {
+            "interactionType": "freeform_question",
+            "score": 17,
+            "priority": "high",
+            "message": "If management could only act on one improvement, which one would most change the next ENES 104 student's experience?",
+            "reason": "Generated Assignment 6 feedback for course improvement planning.",
+            "sourceQuestionId": null
+          },
+          {
+            "interactionType": "freeform_question",
+            "score": 12,
+            "priority": "medium",
+            "message": "What metric supports the claim you just made about Project Presentation?",
+            "reason": "Generated feedback for an unsupported claim.",
+            "sourceQuestionId": null
+          }
+        ],
+        "selectedCandidate": {
+          "interactionType": "freeform_question",
+          "score": 22,
+          "priority": "high",
+          "message": "What specific professionalism expectation would you add to the first few ENES 104 sessions, and why that one first?",
+          "reason": "Generated Assignment 6 feedback for a more actionable CIP-1 recommendation.",
+          "sourceQuestionId": null
+        }
+      }
+    },
+    {
+      "index": 17,
+      "chunk": "For example, the first few sessions could include clearer expectations for participation, speaker questions, and how students should connect the speaker lessons to their own goals.",
+      "currentSlideNumber": 6,
+      "decision": "trigger",
+      "feedback": {
+        "type": "question",
+        "priority": "high",
+        "section": "unknown",
+        "message": "What specific professionalism expectation would you add to the first few ENES 104 sessions, and why that one first?",
+        "reason": "The presenter proposed clearer professionalism expectations, but the recommendation still needs one concrete, prioritized change.",
+        "createdAt": "2026-04-25T19:56:17.889371+00:00",
+        "slideNumber": null,
+        "resolved": false,
+        "resolvedAt": null,
+        "resolutionReason": null,
+        "sourceQuestionId": null,
+        "autoResolutionTerms": [],
+        "deliveryStatus": "active",
+        "followUpToQuestionId": null,
+        "answerQuality": null,
+        "targetStudent": null
+      },
+      "queuedFeedback": null,
+      "resolvedFeedback": null,
+      "answerEvaluation": null,
+      "reason": "Generated Assignment 6 feedback for a more actionable CIP-1 recommendation. Selected freeform faculty move at slide handoff.",
+      "diagnostics": {
+        "preparedCandidates": [
+          {
+            "interactionType": "prepared_question",
+            "score": 12,
+            "priority": "medium",
+            "message": "Your CIP-1 suggests enforcing professionalism structure early. What specific metrics or indicators would you use to measure whether this change successfully improves student outcomes?",
+            "reason": "Prepared concern from rubric category 'cip_course_feedback'.",
+            "sourceQuestionId": "slide6_cip_course_feedback"
+          }
+        ],
+        "freeformCandidates": [
+          {
+            "interactionType": "freeform_question",
+            "score": 22,
+            "priority": "high",
+            "message": "What specific professionalism expectation would you add to the first few ENES 104 sessions, and why that one first?",
+            "reason": "Generated Assignment 6 feedback for a more actionable CIP-1 recommendation.",
+            "sourceQuestionId": null
+          },
+          {
+            "interactionType": "freeform_question",
+            "score": 17,
+            "priority": "high",
+            "message": "If management could only act on one improvement, which one would most change the next ENES 104 student's experience?",
+            "reason": "Generated Assignment 6 feedback for course improvement planning.",
+            "sourceQuestionId": null
+          }
+        ],
+        "selectedCandidate": {
+          "interactionType": "freeform_question",
+          "score": 22,
+          "priority": "high",
+          "message": "What specific professionalism expectation would you add to the first few ENES 104 sessions, and why that one first?",
+          "reason": "Generated Assignment 6 feedback for a more actionable CIP-1 recommendation.",
+          "sourceQuestionId": null
+        }
+      }
+    },
+    {
+      "index": 18,
+      "chunk": "For CIP-2, we used the team-building workshop mainly to understand how each person preferred to contribute. That helped us divide the reflection work based on what each person connected with most.",
+      "currentSlideNumber": 7,
+      "decision": "no_trigger",
+      "feedback": null,
+      "queuedFeedback": null,
+      "resolvedFeedback": null,
+      "answerEvaluation": null,
+      "reason": "No end-of-slide question handoff detected.",
+      "diagnostics": {
+        "preparedCandidates": [
+          {
+            "interactionType": "prepared_question",
+            "score": 16,
+            "priority": "high",
+            "message": "Your CIP-2 states collaboration was minimal. What specific team-building workshop techniques could have been applied to improve collaboration on individual slides while maintaining author ownership?",
+            "reason": "Prepared concern from rubric category 'cip_team_feedback'.",
+            "sourceQuestionId": "slide7_cip_team_feedback"
+          }
+        ],
+        "freeformCandidates": [
+          {
+            "interactionType": "freeform_question",
+            "score": 20,
+            "priority": "high",
+            "message": "What is one piece of teammate feedback that actually changed the final presentation, and why did you accept it?",
+            "reason": "Generated Assignment 6 feedback for concrete CIP-2 team feedback.",
+            "sourceQuestionId": null
+          }
+        ],
+        "selectedCandidate": {
+          "interactionType": "freeform_question",
+          "score": 20,
+          "priority": "high",
+          "message": "What is one piece of teammate feedback that actually changed the final presentation, and why did you accept it?",
+          "reason": "Generated Assignment 6 feedback for concrete CIP-2 team feedback.",
+          "sourceQuestionId": null
+        }
+      }
+    },
+    {
+      "index": 19,
+      "chunk": "For feedback, we compared our main takeaways and discussed which points overlapped. Then we combined the strongest themes into one group message instead of keeping three completely separate reflections.",
+      "currentSlideNumber": 7,
+      "decision": "no_trigger",
+      "feedback": null,
+      "queuedFeedback": null,
+      "resolvedFeedback": null,
+      "answerEvaluation": null,
+      "reason": "No end-of-slide question handoff detected.",
+      "diagnostics": {
+        "preparedCandidates": [
+          {
+            "interactionType": "prepared_question",
+            "score": 16,
+            "priority": "high",
+            "message": "Your CIP-2 states collaboration was minimal. What specific team-building workshop techniques could have been applied to improve collaboration on individual slides while maintaining author ownership?",
+            "reason": "Prepared concern from rubric category 'cip_team_feedback'.",
+            "sourceQuestionId": "slide7_cip_team_feedback"
+          }
+        ],
+        "freeformCandidates": [
+          {
+            "interactionType": "freeform_question",
+            "score": 20,
+            "priority": "high",
+            "message": "What is one piece of teammate feedback that actually changed the final presentation, and why did you accept it?",
+            "reason": "Generated Assignment 6 feedback for concrete CIP-2 team feedback.",
+            "sourceQuestionId": null
+          },
+          {
+            "interactionType": "freeform_question",
+            "score": 18,
+            "priority": "high",
+            "message": "Where did your team disagree about the most important ENES 104 takeaway, and how did that disagreement shape this slide?",
+            "reason": "Generated Assignment 6 feedback for team perspective.",
+            "sourceQuestionId": null
+          },
+          {
+            "interactionType": "freeform_question",
+            "score": 17,
+            "priority": "high",
+            "message": "What is one piece of teammate feedback that actually changed the final presentation, and why did you accept it?",
+            "reason": "Generated Assignment 6 feedback for team feedback.",
+            "sourceQuestionId": null
+          }
+        ],
+        "selectedCandidate": {
+          "interactionType": "freeform_question",
+          "score": 20,
+          "priority": "high",
+          "message": "What is one piece of teammate feedback that actually changed the final presentation, and why did you accept it?",
+          "reason": "Generated Assignment 6 feedback for concrete CIP-2 team feedback.",
+          "sourceQuestionId": null
+        }
+      }
+    },
+    {
+      "index": 20,
+      "chunk": "One thing we could improve is making the group presentation more balanced. Some slides have more detail than others, so the final version should make each person's section feel equally developed.",
+      "currentSlideNumber": 7,
+      "decision": "no_trigger",
+      "feedback": null,
+      "queuedFeedback": {
+        "type": "question",
+        "priority": "medium",
+        "section": "evaluation",
+        "message": "What metric supports the claim you just made about Project Presentation?",
+        "reason": "Timing gate: waiting for the presenter to spend longer on the slide before interrupting (12.0s so far, target 14s).",
+        "createdAt": "2026-04-25T19:56:17.938261+00:00",
+        "slideNumber": null,
+        "resolved": false,
+        "resolvedAt": null,
+        "resolutionReason": null,
+        "sourceQuestionId": null,
+        "autoResolutionTerms": [],
+        "deliveryStatus": "queued",
+        "followUpToQuestionId": null,
+        "answerQuality": null,
+        "targetStudent": null
+      },
+      "resolvedFeedback": null,
+      "answerEvaluation": null,
+      "reason": "Timing gate: waiting for the presenter to spend longer on the slide before interrupting (12.0s so far, target 14s).",
+      "diagnostics": {
+        "preparedCandidates": [],
+        "freeformCandidates": [
+          {
+            "interactionType": "freeform_question",
+            "score": 12,
+            "priority": "medium",
+            "message": "What metric supports the claim you just made about Project Presentation?",
+            "reason": "Generated feedback for an unsupported claim.",
+            "sourceQuestionId": null
+          },
+          {
+            "interactionType": "freeform_question",
+            "score": 6,
+            "priority": "low",
+            "message": "Replace the broad claim with one concrete example or measurable outcome.",
+            "reason": "Generated feedback for vague language.",
+            "sourceQuestionId": null
+          }
+        ],
+        "selectedCandidate": {
+          "interactionType": "freeform_question",
+          "score": 12,
+          "priority": "medium",
+          "message": "What metric supports the claim you just made about Project Presentation?",
+          "reason": "Generated feedback for an unsupported claim.",
+          "sourceQuestionId": null
+        }
+      }
+    },
+    {
+      "index": 21,
+      "chunk": "We could also improve the visual design by cutting down text and using the slides more as speaking guides rather than full notes.",
+      "currentSlideNumber": 7,
+      "decision": "trigger",
+      "feedback": {
+        "type": "question",
+        "priority": "medium",
+        "section": "evaluation",
+        "message": "What metric supports the claim you just made about Project Presentation?",
+        "reason": "Timing gate: waiting for the presenter to spend longer on the slide before interrupting (12.0s so far, target 14s).",
+        "createdAt": "2026-04-25T19:56:17.938261+00:00",
+        "slideNumber": null,
+        "resolved": false,
+        "resolvedAt": null,
+        "resolutionReason": null,
+        "sourceQuestionId": null,
+        "autoResolutionTerms": [],
+        "deliveryStatus": "active",
+        "followUpToQuestionId": null,
+        "answerQuality": null,
+        "targetStudent": null
+      },
+      "queuedFeedback": null,
+      "resolvedFeedback": null,
+      "answerEvaluation": null,
+      "reason": "Delivered a previously queued faculty question once timing conditions were safe.",
+      "diagnostics": {
+        "preparedCandidates": [],
+        "freeformCandidates": [
+          {
+            "interactionType": "freeform_question",
+            "score": 12,
+            "priority": "medium",
+            "message": "What metric supports the claim you just made about Project Presentation?",
+            "reason": "Generated feedback for an unsupported claim.",
+            "sourceQuestionId": null
+          },
+          {
+            "interactionType": "freeform_question",
+            "score": 6,
+            "priority": "low",
+            "message": "Replace the broad claim with one concrete example or measurable outcome.",
+            "reason": "Generated feedback for vague language.",
+            "sourceQuestionId": null
+          }
+        ],
+        "selectedCandidate": {
+          "interactionType": "freeform_question",
+          "score": 12,
+          "priority": "medium",
+          "message": "What metric supports the claim you just made about Project Presentation?",
+          "reason": "Generated feedback for an unsupported claim.",
+          "sourceQuestionId": null
+        }
+      }
+    },
+    {
+      "index": 22,
+      "chunk": "Overall, ENES 104 helped us see that engineering success depends on technical skill, but also on professionalism, adaptability, impact, and the ability to keep learning from every opportunity.",
+      "currentSlideNumber": 7,
+      "decision": "no_trigger",
+      "feedback": null,
+      "queuedFeedback": {
+        "type": "question",
+        "priority": "high",
+        "section": "conclusion",
+        "message": "What is the single most important lesson your group would carry into future engineering projects?",
+        "reason": "Queued while FacultyAI waits for the presenter to finish answering the earlier question.",
+        "createdAt": "2026-04-25T19:56:17.971784+00:00",
+        "slideNumber": null,
+        "resolved": false,
+        "resolvedAt": null,
+        "resolutionReason": null,
+        "sourceQuestionId": null,
+        "autoResolutionTerms": [],
+        "deliveryStatus": "queued",
+        "followUpToQuestionId": null,
+        "answerQuality": null,
+        "targetStudent": null
+      },
+      "resolvedFeedback": null,
+      "answerEvaluation": {
+        "questionId": "2026-04-25T19:56:17.938261+00:00",
+        "answered": false,
+        "answerQuality": "weak",
+        "missingPoints": [
+          "metric",
+          "baseline",
+          "measured"
+        ],
+        "shouldAskFollowUp": false,
+        "followUpQuestion": null
+      },
+      "reason": "Answer window active: FacultyAI queued the next question instead of stacking interruptions.",
+      "diagnostics": {
+        "preparedCandidates": [
+          {
+            "interactionType": "prepared_question",
+            "score": 16,
+            "priority": "high",
+            "message": "Your CIP-2 states collaboration was minimal. What specific team-building workshop techniques could have been applied to improve collaboration on individual slides while maintaining author ownership?",
+            "reason": "Prepared concern from rubric category 'cip_team_feedback'.",
+            "sourceQuestionId": "slide7_cip_team_feedback"
+          }
+        ],
+        "freeformCandidates": [
+          {
+            "interactionType": "freeform_question",
+            "score": 19,
+            "priority": "high",
+            "message": "What is the single most important lesson your group would carry into future engineering projects?",
+            "reason": "Generated Assignment 6 feedback for closing synthesis.",
+            "sourceQuestionId": null
+          }
+        ],
+        "selectedCandidate": {
+          "interactionType": "freeform_question",
+          "score": 19,
+          "priority": "high",
+          "message": "What is the single most important lesson your group would carry into future engineering projects?",
+          "reason": "Generated Assignment 6 feedback for closing synthesis.",
+          "sourceQuestionId": null
+        }
+      }
+    }
+  ]
+}

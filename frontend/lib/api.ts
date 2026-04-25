@@ -86,6 +86,7 @@ export async function analyzeChunk(params: {
   slideMode?: "auto" | "manual";
   presentationSlides?: Slide[];
   preparedQuestions?: PreparedQuestion[];
+  studentCoverage?: Record<string, number>;
 }): Promise<AnalyzeResponse> {
   const response = await fetchWithRetry(`${API_BASE}/analyze-chunk`, {
     method: "POST",

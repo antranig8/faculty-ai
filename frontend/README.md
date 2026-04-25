@@ -38,3 +38,4 @@ npm run frontend:dev
 - Infers the active slide automatically, with manual override available
 - Speaks triggered faculty questions with Deepgram TTS when enabled
 - Lets users resolve or reopen faculty questions in the feedback drawer
+- Shows queued questions, answer-quality state, and targeted-student metadata when available

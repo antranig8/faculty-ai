@@ -35,6 +35,12 @@ def start_session(payload: SessionStartRequest) -> SessionStartResponse:
         "active_slide_chunk_count": 0,
         "candidate_slide_number": None,
         "candidate_slide_hits": 0,
+        "queued_feedback": None,
+        "follow_up_attempts": {},
+        "slide_started_at": None,
+        "last_transcript_at": None,
+        "student_coverage": {},
+        "student_profiles": {},
     }
     state.save_session(session_id, session)
     return SessionStartResponse(sessionId=session_id)
@@ -78,6 +84,7 @@ def update_feedback_resolution(session_id: str, created_at: str, payload: Feedba
         raise HTTPException(status_code=404, detail="Feedback item not found")
 
     target.resolved = payload.resolved
+    target.deliveryStatus = "resolved" if payload.resolved else "active"
     target.resolvedAt = state.utc_now_iso() if payload.resolved else None
     target.resolutionReason = payload.resolutionReason if payload.resolved else None
 

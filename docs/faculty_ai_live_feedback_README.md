@@ -44,15 +44,23 @@ The system should avoid filler, duplication, and over-triggering.
 - professor-owned rubric and assignment setup
 - `.pptx` upload and slide text extraction
 - slide-aware prepared faculty question generation
+- slide category and slide author inference
 - prepared-question caching
 - live microphone transcription through Deepgram
 - automatic slide inference from transcript content
 - manual slide override in the UI
 - selective faculty-question triggering
+- queued-question delivery when timing is not yet right
+- explicit answer evaluation with `weak`, `partial`, and `strong` outcomes
+- one-follow-up-max flow for partial answers
+- timing-aware delivery based on time spent on the current slide
+- stronger deterministic ranking across multiple valid prepared concerns
 - cooldown and dedupe logic
 - one-question-per-slide enforcement
 - question resolution and reopen flow
+- visible trigger and resolution reasons in the feedback drawer
 - faculty voice playback through Deepgram TTS with HTTP fallback
+- lightweight student-profile memory for major / discipline / interest cues on individual reflection slides
 - SQLite persistence for professor config, session state, feedback, and prepared-question cache
 
 ### What Does Not Exist
@@ -127,6 +135,8 @@ Backend responsibilities:
    - professor-owned assignment context
 7. The backend either:
    - does nothing
+   - queues a question for a better moment
+   - evaluates whether the presenter answered a previous question
    - auto-resolves a previously asked question
    - emits one faculty question
 8. The frontend shows the alert, opens the drawer, and optionally speaks the question aloud.
@@ -136,11 +146,19 @@ Backend responsibilities:
 The live decision model is now closer to:
 
 ```text
-Professor rubric + prepared slide concerns + inferred current slide + recent transcript
-= decide whether a faculty question should be asked now
+Slide context + transcript evidence + assignment framing + timing state + prepared concerns + conversation memory
+= decide the best faculty move right now
 ```
 
-The project no longer relies on a generic "ask anything interesting" model. Prepared slide-aware concerns are the primary source material, with heuristic and optional LLM logic deciding whether the moment is strong enough to interrupt.
+Prepared questions are still important, but they are no longer the only meaningful source of questions. The runtime can now choose between:
+
+- prepared slide-aware question
+- freeform question
+- follow-up
+- wait
+- skip
+
+Prepared concerns act as anchors. Deterministic and optional LLM logic decide whether the stronger move is to use one of those anchors or ask a better freeform question tied to the live moment.
 
 ## Repository Layout
 
@@ -164,9 +182,13 @@ FacultyAI/
 |  |- package.json
 |  `- README.md
 |- docs/
+|  |- faculty_ai_how_it_thinks.md
+|  |- faculty_ai_interaction_model.md
 |  |- faculty_ai_live_feedback_README.md
+|  |- faculty_ai_eval_harness.md
+|  |- faculty_ai_POTENTIAL.md
 |  |- slide_aware_faculty_examiner_direction.md
-|  `- speech_provider_split.md
+|  `- what_i_need_from_you_for_eval.md
 |- faculty_ai.db
 |- package.json
 `- README.md
@@ -210,6 +232,11 @@ Persisted data currently includes:
 - session payloads
 - feedback history
 - prepared-question cache
+- queued question state
+- follow-up state
+- slide timing state
+- lightweight student coverage state
+- lightweight student profile state
 
 ## Configuration
 
@@ -276,14 +303,18 @@ The current product should follow these rules:
 The strongest missing pieces in the current build are:
 
 - a real session history/results page
-- clearer visibility into why a question triggered or auto-resolved
-- stronger observability for provider/model status
-- richer review of past rehearsals after the live session ends
+- richer observability for provider/model status and internal decision ranking
+- better post-session rehearsal review beyond the live drawer
+- more explicit rubric-coverage reporting across the whole presentation
+- better UI visibility into why one valid concern beat another when several were available
+- true multi-user/session workflows
 
 ## Related Docs
 
 - `README.md`: current project overview and run instructions
 - `backend/README.md`: backend routes, config, and persistence
 - `frontend/README.md`: frontend routes and current behavior
-- `docs/slide_aware_faculty_examiner_direction.md`: design intent
-- `docs/speech_provider_split.md`: provider separation rationale
+- `docs/faculty_ai_how_it_thinks.md`: plain-English runtime explanation
+- `docs/faculty_ai_interaction_model.md`: current interaction-model direction
+- `docs/faculty_ai_eval_harness.md`: offline replay workflow
+- `docs/slide_aware_faculty_examiner_direction.md`: earlier design-direction context
