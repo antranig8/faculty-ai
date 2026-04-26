@@ -19,7 +19,7 @@ from app.services.speech_provider import SpeechProviderName, get_speech_provider
 
 router = APIRouter(prefix="/speech", tags=["speech"])
 logger = logging.getLogger("faculty_ai.speech")
-DEEPGRAM_TTS_MODEL = "aura-2-odysseus-en"
+DEEPGRAM_TTS_MODEL = "aura-2-arcas-en"
 DEEPGRAM_TTS_STREAM_SAMPLE_RATE = 48000
 
 

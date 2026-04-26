@@ -38,13 +38,17 @@ const QUESTION_CONFIRMATION_PATTERNS = [
   /\bdoes that make sense\b/i,
 ];
 const DEEPGRAM_TTS_SAMPLE_RATE = 48000;
-const FACULTY_TTS_PLAYBACK_RATE = 1.08;
+const FACULTY_TTS_PLAYBACK_RATE = 1.0;
 const FACULTY_TTS_OPENER = "I have a question.";
 const LIVE_MAX_TURN_WORDS = 55;
 const LIVE_FORCED_CHUNK_MIN_NEW_WORDS = 18;
 const FACULTY_ACKNOWLEDGMENT = "Yes, thank you.";
 const FACULTY_UNRESOLVED_ACKNOWLEDGMENT = "I think I can see your idea and where you're coming from with that.";
 type SlideMode = "auto" | "manual";
+
+function normalizeTextForSpeech(text: string) {
+  return text.replace(/\bENES\b/g, "E N E S");
+}
 
 export default function PresentPage() {
   const [projectContext, setProjectContext] = useState<ProjectContext>(defaultProjectContext);
@@ -268,6 +272,7 @@ export default function PresentPage() {
   async function speakWithDeepgramVoice(text: string) {
     stopSpeaking();
     const generation = ttsGenerationRef.current;
+    const speechText = normalizeTextForSpeech(text);
 
     try {
       const context = await ensureTtsAudioContext();
@@ -289,7 +294,7 @@ export default function PresentPage() {
 
         socket.addEventListener("open", () => {
           opened = true;
-          socket.send(JSON.stringify({ type: "Speak", text }));
+          socket.send(JSON.stringify({ type: "Speak", text: speechText }));
           socket.send(JSON.stringify({ type: "Flush" }));
         });
 
@@ -351,7 +356,7 @@ export default function PresentPage() {
       });
       return;
     } catch {
-      const audio = await synthesizeDeepgramSpeech(text);
+      const audio = await synthesizeDeepgramSpeech(speechText);
       stopSpeaking();
       const url = URL.createObjectURL(audio);
       const element = new Audio(url);
