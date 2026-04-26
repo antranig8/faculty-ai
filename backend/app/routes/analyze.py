@@ -23,11 +23,11 @@ router = APIRouter(tags=["analysis"])
 logger = logging.getLogger("faculty_ai.analysis")
 LIVE_LLM_MIN_GAP_SECONDS = 20
 LIVE_LLM_BACKOFF_SECONDS = 90
-NEW_SLIDE_WARMUP_CHUNKS = 3
-HIGH_PRIORITY_MIN_SECONDS_ON_SLIDE = 8
-MEDIUM_PRIORITY_MIN_SECONDS_ON_SLIDE = 14
-LOW_PRIORITY_MIN_SECONDS_ON_SLIDE = 18
-QUEUED_RELEASE_MIN_SECONDS_ON_SLIDE = 10
+NEW_SLIDE_WARMUP_CHUNKS = 4
+HIGH_PRIORITY_MIN_SECONDS_ON_SLIDE = 12
+MEDIUM_PRIORITY_MIN_SECONDS_ON_SLIDE = 18
+LOW_PRIORITY_MIN_SECONDS_ON_SLIDE = 24
+QUEUED_RELEASE_MIN_SECONDS_ON_SLIDE = 14
 
 
 def _normalize_chunk(text: str) -> str:
@@ -119,6 +119,8 @@ def _feedback_topic_key(item) -> str | None:
         return "takeaways-team-perspective"
     if any(term in message for term in ["view of engineering", "specific experience caused", "change next because of that lesson"]):
         return "individual-application"
+    if any(term in message for term in ["good enough", "lowquality work", "low quality work"]):
+        return "individual-good-enough-distinction"
     if any(term in message for term in ["management could only act on one improvement", "next enes 104 student's experience"]):
         return "course-improvement"
     if any(term in message for term in ["architecture", "simpler alternative"]):
@@ -137,6 +139,26 @@ def _topic_already_covered(session: dict, candidate) -> bool:
     if not candidate_topic:
         return False
     return any(_feedback_topic_key(item) == candidate_topic for item in session.get("feedback", []))
+
+
+def _queued_feedback_duplicate_reason(session: dict, candidate: FeedbackItem) -> str | None:
+    normalized_message = _normalize_message(candidate.message)
+    if normalized_message in session.get("asked_feedback_messages", []):
+        return "This faculty question was already asked earlier in the session."
+
+    if candidate.sourceQuestionId and candidate.sourceQuestionId in session.get("asked_feedback_question_ids", []):
+        return "This prepared faculty concern was already asked earlier in the session."
+
+    if any(_normalize_message(item.message) == normalized_message for item in session.get("feedback", [])):
+        return "This faculty question is already in the feedback history."
+
+    if candidate.sourceQuestionId and any(item.sourceQuestionId == candidate.sourceQuestionId for item in session.get("feedback", [])):
+        return "This prepared faculty concern is already in the feedback history."
+
+    if _topic_already_covered(session, candidate):
+        return "A faculty question on this same topic was already asked earlier in the session."
+
+    return None
 
 
 def _response(
@@ -206,6 +228,18 @@ def _activate_queued_feedback(
     seconds_on_slide = _seconds_on_current_slide(session)
     if slide_chunk_count < NEW_SLIDE_WARMUP_CHUNKS and seconds_on_slide < QUEUED_RELEASE_MIN_SECONDS_ON_SLIDE and not handoff_detected:
         return None, "Queued faculty question is waiting for enough spoken context and time on the slide."
+
+    duplicate_reason = _queued_feedback_duplicate_reason(session, queued)
+    if duplicate_reason is not None:
+        session["queued_feedback"] = None
+        return None, f"Dropped queued faculty question because {duplicate_reason[0].lower()}{duplicate_reason[1:]}"
+
+    allowed, filter_reason = can_emit_feedback(session, queued.message)
+    if not allowed:
+        if filter_reason.startswith("Cooldown active."):
+            return None, "Queued faculty question is still waiting for the global cooldown to finish."
+        session["queued_feedback"] = None
+        return None, f"Dropped queued faculty question because {filter_reason[0].lower()}{filter_reason[1:]}"
 
     session["queued_feedback"] = None
     activated = queued.model_copy(update={"deliveryStatus": "active"})
