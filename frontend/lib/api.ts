@@ -7,6 +7,7 @@ import type {
   ProjectContext,
   SpeechProvider,
   SpeechSession,
+  QuestionRephraseResponse,
   TtsPreviewResponse,
   Slide,
 } from "./types";
@@ -242,4 +243,18 @@ export async function synthesizeDeepgramSpeech(text: string): Promise<Blob> {
   }
 
   return response.blob();
+}
+
+export async function rephraseFacultyQuestion(question: string): Promise<QuestionRephraseResponse> {
+  const response = await fetchWithRetry(`${API_BASE}/speech/rephrase-question`, {
+    method: "POST",
+    headers: buildHeaders({ "Content-Type": "application/json" }),
+    body: JSON.stringify({ question }),
+  });
+
+  if (!response.ok) {
+    throw new Error("Unable to rephrase faculty question.");
+  }
+
+  return response.json();
 }

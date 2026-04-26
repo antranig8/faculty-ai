@@ -58,3 +58,7 @@ class FeedbackResolutionRequest(BaseModel):
 class TextToSpeechRequest(BaseModel):
     text: str = Field(min_length=1, max_length=1200)
     provider: str = "deepgram"
+
+
+class QuestionRephraseRequest(BaseModel):
+    question: str = Field(min_length=1, max_length=600)
