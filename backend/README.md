@@ -17,6 +17,7 @@ The backend also contains the offline replay harness at `app/services/eval_runne
 - `GET /professor/config`
 - `POST /professor/config`
 - `POST /speech/{provider_name}/session`
+- `POST /speech/rephrase-question`
 - `GET /speech/deepgram/tts/preview`
 - `POST /speech/deepgram/tts`
 - `WS /speech/deepgram/proxy`
@@ -47,6 +48,7 @@ The backend loads `.env` values from the repo root when present.
 - `GROQ_API_KEY`: enables Groq-backed prepared questions and live faculty reasoning
 - `FACULTY_AI_LLM_PROVIDER`: defaults to `heuristic`
 - `FACULTY_AI_LLM_MODEL`: defaults to `qwen/qwen3-32b`
+- `FACULTY_AI_REPHRASE_MODEL`: optional lighter Groq model for faculty question rephrasing, defaults to `qwen/qwen3-8b`
 - `FACULTY_AI_SPEECH_PROVIDER`: defaults to `deepgram`
 - `FACULTY_AI_ALLOWED_ORIGINS`: CORS allowlist
 - `FACULTY_AI_APP_API_KEY`: required for non-local HTTP and WebSocket access

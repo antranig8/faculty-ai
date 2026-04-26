@@ -120,3 +120,7 @@ class SpeechSessionResponse(BaseModel):
     websocketUrl: Optional[str] = None
     model: Optional[str] = None
     language: Optional[str] = None
+
+
+class QuestionRephraseResponse(BaseModel):
+    rephrasedQuestion: str

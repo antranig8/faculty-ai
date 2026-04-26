@@ -13,8 +13,9 @@ from websockets.exceptions import ConnectionClosed
 from websockets.exceptions import InvalidStatus
 
 from app.config import get_settings
-from app.models.request_models import TextToSpeechRequest
-from app.models.response_models import SpeechSessionResponse
+from app.models.request_models import QuestionRephraseRequest, TextToSpeechRequest
+from app.models.response_models import QuestionRephraseResponse, SpeechSessionResponse
+from app.services.question_rephraser import rephrase_question
 from app.services.speech_provider import SpeechProviderName, get_speech_provider
 
 router = APIRouter(prefix="/speech", tags=["speech"])
@@ -143,6 +144,14 @@ async def create_speech_session(provider_name: SpeechProviderName) -> SpeechSess
         model=session.model,
         language=session.language,
     )
+
+
+@router.post("/rephrase-question", response_model=QuestionRephraseResponse)
+async def rephrase_faculty_question(payload: QuestionRephraseRequest) -> QuestionRephraseResponse:
+    rewritten = await asyncio.to_thread(rephrase_question, payload.question)
+    if not rewritten:
+        raise HTTPException(status_code=503, detail="Question rephrase is not available.")
+    return QuestionRephraseResponse(rephrasedQuestion=rewritten)
 
 
 @router.get("/deepgram/tts/preview")

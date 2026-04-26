@@ -8,7 +8,7 @@ import { PresentationUpload } from "@/components/PresentationUpload";
 import { SessionControls } from "@/components/SessionControls";
 import { SlideTracker } from "@/components/SlideTracker";
 import { TranscriptPanel } from "@/components/TranscriptPanel";
-import { analyzeChunk, getDeepgramTtsStreamUrl, getProfessorConfig, getSpeechProxyUrl, startSession, synthesizeDeepgramSpeech, updateFeedbackResolution, uploadPresentation } from "@/lib/api";
+import { analyzeChunk, getDeepgramTtsStreamUrl, getProfessorConfig, getSpeechProxyUrl, rephraseFacultyQuestion, startSession, synthesizeDeepgramSpeech, updateFeedbackResolution, uploadPresentation } from "@/lib/api";
 import type { FeedbackItem, PreparedQuestion, ProfessorConfig, ProjectContext, Slide } from "@/lib/types";
 
 const defaultProjectContext: ProjectContext = {
@@ -29,6 +29,17 @@ const REPEAT_REQUEST_PATTERNS = [
   /\bsay that again\b/i,
   /\bwhat was the question\b/i,
 ];
+const QUESTION_REPHRASE_PATTERNS = [
+  /\bi do not get the question\b/i,
+  /\bi don't get the question\b/i,
+  /\bi do not understand the question\b/i,
+  /\bi don't understand the question\b/i,
+  /\bcan you rephrase (?:that|the question)\b/i,
+  /\bcould you rephrase (?:that|the question)\b/i,
+  /\bcan you make (?:that|the question) simpler\b/i,
+  /\bcould you make (?:that|the question) simpler\b/i,
+  /\bwhat do you mean by that question\b/i,
+];
 const QUESTION_CONFIRMATION_PATTERNS = [
   /\bdoes that answer (?:your|the) question\b/i,
   /\bdid that answer (?:your|the) question\b/i,
@@ -40,6 +51,7 @@ const QUESTION_CONFIRMATION_PATTERNS = [
 const DEEPGRAM_TTS_SAMPLE_RATE = 48000;
 const FACULTY_TTS_PLAYBACK_RATE = 1.0;
 const FACULTY_TTS_OPENER = "I have a question.";
+const FACULTY_TTS_REPHRASE_OPENER = "Let me rephrase that.";
 const LIVE_MAX_TURN_WORDS = 55;
 const LIVE_FORCED_CHUNK_MIN_NEW_WORDS = 18;
 const FACULTY_ACKNOWLEDGMENT = "Yes, thank you.";
@@ -48,6 +60,54 @@ type SlideMode = "auto" | "manual";
 
 function normalizeTextForSpeech(text: string) {
   return text.replace(/\bENES\b/g, "E N E S");
+}
+
+function normalizeQuestionForComparison(text: string) {
+  return text.toLowerCase().replace(/[^a-z0-9\s]/g, "").replace(/\s+/g, " ").trim();
+}
+
+function simplifyQuestionText(message: string) {
+  const compact = message.replace(/\s+/g, " ").trim();
+
+  const exampleDifference = compact.match(/^([^,]+,\s+)?can you give one example of how (.+?) is different from (.+?)\?$/i);
+  if (exampleDifference) {
+    const [, prefix = "", left, right] = exampleDifference;
+    return `${prefix}I mean: can you name one situation where ${left} is acceptable, but ${right} would be a problem?`;
+  }
+
+  const addMore = compact.match(/^([^,]+,\s+)?what specifically can you add about (.+?)\?$/i);
+  if (addMore) {
+    const [, prefix = "", topic] = addMore;
+    return `${prefix}can you explain ${topic} a little more simply?`;
+  }
+
+  const futureChange = compact.match(/^([^,]+,\s+)?what concrete change will you make in your future engineering work because of that lesson\?$/i);
+  if (futureChange) {
+    const [, prefix = ""] = futureChange;
+    return `${prefix}what is one thing you will do differently next time because of that lesson?`;
+  }
+
+  if (/what specific evidence supports that point\?/i.test(compact)) {
+    return compact.replace(/what specific evidence supports that point\?/i, "What evidence supports that point?");
+  }
+
+  if (/what was the main reason for that choice compared with the alternative\?/i.test(compact)) {
+    return compact.replace(
+      /what was the main reason for that choice compared with the alternative\?/i,
+      "Why did you choose that instead of the other option?",
+    );
+  }
+
+  return compact
+    .replace(/\bWhat specifically can you\b/g, "What can you")
+    .replace(/\bwhat specifically can you\b/g, "what can you")
+    .replace(/\bWhat specific\b/g, "What")
+    .replace(/\bwhat specific\b/g, "what")
+    .replace(/\bconcrete\b/g, "clear")
+    .replace(/\bpersonally\b/g, "")
+    .replace(/\s+/g, " ")
+    .replace(/\s+\?/g, "?")
+    .trim();
 }
 
 export default function PresentPage() {
@@ -68,6 +128,7 @@ export default function PresentPage() {
   const [livePreview, setLivePreview] = useState("");
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [unseenCount, setUnseenCount] = useState(0);
+  const [latestFeedbackRephrase, setLatestFeedbackRephrase] = useState<string>();
   const [status, setStatus] = useState("Ready for live presentation mode.");
   const [busy, setBusy] = useState(false);
   const [voiceEnabled, setVoiceEnabled] = useState(true);
@@ -384,6 +445,10 @@ export default function PresentPage() {
     return QUESTION_CONFIRMATION_PATTERNS.some((pattern) => pattern.test(text));
   }
 
+  function isQuestionRephraseRequest(text: string) {
+    return QUESTION_REPHRASE_PATTERNS.some((pattern) => pattern.test(text));
+  }
+
   function speakFacultyQuestion(item: FeedbackItem, force = false, rawQuestionOnly = false) {
     if (!voiceEnabledRef.current || typeof window === "undefined") {
       return;
@@ -415,6 +480,41 @@ export default function PresentPage() {
     stopSpeaking();
     speakFacultyQuestion(latestUnresolvedFeedback, true, true);
     setStatus("Repeated the latest faculty question.");
+    return true;
+  }
+
+  async function rephraseLatestQuestion(requestText: string) {
+    if (!isQuestionRephraseRequest(requestText)) {
+      return false;
+    }
+
+    const latestUnresolvedFeedback = latestFeedbackRef.current;
+    if (!latestUnresolvedFeedback) {
+      return false;
+    }
+
+    clearDrawerOpenTimer();
+    setDrawerOpen(true);
+    setUnseenCount(0);
+    stopSpeaking();
+    const heuristicQuestion = simplifyQuestionText(latestUnresolvedFeedback.message);
+    let simplifiedQuestion = heuristicQuestion;
+    try {
+      const result = await rephraseFacultyQuestion(latestUnresolvedFeedback.message);
+      const candidate = result.rephrasedQuestion.trim();
+      const originalNormalized = normalizeQuestionForComparison(latestUnresolvedFeedback.message);
+      const candidateNormalized = normalizeQuestionForComparison(candidate);
+      const heuristicNormalized = normalizeQuestionForComparison(heuristicQuestion);
+      if (candidateNormalized && candidateNormalized !== originalNormalized && candidateNormalized !== heuristicNormalized) {
+        simplifiedQuestion = candidate;
+      }
+    } catch {
+      // Fall back to the local rewrite when the lightweight LLM rephrase path is unavailable.
+    }
+
+    setLatestFeedbackRephrase(simplifiedQuestion);
+    void speakWithDeepgramVoice(`${FACULTY_TTS_REPHRASE_OPENER} ${simplifiedQuestion}`).catch(() => undefined);
+    setStatus("Rephrased the latest faculty question.");
     return true;
   }
 
@@ -485,6 +585,7 @@ export default function PresentPage() {
     transcriptRef.current = [];
     setFeedback([]);
     setQueuedFeedback(undefined);
+    setLatestFeedbackRephrase(undefined);
     studentCoverageRef.current = {};
     latestFeedbackRef.current = undefined;
     spokenFeedbackIdsRef.current = new Set();
@@ -649,6 +750,12 @@ export default function PresentPage() {
       return;
     }
 
+    if (await rephraseLatestQuestion(nextChunk)) {
+      setLiveStatus("listening");
+      resetSilenceTimer();
+      return;
+    }
+
     const result = await analyzeChunk({
       sessionId: id,
       transcriptChunk: nextChunk,
@@ -681,6 +788,7 @@ export default function PresentPage() {
     }
 
     if (result.trigger && result.feedback) {
+      setLatestFeedbackRephrase(undefined);
       if (result.feedback.targetStudent) {
         studentCoverageRef.current = {
           ...studentCoverageRef.current,
@@ -1126,6 +1234,9 @@ export default function PresentPage() {
         message: item.message,
       });
       setFeedback(updated);
+      if (latestFeedback?.createdAt === item.createdAt) {
+        setLatestFeedbackRephrase(undefined);
+      }
       if (resolved) {
         stopSpeaking();
       }
@@ -1253,6 +1364,7 @@ export default function PresentPage() {
         feedback={feedback}
         queuedFeedback={queuedFeedback}
         latestFeedback={latestFeedback}
+        latestFeedbackRephrase={latestFeedback && !latestFeedback.resolved ? latestFeedbackRephrase : undefined}
         open={drawerOpen}
         onClose={() => setDrawerOpen(false)}
         onResolve={(item, resolved) => void handleFeedbackResolution(item, resolved)}

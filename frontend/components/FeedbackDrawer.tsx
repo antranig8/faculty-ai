@@ -13,6 +13,7 @@ type Props = {
   queuedFeedback?: FeedbackItem;
   open: boolean;
   latestFeedback?: FeedbackItem;
+  latestFeedbackRephrase?: string;
   onClose: () => void;
   onResolve: (item: FeedbackItem, resolved: boolean) => void;
 };
@@ -29,7 +30,7 @@ function uniqueFeedbackItems(items: FeedbackItem[]): FeedbackItem[] {
   });
 }
 
-export function FeedbackDrawer({ feedback, queuedFeedback, open, latestFeedback, onClose, onResolve }: Props) {
+export function FeedbackDrawer({ feedback, queuedFeedback, open, latestFeedback, latestFeedbackRephrase, onClose, onResolve }: Props) {
   const visibleFeedback = uniqueFeedbackItems(
     latestFeedback
       ? [...feedback].reverse().filter((item) => item.createdAt !== latestFeedback.createdAt)
@@ -55,6 +56,7 @@ export function FeedbackDrawer({ feedback, queuedFeedback, open, latestFeedback,
             <span>{latestFeedback.section.replace("_", " ")}</span>
           </div>
           <h3>{latestFeedback.message}</h3>
+          {latestFeedbackRephrase ? <small>Rephrased: {latestFeedbackRephrase}</small> : null}
           {latestFeedback.targetStudent ? <small>Targeted student: {latestFeedback.targetStudent}</small> : null}
           <small>{latestFeedback.reason}</small>
           <button className="resolved-button" onClick={() => onResolve(latestFeedback, true)} type="button">

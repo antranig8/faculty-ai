@@ -15,6 +15,7 @@ FacultyAI is a live presentation critique assistant for ENES 104 style demos. Pr
 - Automatic slide inference from transcript content, with manual slide override
 - Live microphone transcription through the backend Deepgram proxy
 - Deepgram-backed faculty question voice playback with HTTP fallback
+- dedicated lightweight faculty-question rephrase path for "can you rephrase that?" moments
 - queued questions when timing is not right for immediate interruption
 - answer evaluation with weak/partial/strong outcomes and one follow-up max
 - timing-aware delivery based on time spent on the active slide
@@ -69,6 +70,7 @@ Speech and LLM variables:
 - `GROQ_API_KEY`: enables Groq-backed prepared-question generation and live reasoning
 - `FACULTY_AI_LLM_PROVIDER`: defaults to `heuristic`
 - `FACULTY_AI_LLM_MODEL`: defaults to `qwen/qwen3-32b`
+- `FACULTY_AI_REPHRASE_MODEL`: optional lighter Groq model for question simplification, defaults to `qwen/qwen3-8b`
 
 Without `GROQ_API_KEY`, the app falls back to deterministic heuristic question generation and live feedback logic.
 

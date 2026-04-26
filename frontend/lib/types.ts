@@ -108,3 +108,7 @@ export type TtsPreviewResponse = {
   model: string;
   status: "scaffolded_not_implemented" | "enabled";
 };
+
+export type QuestionRephraseResponse = {
+  rephrasedQuestion: string;
+};

@@ -41,6 +41,7 @@ class Settings:
     faculty_ai_speech_provider: str
     faculty_ai_llm_provider: str
     faculty_ai_llm_model: str
+    faculty_ai_rephrase_model: str
     deepgram_model: str
     deepgram_language: str
 
@@ -63,6 +64,7 @@ def get_settings() -> Settings:
         faculty_ai_speech_provider=os.getenv("FACULTY_AI_SPEECH_PROVIDER", "deepgram"),
         faculty_ai_llm_provider=os.getenv("FACULTY_AI_LLM_PROVIDER", "heuristic"),
         faculty_ai_llm_model=os.getenv("FACULTY_AI_LLM_MODEL", "qwen/qwen3-32b"),
+        faculty_ai_rephrase_model=os.getenv("FACULTY_AI_REPHRASE_MODEL", "qwen/qwen3-8b"),
         deepgram_model=os.getenv("DEEPGRAM_MODEL", "flux-general-en"),
         deepgram_language=os.getenv("DEEPGRAM_LANGUAGE", "en-US"),
     )
