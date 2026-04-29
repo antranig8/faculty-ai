@@ -23,11 +23,11 @@ router = APIRouter(tags=["analysis"])
 logger = logging.getLogger("faculty_ai.analysis")
 LIVE_LLM_MIN_GAP_SECONDS = 20
 LIVE_LLM_BACKOFF_SECONDS = 90
-NEW_SLIDE_WARMUP_CHUNKS = 4
-HIGH_PRIORITY_MIN_SECONDS_ON_SLIDE = 12
-MEDIUM_PRIORITY_MIN_SECONDS_ON_SLIDE = 18
-LOW_PRIORITY_MIN_SECONDS_ON_SLIDE = 24
-QUEUED_RELEASE_MIN_SECONDS_ON_SLIDE = 14
+NEW_SLIDE_WARMUP_CHUNKS = 6
+HIGH_PRIORITY_MIN_SECONDS_ON_SLIDE = 18
+MEDIUM_PRIORITY_MIN_SECONDS_ON_SLIDE = 26
+LOW_PRIORITY_MIN_SECONDS_ON_SLIDE = 34
+QUEUED_RELEASE_MIN_SECONDS_ON_SLIDE = 24
 
 
 def _normalize_chunk(text: str) -> str:
@@ -225,8 +225,12 @@ def _activate_queued_feedback(
     if awaiting_answer_until and utc_now() < awaiting_answer_until:
         return None, "Queued faculty question is waiting for the current answer window to finish."
 
+    if _slide_already_has_feedback(session, current_slide_number):
+        session["queued_feedback"] = None
+        return None, "Dropped queued faculty question because this slide already received its one faculty question."
+
     seconds_on_slide = _seconds_on_current_slide(session)
-    if slide_chunk_count < NEW_SLIDE_WARMUP_CHUNKS and seconds_on_slide < QUEUED_RELEASE_MIN_SECONDS_ON_SLIDE and not handoff_detected:
+    if (slide_chunk_count < NEW_SLIDE_WARMUP_CHUNKS or seconds_on_slide < QUEUED_RELEASE_MIN_SECONDS_ON_SLIDE) and not handoff_detected:
         return None, "Queued faculty question is waiting for enough spoken context and time on the slide."
 
     duplicate_reason = _queued_feedback_duplicate_reason(session, queued)
@@ -248,6 +252,7 @@ def _activate_queued_feedback(
 
 def _record_feedback(session: dict, candidate: FeedbackItem, current_slide_number: int | None) -> None:
     candidate.deliveryStatus = "active"
+    session["queued_feedback"] = None
     session["feedback"].append(candidate)
     session["last_feedback_at"] = utc_now()
     session.setdefault("asked_feedback_messages", []).append(_normalize_message(candidate.message))
