@@ -1,27 +1,27 @@
 # FacultyAI
 
-FacultyAI is a live presentation critique assistant for ENES 104 style demos. Professors define the assignment context and rubric, students upload a `.pptx`, and the app listens for spoken presentation content to surface selective faculty-style questions during rehearsal.
+FacultyAI is a live rehearsal system for academic presentations. It lets a professor define the rubric, prepares slide-aware questions from a `.pptx`, listens to the presentation in real time, and interrupts selectively with faculty-style questions when the speaker leaves weak reasoning, vague claims, or missing evidence on the table.
 
-## Current Build
+## What It Does
 
-- `frontend/`: Next.js 16 + React 19 presentation UI
-- `backend/`: FastAPI service for upload, slide prep, transcript analysis, speech proxying, and TTS
-- Repo-root `.env` loading for backend and frontend configuration
-- Professor setup page at `/professor`
-- Presentation cockpit at `/present`
-- Optional access-code gate across frontend routes via `FACULTY_AI_ACCESS_CODE`
-- `.pptx` upload with slide parsing and slide-aware prepared questions
-- slide category and lightweight slide author inference
-- Automatic slide inference from transcript content, with manual slide override
-- Live microphone transcription through the backend Deepgram proxy
-- Deepgram-backed faculty question voice playback with HTTP fallback
-- dedicated lightweight faculty-question rephrase path for "can you rephrase that?" moments
-- queued questions when timing is not right for immediate interruption
-- answer evaluation with weak/partial/strong outcomes and one follow-up max
-- timing-aware delivery based on time spent on the active slide
-- Faculty question resolution and reopen flow
-- SQLite persistence for professor config, sessions, and prepared-question cache in `faculty_ai.db`
-- lightweight student-profile memory for major / interest cues on individual reflection slides
+- Builds a professor-defined questioning style from the assignment context, rubric, and expectations saved in `/professor`
+- Parses presentation decks and prepares slide-specific faculty questions before rehearsal starts
+- Tracks where the presenter likely is in the deck from transcript content, with manual slide control available when needed
+- Listens to live microphone audio through the backend speech proxy and analyzes transcript chunks during the run
+- Times interruptions instead of firing constantly, including queuing questions until the moment is better
+- Evaluates presenter answers as `weak`, `partial`, or `strong`, and can queue one follow-up when a response only partly addresses the concern
+- Speaks faculty questions out loud with Deepgram TTS, with fallback HTTP synthesis if streaming TTS is unavailable
+- Handles "repeat that" and "rephrase the question" moments during live rehearsal
+- Builds lightweight student profiles from what speakers say on individual reflection slides, including major and interest cues, so later questions can target the right student
+- Persists professor config, sessions, feedback history, and prepared-question cache in SQLite
+
+## Main Surfaces
+
+- `/`: home screen
+- `/professor`: rubric, assignment context, and questioning setup
+- `/present`: live presentation cockpit with upload, transcript, slide tracking, and faculty feedback drawer
+- `/results`: currently redirects back to `/present`
+- optional access-code gate across frontend routes via `FACULTY_AI_ACCESS_CODE`
 
 ## Run
 
@@ -80,33 +80,13 @@ Without `GROQ_API_KEY`, the app falls back to deterministic heuristic question g
 2. Open `/present`.
 3. Upload a `.pptx` deck.
 4. Start live microphone mode.
-5. Present normally while FacultyAI tracks transcript context and current slide.
-6. Review or resolve triggered faculty questions in the drawer.
-
-`/results` currently redirects back to `/present`; there is no standalone results page in the current build.
+5. Present normally while FacultyAI tracks transcript context, watches for slide changes, and decides whether to ask now or wait.
+6. Answer live faculty questions, repeat or rephrase them if needed, and let the system judge whether the response actually closed the issue.
+7. Review, resolve, or reopen faculty questions in the feedback drawer.
 
 ## Notes
 
 - The backend allows localhost access without `x-facultyai-key`.
 - Non-local requests must send `x-facultyai-key`, and the speech proxies also accept `?key=...`.
-- Prepared questions are cached by project context + slide content.
-- The live runtime is hybrid: prepared concerns are anchors, but deterministic and optional LLM paths can choose a better freeform question when the moment supports it.
-
-## Docs
-
-Use the docs in `docs/` like this:
-
-- `docs/faculty_ai_how_it_thinks.md`
-  - plain-English explanation of how the runtime listens, waits, chooses, and asks questions
-- `docs/faculty_ai_interaction_model.md`
-  - current architecture direction: prepared questions as anchors, not shackles
-- `docs/faculty_ai_live_feedback_README.md`
-  - current-state product and architecture summary
-- `docs/faculty_ai_eval_harness.md`
-  - how to replay saved scenarios offline
-- `docs/what_i_need_from_you_for_eval.md`
-  - concise handoff checklist for preparing eval scenarios
-- `docs/faculty_ai_POTENTIAL.md`
-  - roadmap / next-step priorities
-- `docs/slide_aware_faculty_examiner_direction.md`
-  - earlier design-direction document; useful for historical context, but not the main current-state source
+- Prepared questions are cached by project context and slide content.
+- The runtime is hybrid: prepared questions anchor the session, but live heuristics and optional Groq-backed reasoning can choose a better question when the transcript supports it.
