@@ -12,7 +12,7 @@ export default async function HomePage() {
       <section className="hero-shell">
         <header className="hero-nav">
           <div>
-            <p className="eyebrow">Faculty AI</p>
+            <p className="eyebrow">Faculty-AI</p>
             <p className="hero-brand-note">AI rehearsal for academic presentations</p>
           </div>
           <nav className="hero-nav-links" aria-label="Primary">

@@ -59,13 +59,13 @@ For each transcript chunk:
 - the top prepared and freeform candidates with their scores
 - the candidate the hybrid scorer selected
 
-A `facultyAINotes` summary at the top explains, in plain language, when FacultyAI chose to stay quiet or ask.
+A `facultyAINotes` summary at the top explains, in plain language, when Faculty-AI chose to stay quiet or ask.
 
 ## Tuning Workflow
 
 1. Start with one real deck and 10–30 transcript chunks from a rehearsal.
 2. Use `manual` slide mode for the clearest replay.
-3. Look for places where FacultyAI asked too early, asked the wrong question, or picked a prepared question when a freeform one would have been better (or the reverse).
+3. Look for places where Faculty-AI asked too early, asked the wrong question, or picked a prepared question when a freeform one would have been better (or the reverse).
 4. Change the runtime only once a pattern repeats across several scenarios.
 
 ## Notes

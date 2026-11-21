@@ -21,7 +21,7 @@ export function ProfessorConfigForm({ value, disabled, onChange, onSave }: Props
     <section className="setup-panel professor-form">
       <div>
         <p className="eyebrow">Professor Setup</p>
-        <h2>Define how FacultyAI should examine presentations</h2>
+        <h2>Define how Faculty-AI should examine presentations</h2>
       </div>
 
       <label>

@@ -13,7 +13,7 @@ export default async function AccessPage({ searchParams }: AccessPageProps) {
     <main className="access-screen">
       <form className="access-panel" action="/api/access" method="post">
         <div>
-          <p className="eyebrow">Faculty AI</p>
+          <p className="eyebrow">Faculty-AI</p>
           <h1>Access required</h1>
         </div>
         <input type="hidden" name="next" value={next} />

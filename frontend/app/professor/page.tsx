@@ -46,7 +46,7 @@ export default function ProfessorPage() {
     <main className="app-shell">
       <header className="topbar">
         <div>
-          <p className="eyebrow">Faculty AI</p>
+          <p className="eyebrow">Faculty-AI</p>
           <h1>Professor setup</h1>
         </div>
         <Link href="/present">Student presentation mode</Link>

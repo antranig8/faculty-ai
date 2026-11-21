@@ -27,7 +27,7 @@ def load_professor_config_from_template() -> ProfessorConfig | None:
         if line.strip().startswith("-")
     ]
     question_style = _extract_section(text, "Question Style").splitlines()[0].strip() if _extract_section(text, "Question Style") else "skeptical but fair faculty examiner"
-    guidance = _extract_section(text, "Guidance For FacultyAI")
+    guidance = _extract_section(text, "Guidance For Faculty-AI")
     assignment_context = _extract_section(text, "Assignment Context")
     combined_context = "\n\n".join(part for part in [guidance, assignment_context] if part).strip()
 

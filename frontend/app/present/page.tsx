@@ -552,7 +552,7 @@ export default function PresentPage() {
         sessionId: activeSessionId,
         createdAt: latestUnresolvedFeedback.createdAt,
         resolved: true,
-        resolutionReason: "Presenter asked whether the response answered the question, and FacultyAI accepted the response.",
+        resolutionReason: "Presenter asked whether the response answered the question, and Faculty-AI accepted the response.",
         sourceQuestionId: latestUnresolvedFeedback.sourceQuestionId,
         message: latestUnresolvedFeedback.message,
       });
@@ -813,8 +813,8 @@ export default function PresentPage() {
         : result.queuedFeedback
           ? (
             result.answerEvaluation?.shouldAskFollowUp
-              ? "FacultyAI queued one follow-up after a partial answer."
-              : result.reason ?? "FacultyAI queued a question for a better moment."
+              ? "Faculty-AI queued one follow-up after a partial answer."
+              : result.reason ?? "Faculty-AI queued a question for a better moment."
           )
         : result.reason ?? "No feedback triggered for this chunk.",
     );
@@ -1278,7 +1278,7 @@ export default function PresentPage() {
     <main className="app-shell">
       <header className="topbar">
         <div className="topbar-title">
-          <p className="eyebrow">Faculty AI</p>
+          <p className="eyebrow">Faculty-AI</p>
           <h1>Presentation cockpit</h1>
           <p>Run live Q&A support without crowding the presenter view.</p>
         </div>

@@ -1,4 +1,4 @@
-# FacultyAI Frontend
+# Faculty-AI Frontend
 
 Next.js app for professor setup and the live presentation cockpit. Setup and configuration are in the [root README](../README.md).
 

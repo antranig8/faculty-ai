@@ -1,4 +1,4 @@
-# FacultyAI Rubric Template
+# Faculty-AI Rubric Template
 
 Use this file as the source-of-truth draft for the professor-facing rubric and questioning style.
 
@@ -33,7 +33,7 @@ Introductory undergraduate engineering course presentation to classmates and exe
 
 Skeptical but fair ENES 104 faculty/executive audience focused on whether the team gives a thoughtful 360-degree view of the course, shows individual reflection, and connects lessons to future engineering growth.
 
-## Guidance For FacultyAI
+## Guidance For Faculty-AI
 
 - Treat the broader ENES 104 course description as background context, not the active grading rubric.
 - The active assignment is the final group 360-degree view of ENES 104.

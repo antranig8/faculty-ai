@@ -5,11 +5,11 @@ A live rehearsal tool for academic presentations. Faculty-AI listens while you p
 ## Features
 
 - **Professor-defined examiner.** The instructor sets the rubric, assignment context, and questioning style once; every rehearsal uses it.
-- **Slide-aware preparation.** Upload a `.pptx` and FacultyAI classifies each slide and prepares likely questions before you start.
+- **Slide-aware preparation.** Upload a `.pptx` and Faculty-AI classifies each slide and prepares likely questions before you start.
 - **Live listening.** Microphone audio is transcribed in real time, and the active slide is inferred from what you say (with manual override).
 - **Well-timed interruptions.** Questions are held until you've finished setting context, with cooldowns and a one-question-per-slide rule so it never piles on.
 - **Answer evaluation.** Your response is judged `strong`, `partial`, or `weak`; a partial answer gets at most one follow-up.
-- **Spoken questions.** Questions are read aloud, and you can ask FacultyAI to repeat or rephrase them.
+- **Spoken questions.** Questions are read aloud, and you can ask Faculty-AI to repeat or rephrase them.
 - **Per-student targeting.** On individual slides it picks up details like a student's major and tailors later questions to them.
 - **Works offline from LLMs.** Every decision has a deterministic fallback; an LLM (Groq) is optional.
 
@@ -23,7 +23,7 @@ browser mic ──▶ FastAPI ──▶ Deepgram speech-to-text
                                     (heuristic or Groq)
 ```
 
-On each transcript chunk, the engine decides whether to ask a prepared question, ask a freeform one, follow up, wait, or stay quiet. See [How FacultyAI Thinks](docs/how-it-thinks.md) for the full decision model.
+On each transcript chunk, the engine decides whether to ask a prepared question, ask a freeform one, follow up, wait, or stay quiet. See [How Faculty-AI Thinks](docs/how-it-thinks.md) for the full decision model.
 
 | Layer | Stack |
 |---|---|

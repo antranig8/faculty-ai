@@ -1,8 +1,8 @@
-# How FacultyAI Thinks
+# How Faculty-AI Thinks
 
-FacultyAI is meant to behave like a thoughtful faculty member in the audience, not a rubric checker reading off preset questions. It listens to the current slide, notices what is still vague or unsupported, and asks one useful question at the right moment.
+Faculty-AI is meant to behave like a thoughtful faculty member in the audience, not a rubric checker reading off preset questions. It listens to the current slide, notices what is still vague or unsupported, and asks one useful question at the right moment.
 
-The rubric matters, but as structure: it tells FacultyAI which concerns are worth noticing. It is not the whole personality of the system.
+The rubric matters, but as structure: it tells Faculty-AI which concerns are worth noticing. It is not the whole personality of the system.
 
 ## The Pipeline
 
@@ -22,7 +22,7 @@ browser mic ──audio──▶ FastAPI proxy ──▶ Deepgram STT
 
 ## The Core Question
 
-On every transcript chunk, FacultyAI asks itself:
+On every transcript chunk, Faculty-AI asks itself:
 
 > What is the most useful professional faculty move right now?
 
@@ -44,7 +44,7 @@ The possible moves are:
    - `individual_lesson`: more willing to ask one direct question about application or judgment
    - `cip_course_feedback`: pushes vague recommendations toward something concrete
    - `cip_team_feedback`: probes for missing feedback or collaboration detail
-3. **Has the presenter said enough yet?** FacultyAI does not interrupt right as a slide starts or while the speaker is still framing the topic.
+3. **Has the presenter said enough yet?** Faculty-AI does not interrupt right as a slide starts or while the speaker is still framing the topic.
 4. **What is still missing?** It looks for gaps: unclear justification, unsupported claims, missing examples, missing application, missing tradeoffs.
 5. **Prepared or freeform?** It ranks the best prepared concern against the best freeform question for this exact moment and picks the stronger one.
 6. **Is now a good time?** Cooldowns, a one-question-per-slide rule, and a short answer window after each question keep it from piling on.
@@ -55,14 +55,14 @@ The possible moves are:
 After a question is asked, the presenter's next words are judged as:
 
 - **strong**: the concern is resolved automatically
-- **partial**: FacultyAI may ask one follow-up, never more
+- **partial**: Faculty-AI may ask one follow-up, never more
 - **weak**: the question stays open in the drawer
 
 The presenter can also resolve or reopen any question manually.
 
 ## Student Profile Memory
 
-FacultyAI keeps a deliberately small memory per student. On an individual reflection slide, if a student says something like "I'm a Computer Science major" or mentions an interest (AI, robotics, startups, research), it stores that against the slide's owner.
+Faculty-AI keeps a deliberately small memory per student. On an individual reflection slide, if a student says something like "I'm a Computer Science major" or mentions an interest (AI, robotics, startups, research), it stores that against the slide's owner.
 
 Later questions on that student's slide can then be tailored slightly:
 
@@ -84,7 +84,7 @@ Without an LLM, each of these falls back to the heuristic path, so the app stays
 
 ## Guardrails
 
-FacultyAI is designed to:
+Faculty-AI is designed to:
 
 - interrupt only for a specific, academic reason
 - ask one strong question rather than several weak ones

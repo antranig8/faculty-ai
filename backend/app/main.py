@@ -8,7 +8,7 @@ from app.config import get_settings
 from app.routes import analyze, presentation, professor, session, speech
 from app.security import is_local_host
 
-app = FastAPI(title="Faculty AI Live Feedback")
+app = FastAPI(title="Faculty-AI Live Feedback")
 logging.basicConfig(level=logging.INFO)
 settings = get_settings()
 PUBLIC_PATHS = {"/", "/health"}
@@ -55,7 +55,7 @@ app.include_router(speech.router)
 
 @app.get("/")
 def root() -> dict[str, str]:
-    return {"name": "Faculty AI Backend", "status": "ok"}
+    return {"name": "Faculty-AI Backend", "status": "ok"}
 
 
 @app.get("/health")

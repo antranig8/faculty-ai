@@ -215,7 +215,7 @@ def run_scenario(scenario_path: Path, output_path: Path | None = None) -> dict:
 
 
 def main() -> None:
-    parser = argparse.ArgumentParser(description="Replay a saved FacultyAI scenario and print selection diagnostics.")
+    parser = argparse.ArgumentParser(description="Replay a saved Faculty-AI scenario and print selection diagnostics.")
     parser.add_argument("scenario", help="Path to a scenario JSON file.")
     parser.add_argument("--out", help="Optional path to write the JSON report.")
     args = parser.parse_args()

@@ -17,7 +17,7 @@ from app.services.student_profiles import profile_hint
 from app.services.transcript_evidence import TranscriptEvidence, extract_transcript_evidence
 
 _FALLBACK_PROMPT = (
-    "You are FacultyAI's runtime faculty-brain.\n"
+    "You are Faculty-AI's runtime faculty-brain.\n"
     "Choose the most useful professional faculty move from the live presentation context.\n"
     "Use prepared slide concerns as strong anchors, but allow one concise freeform question when it is better.\n"
     "Return strict JSON only."

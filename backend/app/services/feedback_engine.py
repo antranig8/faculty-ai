@@ -571,7 +571,7 @@ def generate_slide_handoff_feedback(
         prepared_candidate = _feedback_from_prepared_question(
             question=question,
             section=section,
-            reason="The presenter invited questions at the end of the slide, so FacultyAI surfaced the strongest unasked prepared concern.",
+            reason="The presenter invited questions at the end of the slide, so Faculty-AI surfaced the strongest unasked prepared concern.",
         )
 
     freeform_ranked = _freeform_candidates(
@@ -652,9 +652,9 @@ def generate_slide_aware_feedback(
     ranked: list[tuple[int, PreparedQuestion]] = []
 
     if not _team_takeaway_ready_for_interrupt(text, current_slide):
-        return None, "Team takeaway slide is still in framing mode, so FacultyAI is waiting for stronger reasoning before interrupting."
+        return None, "Team takeaway slide is still in framing mode, so Faculty-AI is waiting for stronger reasoning before interrupting."
     if not _cip_team_ready_for_interrupt(text, current_slide):
-        return None, "CIP team-feedback slide is already in self-critique mode, so FacultyAI is holding for a better closing moment."
+        return None, "CIP team-feedback slide is already in self-critique mode, so Faculty-AI is holding for a better closing moment."
 
     for question in relevant_questions:
         if question.priority == "low" and len(recent_transcript) < 2:

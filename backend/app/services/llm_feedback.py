@@ -59,7 +59,7 @@ def _build_prompt(payload: AnalyzeChunkRequest) -> str:
     prompt_header = load_prompt(
         "interrupt_fallback.md",
         (
-            "You are FacultyAI, a skeptical but fair faculty examiner during a student project presentation.\n"
+            "You are Faculty-AI, a skeptical but fair faculty examiner during a student project presentation.\n"
             "Decide whether the latest transcript chunk merits one concise faculty interruption.\n"
             "Return strict JSON only."
         ),

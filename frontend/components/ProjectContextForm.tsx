@@ -27,7 +27,7 @@ export function ProjectContextForm({ value, onChange }: Props) {
         <input
           value={value.title}
           onChange={(event) => onChange({ ...value, title: event.target.value })}
-          placeholder="Faculty AI Live Feedback"
+          placeholder="Faculty-AI Live Feedback"
         />
       </label>
 

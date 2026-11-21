@@ -422,7 +422,7 @@ def analyze_chunk(payload: AnalyzeChunkRequest) -> AnalyzeChunkResponse:
         return _response(
             session,
             trigger=False,
-            reason="Partial presenter answer detected. FacultyAI queued one follow-up rather than interrupting immediately.",
+            reason="Partial presenter answer detected. Faculty-AI queued one follow-up rather than interrupting immediately.",
             inferred_current_slide=inferred_slide,
             answer_evaluation=answer_evaluation,
         )
@@ -598,13 +598,13 @@ def analyze_chunk(payload: AnalyzeChunkRequest) -> AnalyzeChunkResponse:
         _queue_feedback(
             session,
             candidate,
-            "Queued until the presenter gives more context on the new slide before FacultyAI interrupts.",
+            "Queued until the presenter gives more context on the new slide before Faculty-AI interrupts.",
         )
         state.save_session(payload.sessionId, session)
         return _response(
             session,
             trigger=False,
-            reason="Slide warm-up: FacultyAI queued the question instead of interrupting on slide arrival.",
+            reason="Slide warm-up: Faculty-AI queued the question instead of interrupting on slide arrival.",
             inferred_current_slide=inferred_slide,
             answer_evaluation=answer_evaluation,
         )
@@ -638,13 +638,13 @@ def analyze_chunk(payload: AnalyzeChunkRequest) -> AnalyzeChunkResponse:
         _queue_feedback(
             session,
             candidate,
-            "Queued while FacultyAI waits for the presenter to finish answering the earlier question.",
+            "Queued while Faculty-AI waits for the presenter to finish answering the earlier question.",
         )
         state.save_session(payload.sessionId, session)
         return _response(
             session,
             trigger=False,
-            reason="Answer window active: FacultyAI queued the next question instead of stacking interruptions.",
+            reason="Answer window active: Faculty-AI queued the next question instead of stacking interruptions.",
             inferred_current_slide=inferred_slide,
             answer_evaluation=answer_evaluation,
         )

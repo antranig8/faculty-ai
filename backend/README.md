@@ -1,4 +1,4 @@
-# FacultyAI Backend
+# Faculty-AI Backend
 
 FastAPI service that parses decks, prepares questions, runs the live decision engine, and proxies Deepgram speech. Setup and configuration are in the [root README](../README.md).
 
