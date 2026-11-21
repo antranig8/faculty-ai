@@ -54,9 +54,12 @@ Open `http://localhost:3000/`.
 
 ## Environment
 
+Copy `.env.example` to `.env` at the repo root and fill in the values you need. The backend reads `.env` automatically; the frontend reads `NEXT_PUBLIC_*` and `FACULTY_AI_ACCESS_CODE` from its environment at build/run time.
+
 Common variables:
 
 - `NEXT_PUBLIC_API_BASE_URL`: frontend API base, defaults to `http://localhost:8000`
+- `NEXT_PUBLIC_FACULTY_AI_APP_API_KEY`: key the frontend sends to the backend for non-local access (see the security note below)
 - `FACULTY_AI_ACCESS_CODE`: enables the frontend access page and signed access cookie flow
 - `FACULTY_AI_ALLOWED_ORIGINS`: backend CORS origins, defaults to `http://localhost:3000,http://127.0.0.1:3000`
 - `FACULTY_AI_APP_API_KEY`: required for non-local backend HTTP/WebSocket access
@@ -66,13 +69,12 @@ Speech and LLM variables:
 - `DEEPGRAM_API_KEY`: enables live transcription proxy and Deepgram TTS
 - `DEEPGRAM_MODEL`: defaults to `flux-general-en`
 - `DEEPGRAM_LANGUAGE`: defaults to `en-US`
-- `FACULTY_AI_SPEECH_PROVIDER`: currently defaults to `deepgram`
 - `GROQ_API_KEY`: enables Groq-backed prepared-question generation and live reasoning
-- `FACULTY_AI_LLM_PROVIDER`: defaults to `heuristic`
+- `FACULTY_AI_LLM_PROVIDER`: defaults to `heuristic`; set to `groq` (with `GROQ_API_KEY`) to turn on LLM-backed questions
 - `FACULTY_AI_LLM_MODEL`: defaults to `qwen/qwen3-32b`
 - `FACULTY_AI_REPHRASE_MODEL`: optional lighter Groq model for question simplification, defaults to `qwen/qwen3-8b`
 
-Without `GROQ_API_KEY`, the app falls back to deterministic heuristic question generation and live feedback logic.
+Unless `FACULTY_AI_LLM_PROVIDER=groq` and `GROQ_API_KEY` are both set, the app falls back to deterministic heuristic question generation and live feedback logic.
 
 ## Workflow
 
@@ -87,6 +89,7 @@ Without `GROQ_API_KEY`, the app falls back to deterministic heuristic question g
 ## Notes
 
 - The backend allows localhost access without `x-facultyai-key`.
+- Security note: `NEXT_PUBLIC_*` values are bundled into browser JavaScript, so `NEXT_PUBLIC_FACULTY_AI_APP_API_KEY` is visible to anyone who can load the frontend. It keeps casual traffic off a deployed backend, but it is not a secret. Provider keys (`DEEPGRAM_API_KEY`, `GROQ_API_KEY`) stay on the backend and are never sent to the browser.
 - Non-local requests must send `x-facultyai-key`, and the speech proxies also accept `?key=...`.
 - Prepared questions are cached by project context and slide content.
 - The runtime is hybrid: prepared questions anchor the session, but live heuristics and optional Groq-backed reasoning can choose a better question when the transcript supports it.

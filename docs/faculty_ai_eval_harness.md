@@ -48,7 +48,7 @@ Create a JSON file like this:
 
 You can also use `slideOutline` instead of `pptxPath` for quick synthetic tests.
 
-A starter example lives at `backend/eval_scenarios/example_assignment6.json`.
+A complete example lives at `backend/eval_scenarios/faculty_ai_group2_example_scenario.json`, with its generated report in `faculty_ai_group2_example_report.json`.
 
 More realistic repo examples:
 
@@ -70,7 +70,7 @@ For the included example:
 
 ```powershell
 cd backend
-.\.venv\Scripts\python.exe -m app.services.eval_runner eval_scenarios\example_assignment6.json --out ..\example-report.json
+.\.venv\Scripts\python.exe -m app.services.eval_runner eval_scenarios\faculty_ai_group2_example_scenario.json --out ..\example-report.json
 ```
 
 ## What The Report Contains

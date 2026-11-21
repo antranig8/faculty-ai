@@ -1,4 +1,3 @@
-import ipaddress
 import logging
 
 from fastapi import FastAPI, Request
@@ -7,6 +6,7 @@ from fastapi.responses import JSONResponse
 
 from app.config import get_settings
 from app.routes import analyze, presentation, professor, session, speech
+from app.security import is_local_host
 
 app = FastAPI(title="Faculty AI Live Feedback")
 logging.basicConfig(level=logging.INFO)
@@ -22,17 +22,6 @@ app.add_middleware(
 )
 
 
-def _is_local_request(host: str | None) -> bool:
-    if not host:
-        return False
-    if host in {"127.0.0.1", "::1", "localhost", "testclient"}:
-        return True
-    try:
-        return ipaddress.ip_address(host).is_loopback
-    except ValueError:
-        return False
-
-
 @app.middleware("http")
 async def require_api_key_for_non_local_requests(request: Request, call_next):
     if request.method == "OPTIONS":
@@ -41,7 +30,7 @@ async def require_api_key_for_non_local_requests(request: Request, call_next):
     if request.url.path in PUBLIC_PATHS:
         return await call_next(request)
 
-    if _is_local_request(request.client.host if request.client else None):
+    if is_local_host(request.client.host if request.client else None):
         return await call_next(request)
 
     required_key = get_settings().faculty_ai_app_api_key
@@ -55,6 +44,7 @@ async def require_api_key_for_non_local_requests(request: Request, call_next):
         return JSONResponse(status_code=401, content={"detail": "Missing or invalid API key."})
 
     return await call_next(request)
+
 
 app.include_router(session.router)
 app.include_router(analyze.router)

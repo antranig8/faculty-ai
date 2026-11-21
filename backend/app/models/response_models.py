@@ -113,14 +113,5 @@ class AnalyzeChunkResponse(BaseModel):
     inferredCurrentSlide: Optional[Slide] = None
 
 
-class SpeechSessionResponse(BaseModel):
-    provider: str
-    accessToken: Optional[str] = None
-    expiresIn: Optional[int] = None
-    websocketUrl: Optional[str] = None
-    model: Optional[str] = None
-    language: Optional[str] = None
-
-
 class QuestionRephraseResponse(BaseModel):
     rephrasedQuestion: str

@@ -200,7 +200,7 @@ def run_scenario(scenario_path: Path, output_path: Path | None = None) -> dict:
         state.delete_session(session_id)
 
     report = {
-        "scenario": str(scenario_path),
+        "scenario": scenario_path.name,
         "questionSource": question_source,
         "runtimeMode": "heuristic" if force_heuristic_runtime else "configured",
         "slideCount": len(slides),

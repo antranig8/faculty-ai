@@ -23,7 +23,7 @@ def seconds_since(value: datetime | None) -> float:
     return (utc_now() - value).total_seconds()
 
 
-def too_similar(message: str, existing_messages: List[str], threshold: float = 0.72) -> bool:
+def too_similar(message: str, existing_messages: List[str], threshold: float = 0.64) -> bool:
     normalized = _normalize_message(message)
     for existing in existing_messages[-5:]:
         existing_normalized = _normalize_message(existing)
@@ -34,7 +34,7 @@ def too_similar(message: str, existing_messages: List[str], threshold: float = 0
         if normalized in existing_normalized or existing_normalized in normalized:
             return True
         ratio = SequenceMatcher(None, normalized, existing_normalized).ratio()
-        if ratio >= 0.64:
+        if ratio >= threshold:
             return True
     return False
 

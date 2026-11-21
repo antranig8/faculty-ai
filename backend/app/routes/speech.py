@@ -1,5 +1,4 @@
 import asyncio
-import ipaddress
 import json
 import logging
 import urllib.error
@@ -14,9 +13,9 @@ from websockets.exceptions import InvalidStatus
 
 from app.config import get_settings
 from app.models.request_models import QuestionRephraseRequest, TextToSpeechRequest
-from app.models.response_models import QuestionRephraseResponse, SpeechSessionResponse
+from app.models.response_models import QuestionRephraseResponse
+from app.security import is_local_host
 from app.services.question_rephraser import rephrase_question
-from app.services.speech_provider import SpeechProviderName, get_speech_provider
 
 router = APIRouter(prefix="/speech", tags=["speech"])
 logger = logging.getLogger("faculty_ai.speech")
@@ -24,19 +23,8 @@ DEEPGRAM_TTS_MODEL = "aura-2-arcas-en"
 DEEPGRAM_TTS_STREAM_SAMPLE_RATE = 48000
 
 
-def _is_local_host(host: str | None) -> bool:
-    if not host:
-        return False
-    if host in {"127.0.0.1", "::1", "localhost", "testclient"}:
-        return True
-    try:
-        return ipaddress.ip_address(host).is_loopback
-    except ValueError:
-        return False
-
-
 def _websocket_authorized(websocket: WebSocket) -> bool:
-    if _is_local_host(websocket.client.host if websocket.client else None):
+    if is_local_host(websocket.client.host if websocket.client else None):
         return True
 
     required_key = get_settings().faculty_ai_app_api_key
@@ -70,7 +58,6 @@ def _deepgram_listen_url(model: str, language: str) -> str:
             "vad_events": "true",
             "endpointing": "300",
         }
-        params["language"] = language
     return f"wss://api.deepgram.com/{endpoint}?{urlencode(params)}"
 
 
@@ -125,25 +112,6 @@ async def _safe_deepgram_send(deepgram_ws, payload) -> bool:
         return True
     except ConnectionClosed:
         return False
-
-
-@router.post("/{provider_name}/session", response_model=SpeechSessionResponse)
-async def create_speech_session(provider_name: SpeechProviderName) -> SpeechSessionResponse:
-    provider = get_speech_provider(provider_name)
-    try:
-        session = await provider.start_transcription_session()
-    except NotImplementedError as exc:
-        raise HTTPException(status_code=501, detail=str(exc)) from exc
-    except RuntimeError as exc:
-        raise HTTPException(status_code=503, detail=str(exc)) from exc
-    return SpeechSessionResponse(
-        provider=session.provider,
-        accessToken=session.access_token,
-        expiresIn=session.expires_in,
-        websocketUrl=session.websocket_url,
-        model=session.model,
-        language=session.language,
-    )
 
 
 @router.post("/rephrase-question", response_model=QuestionRephraseResponse)
@@ -419,8 +387,8 @@ async def deepgram_proxy(websocket: WebSocket) -> None:
         await _safe_close(websocket, code=1011)
     except WebSocketDisconnect:
         return
-    except Exception as exc:
+    except Exception:
         logger.exception("deepgram_proxy failed")
-        await _safe_send_json(websocket, {"type": "error", "message": str(exc)})
+        await _safe_send_json(websocket, {"type": "error", "message": "Deepgram live transcription failed."})
         await _safe_close(websocket, code=1011)
 

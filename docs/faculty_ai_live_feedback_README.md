@@ -187,8 +187,7 @@ FacultyAI/
 |  |- faculty_ai_live_feedback_README.md
 |  |- faculty_ai_eval_harness.md
 |  |- faculty_ai_POTENTIAL.md
-|  |- slide_aware_faculty_examiner_direction.md
-|  `- what_i_need_from_you_for_eval.md
+|  `- slide_aware_faculty_examiner_direction.md
 |- faculty_ai.db
 |- package.json
 `- README.md
@@ -216,7 +215,6 @@ FacultyAI/
 - `POST /presentation/prepare`
 - `GET /professor/config`
 - `POST /professor/config`
-- `POST /speech/{provider_name}/session`
 - `GET /speech/deepgram/tts/preview`
 - `POST /speech/deepgram/tts`
 - `WS /speech/deepgram/proxy`
@@ -250,7 +248,6 @@ Important environment variables:
 - `DEEPGRAM_API_KEY`
 - `DEEPGRAM_MODEL`
 - `DEEPGRAM_LANGUAGE`
-- `FACULTY_AI_SPEECH_PROVIDER`
 - `GROQ_API_KEY`
 - `FACULTY_AI_LLM_PROVIDER`
 - `FACULTY_AI_LLM_MODEL`

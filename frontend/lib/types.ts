@@ -88,17 +88,6 @@ export type AnalyzeResponse = {
   inferredCurrentSlide?: Slide;
 };
 
-export type SpeechProvider = "deepgram" | "assemblyai";
-
-export type SpeechSession = {
-  provider: SpeechProvider;
-  accessToken?: string;
-  expiresIn?: number;
-  websocketUrl?: string;
-  model?: string;
-  language?: string;
-};
-
 export type TtsProvider = "browser" | "deepgram";
 
 export type TtsPreviewResponse = {
@@ -106,7 +95,7 @@ export type TtsPreviewResponse = {
   configured: boolean;
   enabled: boolean;
   model: string;
-  status: "scaffolded_not_implemented" | "enabled";
+  status: "enabled" | "missing_deepgram_api_key";
 };
 
 export type QuestionRephraseResponse = {

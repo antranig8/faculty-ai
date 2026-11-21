@@ -5,8 +5,6 @@ import type {
   PresentationPreparation,
   ProfessorConfig,
   ProjectContext,
-  SpeechProvider,
-  SpeechSession,
   QuestionRephraseResponse,
   TtsPreviewResponse,
   Slide,
@@ -200,20 +198,6 @@ export async function updateFeedbackResolution(params: {
 
   if (!response.ok) {
     throw new Error(params.resolved ? "Unable to mark feedback addressed." : "Unable to reopen feedback.");
-  }
-
-  return response.json();
-}
-
-export async function createSpeechSession(provider: SpeechProvider): Promise<SpeechSession> {
-  const response = await fetch(`${API_BASE}/speech/${provider}/session`, {
-    method: "POST",
-    headers: buildHeaders(),
-  });
-
-  if (!response.ok) {
-    const error = await response.json().catch(() => undefined);
-    throw new Error(error?.detail ?? "Unable to start live speech.");
   }
 
   return response.json();
