@@ -1,28 +1,6 @@
 # FacultyAI Backend
 
-FastAPI service for presentation upload, slide-aware question preparation, transcript analysis, speech proxying, TTS, and persisted session state.
-
-The backend also contains the offline replay harness at `app/services/eval_runner.py` for tuning transcript scenarios without running a live microphone demo.
-
-## Routes
-
-- `GET /`
-- `GET /health`
-- `POST /session/start`
-- `GET /session/{session_id}/feedback`
-- `PATCH /session/{session_id}/feedback/{created_at}/resolution`
-- `POST /analyze-chunk`
-- `POST /presentation/upload`
-- `POST /presentation/prepare`
-- `GET /professor/config`
-- `POST /professor/config`
-- `POST /speech/rephrase-question`
-- `GET /speech/deepgram/tts/preview`
-- `POST /speech/deepgram/tts`
-- `WS /speech/deepgram/proxy`
-- `WS /speech/deepgram/tts/stream`
-
-## Development
+FastAPI service that parses decks, prepares questions, runs the live decision engine, and proxies Deepgram speech. Setup and configuration are in the [root README](../README.md).
 
 ```powershell
 python -m venv .venv
@@ -31,37 +9,30 @@ pip install -r requirements.txt
 uvicorn app.main:app --reload --port 8000
 ```
 
-The root `package.json` also exposes:
+Interactive API docs are served at <http://localhost:8000/docs> while the server is running.
 
-```powershell
-npm run backend:dev
-```
+## Endpoints
 
-## Configuration
+| Method | Path | Purpose |
+|---|---|---|
+| `GET` | `/health` | Health check |
+| `GET` / `POST` | `/professor/config` | Read or save the rubric and assignment context |
+| `POST` | `/presentation/upload` | Upload a `.pptx` and get slides plus prepared questions |
+| `POST` | `/presentation/prepare` | Same, from a plain-text slide outline |
+| `POST` | `/session/start` | Start a rehearsal session |
+| `POST` | `/analyze-chunk` | Run the decision engine on a transcript chunk |
+| `GET` | `/session/{id}/feedback` | List questions asked in a session |
+| `PATCH` | `/session/{id}/feedback/{created_at}/resolution` | Resolve or reopen a question |
+| `POST` | `/speech/rephrase-question` | Simplify a question (requires Groq) |
+| `GET` | `/speech/deepgram/tts/preview` | Report whether TTS is configured |
+| `POST` | `/speech/deepgram/tts` | Synthesize a question to MP3 |
+| `WS` | `/speech/deepgram/proxy` | Live transcription proxy |
+| `WS` | `/speech/deepgram/tts/stream` | Streaming TTS proxy |
 
-The backend loads `.env` values from the repo root when present.
+## Layout
 
-- `DEEPGRAM_API_KEY`: required for live Deepgram transcription and TTS routes
-- `DEEPGRAM_MODEL`: defaults to `flux-general-en`
-- `DEEPGRAM_LANGUAGE`: defaults to `en-US`
-- `GROQ_API_KEY`: enables Groq-backed prepared questions and live faculty reasoning
-- `FACULTY_AI_LLM_PROVIDER`: defaults to `heuristic`; set to `groq` (with `GROQ_API_KEY`) to turn on LLM-backed questions
-- `FACULTY_AI_LLM_MODEL`: defaults to `qwen/qwen3-32b`
-- `FACULTY_AI_REPHRASE_MODEL`: optional lighter Groq model for faculty question rephrasing, defaults to `qwen/qwen3-8b`
-- `FACULTY_AI_ALLOWED_ORIGINS`: CORS allowlist
-- `FACULTY_AI_APP_API_KEY`: required for non-local HTTP and WebSocket access
-
-Localhost requests are allowed without an API key. Non-local HTTP requests must send `x-facultyai-key`. The WebSocket proxies accept the same value in either `x-facultyai-key` or the `key` query parameter.
-
-## Persistence
-
-State is stored in `faculty_ai.db` at the repository root:
-
-- professor config
-- session payloads and feedback history
-- prepared-question cache
-- queued/follow-up timing state
-- lightweight student coverage state
-- lightweight student profile memory for major / interest cues
-
-Without a `GROQ_API_KEY`, the backend falls back to deterministic heuristic preparation and feedback generation.
+- `app/routes/`: HTTP and WebSocket endpoints
+- `app/services/`: decision engine (`faculty_brain.py`, `feedback_engine.py`), deck parsing and question preparation, answer evaluation, student profiles, and the eval runner
+- `app/prompts/`: LLM prompts and the default professor rubric
+- `app/state.py`: in-memory state backed by SQLite (`faculty_ai.db` at the repo root)
+- `eval_scenarios/`: sample deck, replay scenarios, and reports; see [docs/eval-harness.md](../docs/eval-harness.md)

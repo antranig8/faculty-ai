@@ -1,41 +1,26 @@
 # FacultyAI Frontend
 
-Next.js 16 app for professor setup, presentation rehearsal, access-code gating, and live faculty-question playback.
-
-## Routes
-
-- `/`: landing page with links to setup and presentation mode
-- `/access`: optional access-code form when `FACULTY_AI_ACCESS_CODE` is set
-- `/professor`: professor rubric and assignment setup
-- `/present`: presentation cockpit
-- `/results`: currently redirects to `/present`
-
-## Development
+Next.js app for professor setup and the live presentation cockpit. Setup and configuration are in the [root README](../README.md).
 
 ```powershell
 npm install
 npm run dev
 ```
 
-Open `http://localhost:3000/`.
+Then open <http://localhost:3000>. Run `npm run lint` to type-check.
 
-The root `package.json` also exposes:
+## Pages
 
-```powershell
-npm run frontend:dev
-```
+| Route | Purpose |
+|---|---|
+| `/` | Landing page |
+| `/professor` | Rubric, assignment context, and questioning style |
+| `/present` | Deck upload, live transcript, slide tracker, and feedback drawer |
+| `/access` | Access-code prompt, shown only when `FACULTY_AI_ACCESS_CODE` is set |
 
-## Configuration
+## Layout
 
-- `NEXT_PUBLIC_API_BASE_URL`: backend base URL, defaults to `http://localhost:8000`
-- `NEXT_PUBLIC_FACULTY_AI_APP_API_KEY`: optional key forwarded to protected backend HTTP and WebSocket routes
-- `FACULTY_AI_ACCESS_CODE`: enables the access page and signed cookie session check
-
-## Current Behavior
-
-- Uploads `.pptx` files and prepares slide-aware faculty questions
-- Starts live mic mode against the backend Deepgram proxy
-- Infers the active slide automatically, with manual override available
-- Speaks triggered faculty questions with Deepgram TTS when enabled
-- Lets users resolve or reopen faculty questions in the feedback drawer
-- Shows queued questions, answer-quality state, and targeted-student metadata when available
+- `app/`: pages and the `/api/access` route that issues the signed access cookie
+- `components/`: cockpit UI (upload, slide tracker, transcript, feedback drawer, alerts)
+- `lib/api.ts`: backend client, including the speech WebSocket URLs
+- `lib/accessSession.ts`, `proxy.ts`: access-code gate
