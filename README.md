@@ -1,8 +1,6 @@
-# FacultyAI
+# Faculty-AI
 
-A live rehearsal tool for academic presentations. FacultyAI listens while you present, follows along in your slides, and asks the kind of pointed question a faculty member would: when you make a vague claim, skip a justification, or leave an idea underdeveloped.
-
-Built for UMD's ENES 104 course at the instructor's request, so students can practice their final presentations in front of a demanding audience before the real one.
+A live rehearsal tool for academic presentations. Faculty-AI listens while you present, follows along in your slides, and asks the kind of pointed question a faculty member would: when you make a vague claim, skip a justification, or leave an idea underdeveloped.
 
 ## Features
 
