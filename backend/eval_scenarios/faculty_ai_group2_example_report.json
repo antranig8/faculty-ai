@@ -1,9 +1,9 @@
 {
   "scenario": "faculty_ai_group2_example_scenario.json",
-  "questionSource": "llm",
+  "questionSource": "heuristic",
   "runtimeMode": "heuristic",
   "slideCount": 7,
-  "preparedQuestionCount": 6,
+  "preparedQuestionCount": 8,
   "facultyAINotes": [
     {
       "afterChunk": 5,
@@ -114,7 +114,7 @@
       "queuedFeedback": null,
       "resolvedFeedback": null,
       "answerEvaluation": null,
-      "reason": "No strong deterministic faculty move was found.",
+      "reason": "No end-of-slide question handoff detected.",
       "diagnostics": {
         "preparedCandidates": [],
         "freeformCandidates": [],
@@ -132,16 +132,7 @@
       "answerEvaluation": null,
       "reason": "No end-of-slide question handoff detected.",
       "diagnostics": {
-        "preparedCandidates": [
-          {
-            "interactionType": "prepared_question",
-            "score": 12,
-            "priority": "medium",
-            "message": "Antranig, you highlighted Dr. Brooks's 'good enough' concept and Dr. Haddad's 'wild-card' perspective. How do you reconcile these potentially conflicting ideas when applying them to your own engineering decisions?",
-            "reason": "Prepared concern from rubric category 'individual_lesson'.",
-            "sourceQuestionId": "slide3_antranig_speaker_application"
-          }
-        ],
+        "preparedCandidates": [],
         "freeformCandidates": [
           {
             "interactionType": "freeform_question",
@@ -173,16 +164,7 @@
       "answerEvaluation": null,
       "reason": "No end-of-slide question handoff detected.",
       "diagnostics": {
-        "preparedCandidates": [
-          {
-            "interactionType": "prepared_question",
-            "score": 14,
-            "priority": "medium",
-            "message": "Antranig, you highlighted Dr. Brooks's 'good enough' concept and Dr. Haddad's 'wild-card' perspective. How do you reconcile these potentially conflicting ideas when applying them to your own engineering decisions?",
-            "reason": "Prepared concern from rubric category 'individual_lesson'.",
-            "sourceQuestionId": "slide3_antranig_speaker_application"
-          }
-        ],
+        "preparedCandidates": [],
         "freeformCandidates": [
           {
             "interactionType": "freeform_question",
@@ -209,41 +191,12 @@
       "currentSlideNumber": 3,
       "decision": "no_trigger",
       "feedback": null,
-      "queuedFeedback": {
-        "type": "question",
-        "priority": "medium",
-        "section": "demo",
-        "message": "Antranig, you highlighted Dr. Brooks's 'good enough' concept and Dr. Haddad's 'wild-card' perspective. How do you reconcile these potentially conflicting ideas when applying them to your own engineering decisions?",
-        "reason": "Timing gate: waiting for the presenter to spend longer on the slide before interrupting (12.0s so far, target 14s).",
-        "createdAt": "2026-04-25T19:56:17.742458+00:00",
-        "slideNumber": 3,
-        "resolved": false,
-        "resolvedAt": null,
-        "resolutionReason": null,
-        "sourceQuestionId": "slide3_antranig_speaker_application",
-        "autoResolutionTerms": [
-          "Clear conflict resolution strategy",
-          "Concrete application examples"
-        ],
-        "deliveryStatus": "queued",
-        "followUpToQuestionId": null,
-        "answerQuality": null,
-        "targetStudent": "Antranig"
-      },
+      "queuedFeedback": null,
       "resolvedFeedback": null,
       "answerEvaluation": null,
-      "reason": "Timing gate: waiting for the presenter to spend longer on the slide before interrupting (12.0s so far, target 14s).",
+      "reason": "No end-of-slide question handoff detected.",
       "diagnostics": {
-        "preparedCandidates": [
-          {
-            "interactionType": "prepared_question",
-            "score": 14,
-            "priority": "medium",
-            "message": "Antranig, you highlighted Dr. Brooks's 'good enough' concept and Dr. Haddad's 'wild-card' perspective. How do you reconcile these potentially conflicting ideas when applying them to your own engineering decisions?",
-            "reason": "Prepared concern from rubric category 'individual_lesson'.",
-            "sourceQuestionId": "slide3_antranig_speaker_application"
-          }
-        ],
+        "preparedCandidates": [],
         "freeformCandidates": [
           {
             "interactionType": "freeform_question",
@@ -276,52 +229,16 @@
       "index": 8,
       "chunk": "Dr. Brooks also emphasized that what you know today can become outdated quickly. That made me think differently about engineering because continuous learning is not optional; it is part of the career.",
       "currentSlideNumber": 3,
-      "decision": "trigger",
-      "feedback": {
-        "type": "question",
-        "priority": "medium",
-        "section": "demo",
-        "message": "Antranig, you highlighted Dr. Brooks's 'good enough' concept and Dr. Haddad's 'wild-card' perspective. How do you reconcile these potentially conflicting ideas when applying them to your own engineering decisions?",
-        "reason": "Timing gate: waiting for the presenter to spend longer on the slide before interrupting (12.0s so far, target 14s).",
-        "createdAt": "2026-04-25T19:56:17.742458+00:00",
-        "slideNumber": 3,
-        "resolved": false,
-        "resolvedAt": null,
-        "resolutionReason": null,
-        "sourceQuestionId": "slide3_antranig_speaker_application",
-        "autoResolutionTerms": [
-          "Clear conflict resolution strategy",
-          "Concrete application examples"
-        ],
-        "deliveryStatus": "active",
-        "followUpToQuestionId": null,
-        "answerQuality": null,
-        "targetStudent": "Antranig"
-      },
+      "decision": "no_trigger",
+      "feedback": null,
       "queuedFeedback": null,
       "resolvedFeedback": null,
       "answerEvaluation": null,
-      "reason": "Delivered a previously queued faculty question once timing conditions were safe.",
+      "reason": "No end-of-slide question handoff detected.",
       "diagnostics": {
-        "preparedCandidates": [
-          {
-            "interactionType": "prepared_question",
-            "score": 14,
-            "priority": "medium",
-            "message": "Antranig, you highlighted Dr. Brooks's 'good enough' concept and Dr. Haddad's 'wild-card' perspective. How do you reconcile these potentially conflicting ideas when applying them to your own engineering decisions?",
-            "reason": "Prepared concern from rubric category 'individual_lesson'.",
-            "sourceQuestionId": "slide3_antranig_speaker_application"
-          }
-        ],
+        "preparedCandidates": [],
         "freeformCandidates": [],
-        "selectedCandidate": {
-          "interactionType": "prepared_question",
-          "score": 14,
-          "priority": "medium",
-          "message": "Antranig, you highlighted Dr. Brooks's 'good enough' concept and Dr. Haddad's 'wild-card' perspective. How do you reconcile these potentially conflicting ideas when applying them to your own engineering decisions?",
-          "reason": "Prepared concern from rubric category 'individual_lesson'.",
-          "sourceQuestionId": "slide3_antranig_speaker_application"
-        }
+        "selectedCandidate": null
       }
     },
     {
@@ -332,29 +249,10 @@
       "feedback": null,
       "queuedFeedback": null,
       "resolvedFeedback": null,
-      "answerEvaluation": {
-        "questionId": "slide3_antranig_speaker_application",
-        "answered": false,
-        "answerQuality": "weak",
-        "missingPoints": [
-          "Clear conflict resolution strategy",
-          "Concrete application examples"
-        ],
-        "shouldAskFollowUp": false,
-        "followUpQuestion": null
-      },
-      "reason": "This slide already received its one faculty question for this presentation.",
+      "answerEvaluation": null,
+      "reason": "No end-of-slide question handoff detected.",
       "diagnostics": {
-        "preparedCandidates": [
-          {
-            "interactionType": "prepared_question",
-            "score": 14,
-            "priority": "medium",
-            "message": "Antranig, you highlighted Dr. Brooks's 'good enough' concept and Dr. Haddad's 'wild-card' perspective. How do you reconcile these potentially conflicting ideas when applying them to your own engineering decisions?",
-            "reason": "Prepared concern from rubric category 'individual_lesson'.",
-            "sourceQuestionId": "slide3_antranig_speaker_application"
-          }
-        ],
+        "preparedCandidates": [],
         "freeformCandidates": [
           {
             "interactionType": "freeform_question",
@@ -394,16 +292,7 @@
       "answerEvaluation": null,
       "reason": "No end-of-slide question handoff detected.",
       "diagnostics": {
-        "preparedCandidates": [
-          {
-            "interactionType": "prepared_question",
-            "score": 18,
-            "priority": "high",
-            "message": "Jordan, you emphasized maximizing early opportunities and embracing diverse knowledge sources. Can you describe a specific scenario where these principles might lead to different outcomes compared to traditional career advancement strategies?",
-            "reason": "Prepared concern from rubric category 'individual_lesson'.",
-            "sourceQuestionId": "slide5_joshua_opportunity_maximization"
-          }
-        ],
+        "preparedCandidates": [],
         "freeformCandidates": [
           {
             "interactionType": "freeform_question",
@@ -451,16 +340,7 @@
       "answerEvaluation": null,
       "reason": "No end-of-slide question handoff detected.",
       "diagnostics": {
-        "preparedCandidates": [
-          {
-            "interactionType": "prepared_question",
-            "score": 15,
-            "priority": "high",
-            "message": "Jordan, you emphasized maximizing early opportunities and embracing diverse knowledge sources. Can you describe a specific scenario where these principles might lead to different outcomes compared to traditional career advancement strategies?",
-            "reason": "Prepared concern from rubric category 'individual_lesson'.",
-            "sourceQuestionId": "slide5_joshua_opportunity_maximization"
-          }
-        ],
+        "preparedCandidates": [],
         "freeformCandidates": [
           {
             "interactionType": "freeform_question",
@@ -493,43 +373,14 @@
       "index": 12,
       "chunk": "From Dr. Maria Chen, Jordan took away the importance of maximizing every opportunity. Some early opportunities may not look impressive at first, but they can still build skills, confidence, and professional growth.",
       "currentSlideNumber": 5,
-      "decision": "trigger",
-      "feedback": {
-        "type": "question",
-        "priority": "high",
-        "section": "demo",
-        "message": "Jordan, you emphasized maximizing early opportunities and embracing diverse knowledge sources. Can you describe a specific scenario where these principles might lead to different outcomes compared to traditional career advancement strategies?",
-        "reason": "Rubric focus: individual_lesson. The current slide has enough spoken context for this prepared concern, but the explanation has not addressed it yet.",
-        "createdAt": "2026-04-25T19:56:17.817591+00:00",
-        "slideNumber": 5,
-        "resolved": false,
-        "resolvedAt": null,
-        "resolutionReason": null,
-        "sourceQuestionId": "slide5_joshua_opportunity_maximization",
-        "autoResolutionTerms": [
-          "Concrete situational example",
-          "Critical evaluation of approaches"
-        ],
-        "deliveryStatus": "active",
-        "followUpToQuestionId": null,
-        "answerQuality": null,
-        "targetStudent": "Jordan"
-      },
+      "decision": "no_trigger",
+      "feedback": null,
       "queuedFeedback": null,
       "resolvedFeedback": null,
       "answerEvaluation": null,
-      "reason": "Generated proactive feedback from prepared slide question. Selected prepared faculty move over freeform alternative.",
+      "reason": "No end-of-slide question handoff detected.",
       "diagnostics": {
-        "preparedCandidates": [
-          {
-            "interactionType": "prepared_question",
-            "score": 14,
-            "priority": "high",
-            "message": "Jordan, you emphasized maximizing early opportunities and embracing diverse knowledge sources. Can you describe a specific scenario where these principles might lead to different outcomes compared to traditional career advancement strategies?",
-            "reason": "Prepared concern from rubric category 'individual_lesson'.",
-            "sourceQuestionId": "slide5_joshua_opportunity_maximization"
-          }
-        ],
+        "preparedCandidates": [],
         "freeformCandidates": [
           {
             "interactionType": "freeform_question",
@@ -566,30 +417,10 @@
       "feedback": null,
       "queuedFeedback": null,
       "resolvedFeedback": null,
-      "answerEvaluation": {
-        "questionId": "slide5_joshua_opportunity_maximization",
-        "answered": false,
-        "answerQuality": "weak",
-        "missingPoints": [
-          "Concrete situational example",
-          "Critical evaluation of approaches",
-          "metric"
-        ],
-        "shouldAskFollowUp": false,
-        "followUpQuestion": null
-      },
-      "reason": "This faculty question was already asked earlier in the session.",
+      "answerEvaluation": null,
+      "reason": "No end-of-slide question handoff detected.",
       "diagnostics": {
-        "preparedCandidates": [
-          {
-            "interactionType": "prepared_question",
-            "score": 16,
-            "priority": "high",
-            "message": "Jordan, you emphasized maximizing early opportunities and embracing diverse knowledge sources. Can you describe a specific scenario where these principles might lead to different outcomes compared to traditional career advancement strategies?",
-            "reason": "Prepared concern from rubric category 'individual_lesson'.",
-            "sourceQuestionId": "slide5_joshua_opportunity_maximization"
-          }
-        ],
+        "preparedCandidates": [],
         "freeformCandidates": [
           {
             "interactionType": "freeform_question",
@@ -618,30 +449,10 @@
       "feedback": null,
       "queuedFeedback": null,
       "resolvedFeedback": null,
-      "answerEvaluation": {
-        "questionId": "slide5_joshua_opportunity_maximization",
-        "answered": false,
-        "answerQuality": "weak",
-        "missingPoints": [
-          "Concrete situational example",
-          "Critical evaluation of approaches",
-          "metric"
-        ],
-        "shouldAskFollowUp": false,
-        "followUpQuestion": null
-      },
-      "reason": "This faculty question was already asked earlier in the session.",
+      "answerEvaluation": null,
+      "reason": "No end-of-slide question handoff detected.",
       "diagnostics": {
-        "preparedCandidates": [
-          {
-            "interactionType": "prepared_question",
-            "score": 16,
-            "priority": "high",
-            "message": "Jordan, you emphasized maximizing early opportunities and embracing diverse knowledge sources. Can you describe a specific scenario where these principles might lead to different outcomes compared to traditional career advancement strategies?",
-            "reason": "Prepared concern from rubric category 'individual_lesson'.",
-            "sourceQuestionId": "slide5_joshua_opportunity_maximization"
-          }
-        ],
+        "preparedCandidates": [],
         "freeformCandidates": [
           {
             "interactionType": "freeform_question",
@@ -673,16 +484,7 @@
       "answerEvaluation": null,
       "reason": "No end-of-slide question handoff detected.",
       "diagnostics": {
-        "preparedCandidates": [
-          {
-            "interactionType": "prepared_question",
-            "score": 12,
-            "priority": "medium",
-            "message": "Your CIP-1 suggests enforcing professionalism structure early. What specific metrics or indicators would you use to measure whether this change successfully improves student outcomes?",
-            "reason": "Prepared concern from rubric category 'cip_course_feedback'.",
-            "sourceQuestionId": "slide6_cip_course_feedback"
-          }
-        ],
+        "preparedCandidates": [],
         "freeformCandidates": [
           {
             "interactionType": "freeform_question",
@@ -717,11 +519,11 @@
         "preparedCandidates": [
           {
             "interactionType": "prepared_question",
-            "score": 12,
-            "priority": "medium",
-            "message": "Your CIP-1 suggests enforcing professionalism structure early. What specific metrics or indicators would you use to measure whether this change successfully improves student outcomes?",
-            "reason": "Prepared concern from rubric category 'cip_course_feedback'.",
-            "sourceQuestionId": "slide6_cip_course_feedback"
+            "score": 33,
+            "priority": "high",
+            "message": "If management could only act on one improvement, which one would most change the next ENES 104 student's experience?",
+            "reason": "Prepared concern from rubric category 'continuous improvement plan for ENES 104'.",
+            "sourceQuestionId": "slide-6-course-cip"
           }
         ],
         "freeformCandidates": [
@@ -751,12 +553,12 @@
           }
         ],
         "selectedCandidate": {
-          "interactionType": "freeform_question",
-          "score": 22,
+          "interactionType": "prepared_question",
+          "score": 33,
           "priority": "high",
-          "message": "What specific professionalism expectation would you add to the first few ENES 104 sessions, and why that one first?",
-          "reason": "Generated Assignment 6 feedback for a more actionable CIP-1 recommendation.",
-          "sourceQuestionId": null
+          "message": "If management could only act on one improvement, which one would most change the next ENES 104 student's experience?",
+          "reason": "Prepared concern from rubric category 'continuous improvement plan for ENES 104'.",
+          "sourceQuestionId": "slide-6-course-cip"
         }
       }
     },
@@ -768,16 +570,22 @@
       "feedback": {
         "type": "question",
         "priority": "high",
-        "section": "unknown",
-        "message": "What specific professionalism expectation would you add to the first few ENES 104 sessions, and why that one first?",
-        "reason": "The presenter proposed clearer professionalism expectations, but the recommendation still needs one concrete, prioritized change.",
-        "createdAt": "2026-04-25T19:56:17.889371+00:00",
-        "slideNumber": null,
+        "section": "problem",
+        "message": "If management could only act on one improvement, which one would most change the next ENES 104 student's experience?",
+        "reason": "Rubric focus: continuous improvement plan for ENES 104. The presenter invited questions at the end of the slide, so FacultyAI surfaced the strongest unasked prepared concern.",
+        "createdAt": "2026-11-21T19:37:35.732309+00:00",
+        "slideNumber": 6,
         "resolved": false,
         "resolvedAt": null,
         "resolutionReason": null,
-        "sourceQuestionId": null,
-        "autoResolutionTerms": [],
+        "sourceQuestionId": "slide-6-course-cip",
+        "autoResolutionTerms": [
+          "because",
+          "specific",
+          "management",
+          "next student",
+          "priority"
+        ],
         "deliveryStatus": "active",
         "followUpToQuestionId": null,
         "answerQuality": null,
@@ -786,16 +594,16 @@
       "queuedFeedback": null,
       "resolvedFeedback": null,
       "answerEvaluation": null,
-      "reason": "Generated Assignment 6 feedback for a more actionable CIP-1 recommendation. Selected freeform faculty move at slide handoff.",
+      "reason": "Generated end-of-slide faculty question from prepared concerns.",
       "diagnostics": {
         "preparedCandidates": [
           {
             "interactionType": "prepared_question",
-            "score": 12,
-            "priority": "medium",
-            "message": "Your CIP-1 suggests enforcing professionalism structure early. What specific metrics or indicators would you use to measure whether this change successfully improves student outcomes?",
-            "reason": "Prepared concern from rubric category 'cip_course_feedback'.",
-            "sourceQuestionId": "slide6_cip_course_feedback"
+            "score": 33,
+            "priority": "high",
+            "message": "If management could only act on one improvement, which one would most change the next ENES 104 student's experience?",
+            "reason": "Prepared concern from rubric category 'continuous improvement plan for ENES 104'.",
+            "sourceQuestionId": "slide-6-course-cip"
           }
         ],
         "freeformCandidates": [
@@ -817,12 +625,12 @@
           }
         ],
         "selectedCandidate": {
-          "interactionType": "freeform_question",
-          "score": 22,
+          "interactionType": "prepared_question",
+          "score": 33,
           "priority": "high",
-          "message": "What specific professionalism expectation would you add to the first few ENES 104 sessions, and why that one first?",
-          "reason": "Generated Assignment 6 feedback for a more actionable CIP-1 recommendation.",
-          "sourceQuestionId": null
+          "message": "If management could only act on one improvement, which one would most change the next ENES 104 student's experience?",
+          "reason": "Prepared concern from rubric category 'continuous improvement plan for ENES 104'.",
+          "sourceQuestionId": "slide-6-course-cip"
         }
       }
     },
@@ -840,11 +648,11 @@
         "preparedCandidates": [
           {
             "interactionType": "prepared_question",
-            "score": 16,
+            "score": 22,
             "priority": "high",
-            "message": "Your CIP-2 states collaboration was minimal. What specific team-building workshop techniques could have been applied to improve collaboration on individual slides while maintaining author ownership?",
-            "reason": "Prepared concern from rubric category 'cip_team_feedback'.",
-            "sourceQuestionId": "slide7_cip_team_feedback"
+            "message": "What is one piece of teammate feedback that actually changed the final presentation, and why did you accept it?",
+            "reason": "Prepared concern from rubric category 'evidence'.",
+            "sourceQuestionId": "slide-7-team-feedback"
           }
         ],
         "freeformCandidates": [
@@ -858,12 +666,12 @@
           }
         ],
         "selectedCandidate": {
-          "interactionType": "freeform_question",
-          "score": 20,
+          "interactionType": "prepared_question",
+          "score": 22,
           "priority": "high",
           "message": "What is one piece of teammate feedback that actually changed the final presentation, and why did you accept it?",
-          "reason": "Generated Assignment 6 feedback for concrete CIP-2 team feedback.",
-          "sourceQuestionId": null
+          "reason": "Prepared concern from rubric category 'evidence'.",
+          "sourceQuestionId": "slide-7-team-feedback"
         }
       }
     },
@@ -878,16 +686,7 @@
       "answerEvaluation": null,
       "reason": "No end-of-slide question handoff detected.",
       "diagnostics": {
-        "preparedCandidates": [
-          {
-            "interactionType": "prepared_question",
-            "score": 16,
-            "priority": "high",
-            "message": "Your CIP-2 states collaboration was minimal. What specific team-building workshop techniques could have been applied to improve collaboration on individual slides while maintaining author ownership?",
-            "reason": "Prepared concern from rubric category 'cip_team_feedback'.",
-            "sourceQuestionId": "slide7_cip_team_feedback"
-          }
-        ],
+        "preparedCandidates": [],
         "freeformCandidates": [
           {
             "interactionType": "freeform_question",
@@ -930,27 +729,10 @@
       "currentSlideNumber": 7,
       "decision": "no_trigger",
       "feedback": null,
-      "queuedFeedback": {
-        "type": "question",
-        "priority": "medium",
-        "section": "evaluation",
-        "message": "What metric supports the claim you just made about Project Presentation?",
-        "reason": "Timing gate: waiting for the presenter to spend longer on the slide before interrupting (12.0s so far, target 14s).",
-        "createdAt": "2026-04-25T19:56:17.938261+00:00",
-        "slideNumber": null,
-        "resolved": false,
-        "resolvedAt": null,
-        "resolutionReason": null,
-        "sourceQuestionId": null,
-        "autoResolutionTerms": [],
-        "deliveryStatus": "queued",
-        "followUpToQuestionId": null,
-        "answerQuality": null,
-        "targetStudent": null
-      },
+      "queuedFeedback": null,
       "resolvedFeedback": null,
       "answerEvaluation": null,
-      "reason": "Timing gate: waiting for the presenter to spend longer on the slide before interrupting (12.0s so far, target 14s).",
+      "reason": "No end-of-slide question handoff detected.",
       "diagnostics": {
         "preparedCandidates": [],
         "freeformCandidates": [
@@ -985,29 +767,12 @@
       "index": 21,
       "chunk": "We could also improve the visual design by cutting down text and using the slides more as speaking guides rather than full notes.",
       "currentSlideNumber": 7,
-      "decision": "trigger",
-      "feedback": {
-        "type": "question",
-        "priority": "medium",
-        "section": "evaluation",
-        "message": "What metric supports the claim you just made about Project Presentation?",
-        "reason": "Timing gate: waiting for the presenter to spend longer on the slide before interrupting (12.0s so far, target 14s).",
-        "createdAt": "2026-04-25T19:56:17.938261+00:00",
-        "slideNumber": null,
-        "resolved": false,
-        "resolvedAt": null,
-        "resolutionReason": null,
-        "sourceQuestionId": null,
-        "autoResolutionTerms": [],
-        "deliveryStatus": "active",
-        "followUpToQuestionId": null,
-        "answerQuality": null,
-        "targetStudent": null
-      },
+      "decision": "no_trigger",
+      "feedback": null,
       "queuedFeedback": null,
       "resolvedFeedback": null,
       "answerEvaluation": null,
-      "reason": "Delivered a previously queued faculty question once timing conditions were safe.",
+      "reason": "No end-of-slide question handoff detected.",
       "diagnostics": {
         "preparedCandidates": [],
         "freeformCandidates": [
@@ -1044,49 +809,12 @@
       "currentSlideNumber": 7,
       "decision": "no_trigger",
       "feedback": null,
-      "queuedFeedback": {
-        "type": "question",
-        "priority": "high",
-        "section": "conclusion",
-        "message": "What is the single most important lesson your group would carry into future engineering projects?",
-        "reason": "Queued while FacultyAI waits for the presenter to finish answering the earlier question.",
-        "createdAt": "2026-04-25T19:56:17.971784+00:00",
-        "slideNumber": null,
-        "resolved": false,
-        "resolvedAt": null,
-        "resolutionReason": null,
-        "sourceQuestionId": null,
-        "autoResolutionTerms": [],
-        "deliveryStatus": "queued",
-        "followUpToQuestionId": null,
-        "answerQuality": null,
-        "targetStudent": null
-      },
+      "queuedFeedback": null,
       "resolvedFeedback": null,
-      "answerEvaluation": {
-        "questionId": "2026-04-25T19:56:17.938261+00:00",
-        "answered": false,
-        "answerQuality": "weak",
-        "missingPoints": [
-          "metric",
-          "baseline",
-          "measured"
-        ],
-        "shouldAskFollowUp": false,
-        "followUpQuestion": null
-      },
-      "reason": "Answer window active: FacultyAI queued the next question instead of stacking interruptions.",
+      "answerEvaluation": null,
+      "reason": "No end-of-slide question handoff detected.",
       "diagnostics": {
-        "preparedCandidates": [
-          {
-            "interactionType": "prepared_question",
-            "score": 16,
-            "priority": "high",
-            "message": "Your CIP-2 states collaboration was minimal. What specific team-building workshop techniques could have been applied to improve collaboration on individual slides while maintaining author ownership?",
-            "reason": "Prepared concern from rubric category 'cip_team_feedback'.",
-            "sourceQuestionId": "slide7_cip_team_feedback"
-          }
-        ],
+        "preparedCandidates": [],
         "freeformCandidates": [
           {
             "interactionType": "freeform_question",
