@@ -14,7 +14,7 @@ Faculty questions are hard to anticipate when practicing alone. Faculty-AI prepa
 
 ## Application tour
 
-Select a screenshot to open it at full size.
+The GIF shows dark mode and the screenshots show light mode. Use the sun or moon button in the header to switch palettes. Faculty-AI follows your system theme until you choose one and then remembers that choice in your browser. Select a screenshot to open it at full size.
 
 | Home | Professor setup |
 | :---: | :---: |
@@ -97,7 +97,7 @@ Use **Python 3.11+** and **Node.js 20.9+**.
 2. Set `DEEPGRAM_API_KEY` in the root `.env` for live transcription and spoken questions. To enable model-backed preparation and selection, also set `GROQ_API_KEY` and `FACULTY_AI_LLM_PROVIDER=groq`. [.env template](.env.example)
 3. Run `npm run dev` from the repository root. Open <http://127.0.0.1:3000> and press Ctrl+C in the terminal when you’re done. The backend listens at `127.0.0.1:8000`, with health and API documentation endpoints. [Health check](http://127.0.0.1:8000/health) · [API docs](http://127.0.0.1:8000/docs)
 
-To try it, open **Present**, upload the sample, and expand **Session** to see the prepared questions. Start the microphone and talk through a slide to try the live flow. [Download the seven-slide sample deck](docs/sample-rehearsal.pptx)
+To try it, open **Present**, upload the sample, and expand **Session** to see the prepared questions. With Deepgram configured, start the microphone and talk through a slide to try the live flow. Open **Results** after the rehearsal to review the saved questions and answer ratings. [Download the seven-slide sample deck](docs/sample-rehearsal.pptx)
 
 <details>
 <summary>Configuration and access details</summary>
@@ -138,8 +138,9 @@ Push-Location backend
 Pop-Location
 ```
 
+To test the decision engine without provider credentials or a microphone, run the sample replay in heuristic mode. For a browser smoke test, drop in the sample deck, check the prepared questions, and switch themes to verify that the deck and slide position stay in place. [Offline replay instructions](docs/eval-harness.md#running-it)
+
 - [Frontend](frontend/README.md) and [backend](backend/README.md) startup and debugging notes.
-- [Offline replay](docs/eval-harness.md) to test the decision workflow against a saved scenario.
 - [How Faculty-AI thinks](docs/how-it-thinks.md) for slide inference, answer evaluation, and question timing.
 
 ## Project status
