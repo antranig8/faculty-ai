@@ -11,6 +11,7 @@ import { SlideTracker } from "@/components/SlideTracker";
 import { TranscriptPanel } from "@/components/TranscriptPanel";
 import styles from "@/components/presentation.module.css";
 import { analyzeChunk, getDeepgramTtsStreamUrl, getProfessorConfig, getSpeechProxyUrl, rephraseFacultyQuestion, startSession, synthesizeDeepgramSpeech, updateFeedbackResolution, uploadPresentation } from "@/lib/api";
+import { queueRehearsalUpdate } from "@/lib/rehearsalSession";
 import type { FeedbackItem, PreparedQuestion, ProfessorConfig, ProjectContext, Slide } from "@/lib/types";
 
 const defaultProjectContext: ProjectContext = {
@@ -180,6 +181,7 @@ export default function PresentPage() {
   const pendingChunksRef = useRef<string[]>([]);
   const drainingRunRef = useRef<number | null>(null);
   const feedbackToggleRef = useRef<HTMLButtonElement | null>(null);
+  const pendingResolutionRef = useRef(new Set<string>());
   const rephraseRequestRef = useRef<{ questionId: string } | null>(null);
   const spokenFeedbackIdsRef = useRef<Set<string>>(new Set());
   const speechAudioRef = useRef<HTMLAudioElement | null>(null);
@@ -237,8 +239,12 @@ export default function PresentPage() {
       return;
     }
     const nextIndex = Math.max(0, Math.min(slides.length - 1, index));
+    if (slideModeRef.current === "manual" && nextIndex > currentSlideIndex && activeQuestion) {
+      void handleFeedbackResolution(activeQuestion, true, "advance");
+    }
     currentSlideRef.current = slides[nextIndex];
     setCurrentSlideIndex(nextIndex);
+    setTrackingMode("manual");
   }
 
   function setTrackingMode(mode: SlideMode) {
@@ -249,14 +255,12 @@ export default function PresentPage() {
   function jumpToSlide(slideNumber: number) {
     const targetIndex = slides.findIndex((slide) => slide.slideNumber === slideNumber);
     if (targetIndex >= 0) {
-      setTrackingMode("manual");
       goToSlideIndex(targetIndex);
       setStatus(`Locked to slide ${slideNumber} in manual mode.`);
     }
   }
 
   function moveSlide(offset: number) {
-    setTrackingMode("manual");
     goToSlideIndex(currentSlideIndex + offset);
   }
 
@@ -766,19 +770,24 @@ export default function PresentPage() {
       return;
     }
 
-    const result = await analyzeChunk({
-      sessionId: id,
-      transcriptChunk: nextChunk,
-      recentTranscript: previousTranscript.slice(-4),
-      recentFeedback: recentFeedbackRef.current,
-      projectContext: projectContextRef.current,
-      currentSlide: currentSlideRef.current ? compactSlideForAnalysis(currentSlideRef.current) : undefined,
-      slideMode: slideModeRef.current,
-      presentationSlides: slidesForAnalysis(),
-      preparedQuestions: questionsForAnalysis(currentSlideRef.current),
-      studentCoverage: studentCoverageRef.current,
+    const result = await queueRehearsalUpdate(id, async () => {
+      if (runToken !== liveRunTokenRef.current) {
+        return;
+      }
+      return analyzeChunk({
+        sessionId: id,
+        transcriptChunk: nextChunk,
+        recentTranscript: previousTranscript.slice(-4),
+        recentFeedback: recentFeedbackRef.current,
+        projectContext: projectContextRef.current,
+        currentSlide: currentSlideRef.current ? compactSlideForAnalysis(currentSlideRef.current) : undefined,
+        slideMode: slideModeRef.current,
+        presentationSlides: slidesForAnalysis(),
+        preparedQuestions: questionsForAnalysis(currentSlideRef.current),
+        studentCoverage: studentCoverageRef.current,
+      });
     });
-    if (runToken !== liveRunTokenRef.current) {
+    if (!result || runToken !== liveRunTokenRef.current) {
       return;
     }
 
@@ -1217,23 +1226,28 @@ export default function PresentPage() {
     }
   }
 
-  async function handleFeedbackResolution(item: FeedbackItem, resolved: boolean, fromStage = false) {
+  async function handleFeedbackResolution(item: FeedbackItem, resolved: boolean, source?: "stage" | "advance") {
     const activeSessionId = sessionIdRef.current;
-    if (!activeSessionId) {
+    const pending = pendingResolutionRef.current;
+    if (!activeSessionId || pending.has(item.createdAt)) {
       return;
     }
 
+    pending.add(item.createdAt);
     setFeedbackError("");
     const activeElement = document.activeElement;
+    const reason = source === "advance"
+      ? "Presenter advanced to a later slide in manual mode."
+      : "Presenter addressed this faculty question.";
     try {
-      const updated = await updateFeedbackResolution({
+      const updated = await queueRehearsalUpdate(activeSessionId, () => updateFeedbackResolution({
         sessionId: activeSessionId,
         createdAt: item.createdAt,
         resolved,
-        resolutionReason: resolved ? "Presenter addressed this faculty question." : undefined,
+        resolutionReason: resolved ? reason : undefined,
         sourceQuestionId: item.sourceQuestionId,
         message: item.message,
-      });
+      }));
       if (sessionIdRef.current !== activeSessionId) {
         return;
       }
@@ -1247,7 +1261,7 @@ export default function PresentPage() {
         if (latestFeedbackRef.current?.createdAt === item.createdAt) {
           stopSpeaking();
         }
-        if (fromStage && document.activeElement === activeElement) {
+        if (source === "stage" && document.activeElement === activeElement) {
           feedbackToggleRef.current?.focus();
         }
       } else {
@@ -1260,6 +1274,8 @@ export default function PresentPage() {
         setFeedbackError(message);
         setStatus(message);
       }
+    } finally {
+      pending.delete(item.createdAt);
     }
   }
 
@@ -1338,7 +1354,7 @@ export default function PresentPage() {
                   voiceEnabled={voiceEnabled}
                   onRepeat={() => repeatQuestion(activeQuestion)}
                   onRephrase={() => void rephraseQuestion(activeQuestion, liveRunTokenRef.current)}
-                  onResolve={() => void handleFeedbackResolution(activeQuestion, true, true)}
+                  onResolve={() => void handleFeedbackResolution(activeQuestion, true, "stage")}
                 />
               ) : null}
             </div>
