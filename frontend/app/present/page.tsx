@@ -5,13 +5,14 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { FacultyQuestion } from "@/components/FacultyQuestion";
 import { FeedbackPanel } from "@/components/FeedbackPanel";
 import { PresentationUpload } from "@/components/PresentationUpload";
+import { RehearsalNav } from "@/components/RehearsalNav";
 import { SessionControls } from "@/components/SessionControls";
 import { SessionDetails } from "@/components/SessionDetails";
 import { SlideTracker } from "@/components/SlideTracker";
 import { TranscriptPanel } from "@/components/TranscriptPanel";
 import styles from "@/components/presentation.module.css";
 import { analyzeChunk, getDeepgramTtsStreamUrl, getProfessorConfig, getSpeechProxyUrl, rephraseFacultyQuestion, startSession, synthesizeDeepgramSpeech, updateFeedbackResolution, uploadPresentation } from "@/lib/api";
-import { queueRehearsalUpdate } from "@/lib/rehearsalSession";
+import { queueRehearsalUpdate, rememberRehearsal } from "@/lib/rehearsalSession";
 import type { FeedbackItem, PreparedQuestion, ProfessorConfig, ProjectContext, Slide } from "@/lib/types";
 
 const defaultProjectContext: ProjectContext = {
@@ -972,7 +973,7 @@ export default function PresentPage() {
     setLiveConnecting(true);
     setLiveStatus("connecting");
     try {
-      await ensureSession(runToken);
+      const rehearsalId = await ensureSession(runToken);
       if (runToken !== liveRunTokenRef.current) {
         return;
       }
@@ -1065,6 +1066,7 @@ export default function PresentPage() {
         }
 
         if (data.type === "proxy_open") {
+          rememberRehearsal(rehearsalId);
           return;
         }
 
@@ -1319,6 +1321,7 @@ export default function PresentPage() {
   return (
     <main className={styles.cockpit}>
       <div className={styles.surface}>
+        <div className={styles.cockpitNav}><RehearsalNav current="present" /></div>
         <SessionControls
           disabled={busy || !currentSlide}
           liveConnected={liveConnected}

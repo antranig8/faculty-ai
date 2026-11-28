@@ -65,11 +65,15 @@ The launcher binds both services to loopback, points the browser at the local ba
 
 ## Using It
 
-1. Go to **/professor** and save the course rubric and assignment context.
-2. Go to **/present** and upload your `.pptx`. The [bundled sample deck](backend/eval_scenarios/group2_example_deck.pptx) works for a smoke test.
+1. Open **Professor** and save the course rubric and assignment context.
+2. Open **Present** and drop your `.pptx` onto **Upload your deck**, or use **Choose a .pptx**. The [bundled sample deck](backend/eval_scenarios/group2_example_deck.pptx) works for a smoke test.
 3. Start the microphone and present normally.
 4. Answer questions as they come. Say "repeat that" or ask for a rephrase if needed.
-5. Review, resolve, or reopen questions in the feedback drawer. A partial answer can queue one follow-up on the same slide. A confirmation such as “Does that answer your question?” leaves an unresolved question open unless the answer itself meets the resolution criteria.
+5. Read and respond to questions as they appear beside the professor cutout. Open **Feedback** to review, resolve, or reopen questions. A partial answer can queue one follow-up on the same slide. Asking “Does that answer your question?” leaves the question open unless the answer meets the resolution criteria.
+
+Open **Transcript** for the full transcript or **Session** for deck replacement, rubric details, prepared concerns, and diagnostics.
+
+In **Manual lock**, moving to a later slide marks the on-screen faculty question addressed. Open **Results** to review the latest rehearsal started in this browser, including open and addressed questions. Leaving **Present** stops the microphone.
 
 ## Configuration
 

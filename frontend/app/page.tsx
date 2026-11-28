@@ -72,7 +72,7 @@ export default async function HomePage() {
               <article>
                 <span>03</span>
                 <strong>Results</strong>
-                <p>Review critique, concerns, and prepared follow-ups after the session closes.</p>
+                <p>Review saved faculty questions and see which ones you addressed.</p>
               </article>
             </div>
           </aside>

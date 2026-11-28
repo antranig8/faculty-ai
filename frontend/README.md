@@ -17,12 +17,15 @@ The frontend loads `NEXT_PUBLIC_API_BASE_URL`, `NEXT_PUBLIC_FACULTY_AI_APP_API_K
 |---|---|
 | `/` | Landing page |
 | `/professor` | Rubric, assignment context, and questioning style |
-| `/present` | Deck upload, live transcript, slide tracker, and feedback drawer |
+| `/present` | Live slide tracker, animated faculty questions, and expandable transcript, feedback, and session details |
+| `/results` | Saved faculty questions and their status from the latest rehearsal in this browser |
 | `/access` | Access-code prompt, shown only when `FACULTY_AI_ACCESS_CODE` is set |
+
+Use the **Professor**, **Present**, and **Results** links on each rehearsal page. In **Present**, drop a `.pptx` onto the upload area or choose it with the file picker. Moving forward in **Manual lock** marks the on-screen question addressed.
 
 ## Layout
 
 - `app/`: pages and the `/api/access` route that issues the signed access cookie
-- `components/`: cockpit UI (upload, slide tracker, transcript, feedback drawer, alerts)
+- `components/`: cockpit UI, faculty question presentation, and rehearsal details
 - `lib/api.ts`: backend client, including the speech WebSocket URLs
 - `lib/accessSession.ts`, `proxy.ts`: access-code gate

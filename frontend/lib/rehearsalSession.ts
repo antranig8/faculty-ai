@@ -1,4 +1,23 @@
+const storageKey = "faculty-ai.latest-rehearsal";
 const pendingUpdates = new Map<string, Promise<unknown>>();
+let latestSessionId: string | undefined;
+
+export function rememberRehearsal(sessionId: string) {
+  latestSessionId = sessionId;
+  try {
+    window.localStorage.setItem(storageKey, sessionId);
+  } catch {
+    // The in-memory ID still works when navigating in this tab.
+  }
+}
+
+export function latestRehearsal(): string | undefined {
+  try {
+    return window.localStorage.getItem(storageKey) ?? latestSessionId;
+  } catch {
+    return latestSessionId;
+  }
+}
 
 export function queueRehearsalUpdate<T>(sessionId: string, update: () => Promise<T>): Promise<T> {
   const previous = pendingUpdates.get(sessionId);
@@ -12,4 +31,8 @@ export function queueRehearsalUpdate<T>(sessionId: string, update: () => Promise
   }
   void pending.then(removeUpdate, removeUpdate);
   return pending;
+}
+
+export async function waitForRehearsalUpdates(sessionId: string) {
+  await pendingUpdates.get(sessionId)?.catch(() => undefined);
 }

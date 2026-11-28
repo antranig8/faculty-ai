@@ -1,9 +1,9 @@
 "use client";
 
-import Link from "next/link";
 import { useEffect, useState } from "react";
 
 import { ProfessorConfigForm } from "@/components/ProfessorConfigForm";
+import { RehearsalNav } from "@/components/RehearsalNav";
 import { getProfessorConfig, saveProfessorConfig } from "@/lib/api";
 import type { ProfessorConfig } from "@/lib/types";
 
@@ -49,7 +49,7 @@ export default function ProfessorPage() {
           <p className="eyebrow">Faculty-AI</p>
           <h1>Professor setup</h1>
         </div>
-        <Link href="/present">Student presentation mode</Link>
+        <RehearsalNav current="professor" />
       </header>
 
       <div className="professor-page">

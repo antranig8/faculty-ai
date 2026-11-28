@@ -24,6 +24,46 @@
   background: var(--rehearsal-surface);
 }
 
+.pageNav {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.25rem;
+}
+
+.pageNav a {
+  display: inline-flex;
+  align-items: center;
+  min-block-size: 2.5rem;
+  padding-inline: 0.75rem;
+  border-radius: 0.45rem;
+  color: var(--rehearsal-ink, var(--ink));
+  font-size: 0.9rem;
+  font-weight: 700;
+  text-decoration: none;
+}
+
+.pageNav a:hover {
+  text-decoration: underline;
+}
+
+.pageNav a[aria-current="page"] {
+  background: var(--rehearsal-paper, var(--accent-soft));
+  color: var(--rehearsal-accent, var(--ink));
+  text-decoration: underline;
+  text-underline-offset: 0.2em;
+}
+
+.pageNav a:focus-visible {
+  outline: 2px solid var(--rehearsal-accent, var(--focus));
+  outline-offset: 2px;
+}
+
+.cockpitNav {
+  padding: 0.35rem clamp(0.75rem, 3vw, 1.75rem);
+  border-block-end: 1px solid var(--rehearsal-line);
+}
+
 .cockpit :is(button, select) {
   min-block-size: 2.5rem;
   padding: 0.38rem 0.75rem;
@@ -345,6 +385,26 @@
   inline-size: 100%;
   opacity: 0;
   cursor: pointer;
+}
+
+.resultsHeader {
+  padding: clamp(1rem, 3vw, 2rem) clamp(0.75rem, 3vw, 1.75rem);
+}
+
+.resultsHeader h1 {
+  margin: 0;
+  font: 500 clamp(1.8rem, 5vw, 3rem)/1.07 Georgia, "Times New Roman", serif;
+}
+
+.resultsHeader p {
+  margin: 0.5rem 0 0;
+}
+
+.details .resultCounts {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem 1.25rem;
+  margin-block-end: 1rem;
 }
 
 .srOnly {

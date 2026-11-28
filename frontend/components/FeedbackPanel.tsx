@@ -5,7 +5,7 @@ import styles from "./presentation.module.css";
 type Props = {
   feedback: FeedbackItem[];
   queuedFeedback?: FeedbackItem;
-  onResolve: (item: FeedbackItem, resolved: boolean) => void;
+  onResolve?: (item: FeedbackItem, resolved: boolean) => void;
 };
 
 export function FeedbackPanel({ feedback, queuedFeedback, onResolve }: Props) {
@@ -26,7 +26,8 @@ export function FeedbackPanel({ feedback, queuedFeedback, onResolve }: Props) {
           {[...feedback].reverse().map((item) => (
             <li key={item.createdAt}>
               <small className={styles.secondary}>
-                {item.resolved ? "Addressed" : item.followUpToQuestionId ? "Follow-up" : "Open"}
+                {item.resolved ? "Addressed" : "Open"}
+                {item.followUpToQuestionId ? " · Follow-up" : ""}
                 {" · "}{item.type}{" · "}{item.section.replaceAll("_", " ")}
                 {item.slideNumber ? ` · Slide ${item.slideNumber}` : ""}
               </small>
@@ -38,9 +39,11 @@ export function FeedbackPanel({ feedback, queuedFeedback, onResolve }: Props) {
                 {item.answerQuality ? <p>Answer quality · {item.answerQuality}</p> : null}
                 {item.resolutionReason ? <p>{item.resolutionReason}</p> : null}
               </details>
-              <button onClick={() => onResolve(item, !item.resolved)} type="button">
-                {item.resolved ? "Reopen" : "Mark addressed"}
-              </button>
+              {onResolve ? (
+                <button onClick={() => onResolve(item, !item.resolved)} type="button">
+                  {item.resolved ? "Reopen" : "Mark addressed"}
+                </button>
+              ) : null}
             </li>
           ))}
         </ul>
