@@ -23,6 +23,8 @@ The frontend loads `NEXT_PUBLIC_API_BASE_URL`, `NEXT_PUBLIC_FACULTY_AI_APP_API_K
 
 Use the **Professor**, **Present**, and **Results** links on each rehearsal page. In **Present**, drop a `.pptx` onto the upload area or choose it with the file picker. Moving forward in **Manual lock** marks the on-screen question addressed.
 
+For a test upload, use the [sample rehearsal deck](../docs/sample-rehearsal.pptx).
+
 ## Layout
 
 - `app/`: pages and the `/api/access` route that issues the signed access cookie
