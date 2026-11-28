@@ -1,11 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 
-import { createAccessSession, getAccessCookieName, getAccessSessionTtlSeconds } from "@/lib/accessSession";
-
-function redirectTarget(rawTarget: FormDataEntryValue | null): string {
-  const target = typeof rawTarget === "string" && rawTarget.startsWith("/") ? rawTarget : "/";
-  return target.startsWith("//") ? "/" : target;
-}
+import { createAccessSession, getAccessCookieName, getAccessRedirectTarget, getAccessSessionTtlSeconds } from "@/lib/accessSession";
 
 function redirectResponse(target: string): NextResponse {
   return new NextResponse(null, {
@@ -19,9 +14,12 @@ function redirectResponse(target: string): NextResponse {
 export async function POST(request: NextRequest): Promise<NextResponse> {
   const accessCode = process.env.FACULTY_AI_ACCESS_CODE;
   const formData = await request.formData();
-  const nextUrl = redirectTarget(formData.get("next"));
+  const nextUrl = getAccessRedirectTarget(formData.get("next"));
 
-  if (!accessCode || formData.get("accessCode") !== accessCode) {
+  if (!accessCode) {
+    return redirectResponse(nextUrl);
+  }
+  if (formData.get("accessCode") !== accessCode) {
     const retryUrl = `/access?error=1&next=${encodeURIComponent(nextUrl)}`;
     return redirectResponse(retryUrl);
   }

@@ -1,3 +1,7 @@
+import { redirect } from "next/navigation";
+
+import { getAccessRedirectTarget } from "@/lib/accessSession";
+
 type AccessPageProps = {
   searchParams: Promise<{
     error?: string;
@@ -7,7 +11,10 @@ type AccessPageProps = {
 
 export default async function AccessPage({ searchParams }: AccessPageProps) {
   const params = await searchParams;
-  const next = params.next?.startsWith("/") ? params.next : "/";
+  const next = getAccessRedirectTarget(params.next);
+  if (!process.env.FACULTY_AI_ACCESS_CODE) {
+    redirect(next);
+  }
 
   return (
     <main className="access-screen">

@@ -1,6 +1,23 @@
 const COOKIE_NAME = "faculty_ai_access";
 const SESSION_TTL_SECONDS = 12 * 60 * 60;
 
+export function getAccessRedirectTarget(value: unknown): string {
+  if (typeof value !== "string" || !value.startsWith("/")) {
+    return "/";
+  }
+
+  const base = "http://localhost";
+  try {
+    const target = new URL(value, base);
+    if (target.origin === base && !target.pathname.startsWith("//") && target.pathname !== "/access") {
+      return `${target.pathname}${target.search}${target.hash}`;
+    }
+  } catch {
+    return "/";
+  }
+  return "/";
+}
+
 function base64UrlEncode(bytes: ArrayBuffer): string {
   let chars = "";
   const byteArray = new Uint8Array(bytes);
