@@ -1,9 +1,9 @@
 {
-  "scenario": "faculty_ai_group2_example_scenario.json",
+  "scenario": "sample-rehearsal.json",
   "questionSource": "heuristic",
   "runtimeMode": "heuristic",
   "slideCount": 7,
-  "preparedQuestionCount": 8,
+  "preparedQuestionCount": 9,
   "facultyAINotes": [
     {
       "afterChunk": 5,
@@ -43,7 +43,7 @@
   "rows": [
     {
       "index": 0,
-      "chunk": "Today we are presenting our final ENES 104 group reflection. Our group members are Avery Morgan, Jordan Reyes, and Sam Okafor.",
+      "chunk": "Today we are presenting our final ENES 104 group reflection. Our group members are Avery Morgan, Jordan Lee, and Casey Rivera.",
       "currentSlideNumber": 1,
       "decision": "no_trigger",
       "feedback": null,
@@ -138,7 +138,7 @@
             "interactionType": "freeform_question",
             "score": 19,
             "priority": "high",
-            "message": "Avery, what changed in your view of engineering because of this lesson, and what specific experience caused that change?",
+            "message": "Avery Morgan, what changed in your view of engineering because of this lesson, and what specific experience caused that change?",
             "reason": "Generated Assignment 6 feedback for individual application.",
             "sourceQuestionId": null
           }
@@ -147,7 +147,7 @@
           "interactionType": "freeform_question",
           "score": 19,
           "priority": "high",
-          "message": "Avery, what changed in your view of engineering because of this lesson, and what specific experience caused that change?",
+          "message": "Avery Morgan, what changed in your view of engineering because of this lesson, and what specific experience caused that change?",
           "reason": "Generated Assignment 6 feedback for individual application.",
           "sourceQuestionId": null
         }
@@ -170,7 +170,7 @@
             "interactionType": "freeform_question",
             "score": 19,
             "priority": "high",
-            "message": "Avery, what changed in your view of engineering because of this lesson, and what specific experience caused that change?",
+            "message": "Avery Morgan, what changed in your view of engineering because of this lesson, and what specific experience caused that change?",
             "reason": "Generated Assignment 6 feedback for individual application.",
             "sourceQuestionId": null
           }
@@ -179,7 +179,7 @@
           "interactionType": "freeform_question",
           "score": 19,
           "priority": "high",
-          "message": "Avery, what changed in your view of engineering because of this lesson, and what specific experience caused that change?",
+          "message": "Avery Morgan, what changed in your view of engineering because of this lesson, and what specific experience caused that change?",
           "reason": "Generated Assignment 6 feedback for individual application.",
           "sourceQuestionId": null
         }
@@ -202,7 +202,7 @@
             "interactionType": "freeform_question",
             "score": 22,
             "priority": "high",
-            "message": "Avery, can you give one example of how 'good enough' in industry is different from doing low-quality work?",
+            "message": "Avery Morgan, can you give one example of how 'good enough' in industry is different from doing low-quality work?",
             "reason": "Generated Assignment 6 feedback for clarifying the 'good enough' concept.",
             "sourceQuestionId": null
           },
@@ -210,7 +210,7 @@
             "interactionType": "freeform_question",
             "score": 19,
             "priority": "high",
-            "message": "Avery, what changed in your view of engineering because of this lesson, and what specific experience caused that change?",
+            "message": "Avery Morgan, what changed in your view of engineering because of this lesson, and what specific experience caused that change?",
             "reason": "Generated Assignment 6 feedback for individual application.",
             "sourceQuestionId": null
           }
@@ -219,7 +219,7 @@
           "interactionType": "freeform_question",
           "score": 22,
           "priority": "high",
-          "message": "Avery, can you give one example of how 'good enough' in industry is different from doing low-quality work?",
+          "message": "Avery Morgan, can you give one example of how 'good enough' in industry is different from doing low-quality work?",
           "reason": "Generated Assignment 6 feedback for clarifying the 'good enough' concept.",
           "sourceQuestionId": null
         }
@@ -258,7 +258,7 @@
             "interactionType": "freeform_question",
             "score": 19,
             "priority": "high",
-            "message": "Avery, what changed in your view of engineering because of this lesson, and what specific experience caused that change?",
+            "message": "Avery Morgan, what changed in your view of engineering because of this lesson, and what specific experience caused that change?",
             "reason": "Generated Assignment 6 feedback for individual application.",
             "sourceQuestionId": null
           },
@@ -266,7 +266,7 @@
             "interactionType": "freeform_question",
             "score": 18,
             "priority": "high",
-            "message": "Avery, how does this lesson change the way you would approach a future engineering project or team decision?",
+            "message": "Avery Morgan, how does this lesson change the way you would approach a future engineering project or team decision?",
             "reason": "Generated Assignment 6 feedback for future engineering application.",
             "sourceQuestionId": null
           }
@@ -275,7 +275,7 @@
           "interactionType": "freeform_question",
           "score": 19,
           "priority": "high",
-          "message": "Avery, what changed in your view of engineering because of this lesson, and what specific experience caused that change?",
+          "message": "Avery Morgan, what changed in your view of engineering because of this lesson, and what specific experience caused that change?",
           "reason": "Generated Assignment 6 feedback for individual application.",
           "sourceQuestionId": null
         }
@@ -283,7 +283,7 @@
     },
     {
       "index": 10,
-      "chunk": "Jordan's reflection also connected strongly to the idea of impact. From Dr. Alan Brooks, we learned that simply listing participation or accomplishments on a resume is not enough.",
+      "chunk": "Casey's reflection also connected strongly to the idea of impact. From Dr. Alan Brooks, we learned that simply listing participation or accomplishments on a resume is not enough.",
       "currentSlideNumber": 5,
       "decision": "no_trigger",
       "feedback": null,
@@ -298,7 +298,7 @@
             "interactionType": "freeform_question",
             "score": 19,
             "priority": "high",
-            "message": "Jordan, what changed in your view of engineering because of this lesson, and what specific experience caused that change?",
+            "message": "Casey Rivera, what changed in your view of engineering because of this lesson, and what specific experience caused that change?",
             "reason": "Generated Assignment 6 feedback for individual application.",
             "sourceQuestionId": null
           },
@@ -306,7 +306,7 @@
             "interactionType": "freeform_question",
             "score": 18,
             "priority": "high",
-            "message": "Jordan, how does this lesson change the way you would approach a future engineering project or team decision?",
+            "message": "Casey Rivera, how does this lesson change the way you would approach a future engineering project or team decision?",
             "reason": "Generated Assignment 6 feedback for future engineering application.",
             "sourceQuestionId": null
           },
@@ -323,7 +323,7 @@
           "interactionType": "freeform_question",
           "score": 19,
           "priority": "high",
-          "message": "Jordan, what changed in your view of engineering because of this lesson, and what specific experience caused that change?",
+          "message": "Casey Rivera, what changed in your view of engineering because of this lesson, and what specific experience caused that change?",
           "reason": "Generated Assignment 6 feedback for individual application.",
           "sourceQuestionId": null
         }
@@ -346,7 +346,7 @@
             "interactionType": "freeform_question",
             "score": 19,
             "priority": "high",
-            "message": "Jordan, what changed in your view of engineering because of this lesson, and what specific experience caused that change?",
+            "message": "Casey Rivera, what changed in your view of engineering because of this lesson, and what specific experience caused that change?",
             "reason": "Generated Assignment 6 feedback for individual application.",
             "sourceQuestionId": null
           },
@@ -354,7 +354,7 @@
             "interactionType": "freeform_question",
             "score": 18,
             "priority": "high",
-            "message": "Jordan, how does this lesson change the way you would approach a future engineering project or team decision?",
+            "message": "Casey Rivera, how does this lesson change the way you would approach a future engineering project or team decision?",
             "reason": "Generated Assignment 6 feedback for future engineering application.",
             "sourceQuestionId": null
           }
@@ -363,7 +363,7 @@
           "interactionType": "freeform_question",
           "score": 19,
           "priority": "high",
-          "message": "Jordan, what changed in your view of engineering because of this lesson, and what specific experience caused that change?",
+          "message": "Casey Rivera, what changed in your view of engineering because of this lesson, and what specific experience caused that change?",
           "reason": "Generated Assignment 6 feedback for individual application.",
           "sourceQuestionId": null
         }
@@ -371,7 +371,7 @@
     },
     {
       "index": 12,
-      "chunk": "From Dr. Maria Chen, Jordan took away the importance of maximizing every opportunity. Some early opportunities may not look impressive at first, but they can still build skills, confidence, and professional growth.",
+      "chunk": "From Dr. Maria Chen, Casey took away the importance of maximizing every opportunity. Some early opportunities may not look impressive at first, but they can still build skills, confidence, and professional growth.",
       "currentSlideNumber": 5,
       "decision": "no_trigger",
       "feedback": null,
@@ -386,7 +386,7 @@
             "interactionType": "freeform_question",
             "score": 19,
             "priority": "high",
-            "message": "Jordan, what changed in your view of engineering because of this lesson, and what specific experience caused that change?",
+            "message": "Casey Rivera, what changed in your view of engineering because of this lesson, and what specific experience caused that change?",
             "reason": "Generated Assignment 6 feedback for individual application.",
             "sourceQuestionId": null
           },
@@ -394,7 +394,7 @@
             "interactionType": "freeform_question",
             "score": 18,
             "priority": "high",
-            "message": "Jordan, how does this lesson change the way you would approach a future engineering project or team decision?",
+            "message": "Casey Rivera, how does this lesson change the way you would approach a future engineering project or team decision?",
             "reason": "Generated Assignment 6 feedback for future engineering application.",
             "sourceQuestionId": null
           }
@@ -403,7 +403,7 @@
           "interactionType": "freeform_question",
           "score": 19,
           "priority": "high",
-          "message": "Jordan, what changed in your view of engineering because of this lesson, and what specific experience caused that change?",
+          "message": "Casey Rivera, what changed in your view of engineering because of this lesson, and what specific experience caused that change?",
           "reason": "Generated Assignment 6 feedback for individual application.",
           "sourceQuestionId": null
         }
@@ -426,7 +426,7 @@
             "interactionType": "freeform_question",
             "score": 19,
             "priority": "high",
-            "message": "Jordan, what changed in your view of engineering because of this lesson, and what specific experience caused that change?",
+            "message": "Casey Rivera, what changed in your view of engineering because of this lesson, and what specific experience caused that change?",
             "reason": "Generated Assignment 6 feedback for individual application.",
             "sourceQuestionId": null
           }
@@ -435,7 +435,7 @@
           "interactionType": "freeform_question",
           "score": 19,
           "priority": "high",
-          "message": "Jordan, what changed in your view of engineering because of this lesson, and what specific experience caused that change?",
+          "message": "Casey Rivera, what changed in your view of engineering because of this lesson, and what specific experience caused that change?",
           "reason": "Generated Assignment 6 feedback for individual application.",
           "sourceQuestionId": null
         }
@@ -458,7 +458,7 @@
             "interactionType": "freeform_question",
             "score": 19,
             "priority": "high",
-            "message": "Jordan, what changed in your view of engineering because of this lesson, and what specific experience caused that change?",
+            "message": "Casey Rivera, what changed in your view of engineering because of this lesson, and what specific experience caused that change?",
             "reason": "Generated Assignment 6 feedback for individual application.",
             "sourceQuestionId": null
           }
@@ -467,7 +467,7 @@
           "interactionType": "freeform_question",
           "score": 19,
           "priority": "high",
-          "message": "Jordan, what changed in your view of engineering because of this lesson, and what specific experience caused that change?",
+          "message": "Casey Rivera, what changed in your view of engineering because of this lesson, and what specific experience caused that change?",
           "reason": "Generated Assignment 6 feedback for individual application.",
           "sourceQuestionId": null
         }
@@ -547,7 +547,7 @@
             "interactionType": "freeform_question",
             "score": 12,
             "priority": "medium",
-            "message": "What metric supports the claim you just made about Project Presentation?",
+            "message": "What metric supports the claim you just made about Assignment 6: ENES104 360 View Final Group Presentation?",
             "reason": "Generated feedback for an unsupported claim.",
             "sourceQuestionId": null
           }
@@ -573,7 +573,7 @@
         "section": "problem",
         "message": "If management could only act on one improvement, which one would most change the next ENES 104 student's experience?",
         "reason": "Rubric focus: continuous improvement plan for ENES 104. The presenter invited questions at the end of the slide, so Faculty-AI surfaced the strongest unasked prepared concern.",
-        "createdAt": "2026-11-21T19:37:35.732309+00:00",
+        "createdAt": "2026-11-28T06:32:03.375104+00:00",
         "slideNumber": 6,
         "resolved": false,
         "resolvedAt": null,
@@ -651,7 +651,7 @@
             "score": 22,
             "priority": "high",
             "message": "What is one piece of teammate feedback that actually changed the final presentation, and why did you accept it?",
-            "reason": "Prepared concern from rubric category 'evidence'.",
+            "reason": "Prepared concern from rubric category 'evidence of feedback exchanged among team members'.",
             "sourceQuestionId": "slide-7-team-feedback"
           }
         ],
@@ -670,7 +670,7 @@
           "score": 22,
           "priority": "high",
           "message": "What is one piece of teammate feedback that actually changed the final presentation, and why did you accept it?",
-          "reason": "Prepared concern from rubric category 'evidence'.",
+          "reason": "Prepared concern from rubric category 'evidence of feedback exchanged among team members'.",
           "sourceQuestionId": "slide-7-team-feedback"
         }
       }
@@ -740,7 +740,7 @@
             "interactionType": "freeform_question",
             "score": 12,
             "priority": "medium",
-            "message": "What metric supports the claim you just made about Project Presentation?",
+            "message": "What metric supports the claim you just made about Assignment 6: ENES104 360 View Final Group Presentation?",
             "reason": "Generated feedback for an unsupported claim.",
             "sourceQuestionId": null
           },
@@ -757,7 +757,7 @@
           "interactionType": "freeform_question",
           "score": 12,
           "priority": "medium",
-          "message": "What metric supports the claim you just made about Project Presentation?",
+          "message": "What metric supports the claim you just made about Assignment 6: ENES104 360 View Final Group Presentation?",
           "reason": "Generated feedback for an unsupported claim.",
           "sourceQuestionId": null
         }
@@ -780,7 +780,7 @@
             "interactionType": "freeform_question",
             "score": 12,
             "priority": "medium",
-            "message": "What metric supports the claim you just made about Project Presentation?",
+            "message": "What metric supports the claim you just made about Assignment 6: ENES104 360 View Final Group Presentation?",
             "reason": "Generated feedback for an unsupported claim.",
             "sourceQuestionId": null
           },
@@ -797,7 +797,7 @@
           "interactionType": "freeform_question",
           "score": 12,
           "priority": "medium",
-          "message": "What metric supports the claim you just made about Project Presentation?",
+          "message": "What metric supports the claim you just made about Assignment 6: ENES104 360 View Final Group Presentation?",
           "reason": "Generated feedback for an unsupported claim.",
           "sourceQuestionId": null
         }
