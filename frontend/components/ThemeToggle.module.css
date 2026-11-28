@@ -1,0 +1,61 @@
+button.toggle {
+  flex: 0 0 auto;
+  min-block-size: 2.5rem;
+  padding: 0.35rem 0.7rem;
+  border: 1px solid var(--rehearsal-line);
+  border-radius: 0.45rem;
+  background: var(--rehearsal-surface);
+  color: var(--rehearsal-ink);
+}
+
+button.toggle:hover {
+  border-color: var(--rehearsal-muted);
+  background: var(--rehearsal-paper);
+  box-shadow: none;
+  transform: none;
+}
+
+.toggle:focus-visible {
+  outline: 2px solid var(--rehearsal-accent);
+  outline-offset: 3px;
+}
+
+.switchToDark,
+:is(:root[data-theme="dark"], :root[data-system-theme="dark"]:not([data-theme])) .switchToLight {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+}
+
+.switchToLight,
+:is(:root[data-theme="dark"], :root[data-system-theme="dark"]:not([data-theme])) .switchToDark {
+  display: none;
+}
+
+.icon {
+  inline-size: 1.1em;
+  color: var(--rehearsal-accent);
+  font: 500 1.2rem/1 "Segoe UI Symbol", sans-serif;
+  text-align: center;
+}
+
+.label {
+  font-size: 0.85rem;
+  white-space: nowrap;
+}
+
+@media (max-width: 33rem) {
+  button.toggle {
+    min-inline-size: 2.75rem;
+    min-block-size: 2.75rem;
+    padding-inline: 0.45rem;
+  }
+
+  .label {
+    position: absolute;
+    inline-size: 1px;
+    block-size: 1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+  }
+}

@@ -392,7 +392,6 @@ def analyze_chunk(payload: AnalyzeChunkRequest) -> AnalyzeChunkResponse:
         effective_slide,
     )
     runtime_student_profiles = session.get("student_profiles", {})
-    state.save_session(payload.sessionId, session)
 
     resolved_feedback = None
     answer_evaluation = None
@@ -413,6 +412,9 @@ def analyze_chunk(payload: AnalyzeChunkRequest) -> AnalyzeChunkResponse:
             prepared_questions=payload.preparedQuestions,
             follow_up_attempts=session.get("follow_up_attempts", {}),
         )
+
+    # Keep the answer rating even when later question selection returns early.
+    state.save_session(payload.sessionId, session)
 
     if resolved_feedback:
         session["awaiting_answer_until"] = None

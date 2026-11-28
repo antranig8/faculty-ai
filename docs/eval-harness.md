@@ -36,19 +36,19 @@ A scenario is a JSON file with a deck and the transcript chunks to replay, in or
 
 ```powershell
 cd backend
-.\.venv\Scripts\python.exe -m app.services.eval_runner eval_scenarios\faculty_ai_group2_example_scenario.json --out ..\example-report.json
+.\.venv\Scripts\python.exe -m app.services.eval_runner eval_scenarios\sample-rehearsal.json --out ..\example-report.json
 ```
 
 The report is printed to stdout and, with `--out`, written to a file. Set `FACULTY_AI_LLM_PROVIDER=heuristic` in the replay terminal to keep both preparation and decision-making offline.
 
 ## Included Examples
 
-The examples are in `backend/eval_scenarios/`.
+Both sample rehearsal scenarios use the same anonymized PowerPoint as the main README. [Sample rehearsal deck](sample-rehearsal.pptx)
 
-- `faculty_ai_group2_example_scenario.json`: a full ENES 104 reflection presentation using the anonymized sample deck
-- `faculty_ai_group2_profile_scenario.json`: the same run, exercising student-profile memory
-- `faculty_ai_group2_example_report.json`: the generated report for the first scenario
-- `example_assignment6.json`: a six-chunk rehearsal with an inline slide outline
+- Replay the engineering course reflection. [Standard scenario](../backend/eval_scenarios/sample-rehearsal.json)
+- Replay a variation that includes a student's major and interests. [Profile scenario](../backend/eval_scenarios/sample-rehearsal-profile.json)
+- Inspect the saved output from the standard scenario. [Sample report](../backend/eval_scenarios/sample-rehearsal-report.json)
+- Run a short rehearsal from an inline slide outline. [Six-chunk example](../backend/eval_scenarios/example_assignment6.json)
 
 ## What the Report Contains
 
@@ -60,7 +60,7 @@ For each transcript chunk:
 - the top prepared and freeform candidates with their scores
 - the candidate the hybrid scorer selected
 
-A `facultyAINotes` summary at the top explains, in plain language, when Faculty-AI chose to stay quiet or ask.
+The `facultyAINotes` field records the expected behavior from the scenario. The report rows show what happened during the replay.
 
 ## Tuning Workflow
 

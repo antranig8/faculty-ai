@@ -2,13 +2,17 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 
-import { FacultyAlert } from "@/components/FacultyAlert";
-import { FeedbackDrawer } from "@/components/FeedbackDrawer";
+import { FacultyQuestion } from "@/components/FacultyQuestion";
+import { FeedbackPanel } from "@/components/FeedbackPanel";
 import { PresentationUpload } from "@/components/PresentationUpload";
+import { RehearsalNav } from "@/components/RehearsalNav";
 import { SessionControls } from "@/components/SessionControls";
+import { SessionDetails } from "@/components/SessionDetails";
 import { SlideTracker } from "@/components/SlideTracker";
 import { TranscriptPanel } from "@/components/TranscriptPanel";
+import styles from "@/components/presentation.module.css";
 import { analyzeChunk, getDeepgramTtsStreamUrl, getProfessorConfig, getSpeechProxyUrl, rephraseFacultyQuestion, startSession, synthesizeDeepgramSpeech, updateFeedbackResolution, uploadPresentation } from "@/lib/api";
+import { queueRehearsalUpdate, rememberRehearsal } from "@/lib/rehearsalSession";
 import type { FeedbackItem, PreparedQuestion, ProfessorConfig, ProjectContext, Slide } from "@/lib/types";
 
 const defaultProjectContext: ProjectContext = {
@@ -56,6 +60,12 @@ const LIVE_MAX_TURN_WORDS = 55;
 const LIVE_FORCED_CHUNK_MIN_NEW_WORDS = 18;
 const FACULTY_ACKNOWLEDGMENT = "Yes, thank you.";
 type SlideMode = "auto" | "manual";
+const DETAIL_PANELS = [
+  { id: "transcript", label: "Transcript" },
+  { id: "feedback", label: "Feedback" },
+  { id: "session", label: "Session" },
+] as const;
+type DetailPanel = (typeof DETAIL_PANELS)[number]["id"];
 
 function normalizeTextForSpeech(text: string) {
   return text.replace(/\bENES\b/g, "E N E S");
@@ -125,15 +135,17 @@ export default function PresentPage() {
   const [queuedFeedback, setQueuedFeedback] = useState<FeedbackItem>();
   const [activeChunk, setActiveChunk] = useState("");
   const [livePreview, setLivePreview] = useState("");
-  const [drawerOpen, setDrawerOpen] = useState(false);
-  const [unseenCount, setUnseenCount] = useState(0);
-  const [latestFeedbackRephrase, setLatestFeedbackRephrase] = useState<string>();
+  const [detailPanel, setDetailPanel] = useState<DetailPanel>();
+  const [questionOnStage, setQuestionOnStage] = useState<{ id: string; animate: boolean }>();
+  const [rephrasedQuestion, setRephrasedQuestion] = useState<{ questionId: string; text: string }>();
+  const [rephrasingQuestionId, setRephrasingQuestionId] = useState<string>();
+  const [feedbackError, setFeedbackError] = useState("");
+  const [uploadError, setUploadError] = useState("");
   const [status, setStatus] = useState("Ready for live presentation mode.");
   const [busy, setBusy] = useState(false);
   const [voiceEnabled, setVoiceEnabled] = useState(true);
   const [liveConnecting, setLiveConnecting] = useState(false);
   const [liveConnected, setLiveConnected] = useState(false);
-  const [mode, setMode] = useState<"idle" | "live">("idle");
   const [liveStatus, setLiveStatus] = useState<"idle" | "connecting" | "listening" | "silent" | "analyzing" | "error">("idle");
   const [liveErrorMessage, setLiveErrorMessage] = useState("");
   const [debugStats, setDebugStats] = useState({
@@ -169,7 +181,9 @@ export default function PresentPage() {
   const silenceTimerRef = useRef<NodeJS.Timeout | null>(null);
   const pendingChunksRef = useRef<string[]>([]);
   const drainingRunRef = useRef<number | null>(null);
-  const drawerOpenTimerRef = useRef<NodeJS.Timeout | null>(null);
+  const feedbackToggleRef = useRef<HTMLButtonElement | null>(null);
+  const pendingResolutionRef = useRef(new Set<string>());
+  const rephraseRequestRef = useRef<{ questionId: string } | null>(null);
   const spokenFeedbackIdsRef = useRef<Set<string>>(new Set());
   const speechAudioRef = useRef<HTMLAudioElement | null>(null);
   const speechAudioUrlRef = useRef<string | null>(null);
@@ -183,7 +197,12 @@ export default function PresentPage() {
   const lastForcedTurnWordCountRef = useRef(0);
   const liveRunTokenRef = useRef(0);
 
-  const latestFeedback = [...feedback].reverse().find((item) => !item.resolved && item.deliveryStatus !== "queued");
+  const activeQuestion = feedback.find((item) => item.createdAt === questionOnStage?.id && !item.resolved);
+  const latestFeedback = activeQuestion ?? feedback.findLast((item) => !item.resolved && item.deliveryStatus !== "queued");
+  const openFeedbackCount = feedback.filter((item) => !item.resolved).length;
+  const currentRephrase = activeQuestion && rephrasedQuestion?.questionId === activeQuestion.createdAt
+    ? rephrasedQuestion.text
+    : undefined;
   const recentFeedback = useMemo(() => feedback.slice(-5).map((item) => item.message), [feedback]);
   const currentSlide = slides[currentSlideIndex];
   const LIVE_ANALYZE_MIN_GAP_MS = 1400;
@@ -216,20 +235,17 @@ export default function PresentPage() {
     return slides.map(compactSlideForAnalysis);
   }
 
-  function clearDrawerOpenTimer() {
-    if (drawerOpenTimerRef.current) {
-      clearTimeout(drawerOpenTimerRef.current);
-      drawerOpenTimerRef.current = null;
-    }
-  }
-
   function goToSlideIndex(index: number) {
     if (slides.length === 0) {
       return;
     }
     const nextIndex = Math.max(0, Math.min(slides.length - 1, index));
+    if (slideModeRef.current === "manual" && nextIndex > currentSlideIndex && activeQuestion) {
+      void handleFeedbackResolution(activeQuestion, true, "advance");
+    }
     currentSlideRef.current = slides[nextIndex];
     setCurrentSlideIndex(nextIndex);
+    setTrackingMode("manual");
   }
 
   function setTrackingMode(mode: SlideMode) {
@@ -240,10 +256,13 @@ export default function PresentPage() {
   function jumpToSlide(slideNumber: number) {
     const targetIndex = slides.findIndex((slide) => slide.slideNumber === slideNumber);
     if (targetIndex >= 0) {
-      setTrackingMode("manual");
       goToSlideIndex(targetIndex);
       setStatus(`Locked to slide ${slideNumber} in manual mode.`);
     }
+  }
+
+  function moveSlide(offset: number) {
+    goToSlideIndex(currentSlideIndex + offset);
   }
 
   function stopSpeaking() {
@@ -454,6 +473,10 @@ export default function PresentPage() {
     return QUESTION_REPHRASE_PATTERNS.some((pattern) => pattern.test(text));
   }
 
+  function showExistingQuestion(item: FeedbackItem) {
+    setQuestionOnStage((current) => current?.id === item.createdAt ? current : { id: item.createdAt, animate: false });
+  }
+
   function speakFacultyQuestion(item: FeedbackItem, force = false, rawQuestionOnly = false) {
     if (!voiceEnabledRef.current || typeof window === "undefined") {
       return;
@@ -469,45 +492,39 @@ export default function PresentPage() {
     void speakWithDeepgramVoice(spokenText).catch(() => undefined);
   }
 
+  function repeatQuestion(item: FeedbackItem) {
+    showExistingQuestion(item);
+    if (voiceEnabledRef.current) {
+      speakFacultyQuestion(item, true, true);
+      setStatus("Repeated the faculty question.");
+    }
+  }
+
   function repeatLatestQuestion(requestText: string) {
-    if (!isRepeatRequest(requestText)) {
+    const item = latestFeedbackRef.current;
+    if (!item || !isRepeatRequest(requestText)) {
       return false;
     }
-
-    const latestUnresolvedFeedback = latestFeedbackRef.current;
-    if (!latestUnresolvedFeedback) {
-      return false;
-    }
-
-    clearDrawerOpenTimer();
-    setDrawerOpen(true);
-    setUnseenCount(0);
-    stopSpeaking();
-    speakFacultyQuestion(latestUnresolvedFeedback, true, true);
-    setStatus("Repeated the latest faculty question.");
+    repeatQuestion(item);
     return true;
   }
 
-  async function rephraseLatestQuestion(requestText: string, runToken: number) {
-    if (!isQuestionRephraseRequest(requestText)) {
-      return false;
+  async function rephraseQuestion(item: FeedbackItem, runToken: number) {
+    if (rephraseRequestRef.current?.questionId === item.createdAt) {
+      return;
     }
 
-    const latestUnresolvedFeedback = latestFeedbackRef.current;
-    if (!latestUnresolvedFeedback) {
-      return false;
-    }
-
-    clearDrawerOpenTimer();
-    setDrawerOpen(true);
-    setUnseenCount(0);
+    const request = { questionId: item.createdAt };
+    rephraseRequestRef.current = request;
+    setRephrasingQuestionId(item.createdAt);
+    showExistingQuestion(item);
     stopSpeaking();
-    const heuristicQuestion = simplifyQuestionText(latestUnresolvedFeedback.message);
+    const heuristicQuestion = simplifyQuestionText(item.message);
     let simplifiedQuestion = heuristicQuestion;
     try {
-      const result = await rephraseFacultyQuestion(latestUnresolvedFeedback.message);
+      const result = await rephraseFacultyQuestion(item.message);
       const candidate = result.rephrasedQuestion.trim();
-      const originalNormalized = normalizeQuestionForComparison(latestUnresolvedFeedback.message);
+      const originalNormalized = normalizeQuestionForComparison(item.message);
       const candidateNormalized = normalizeQuestionForComparison(candidate);
       const heuristicNormalized = normalizeQuestionForComparison(heuristicQuestion);
       if (candidateNormalized && candidateNormalized !== originalNormalized && candidateNormalized !== heuristicNormalized) {
@@ -517,26 +534,40 @@ export default function PresentPage() {
       // Fall back to the local rewrite when the lightweight LLM rephrase path is unavailable.
     }
 
-    if (runToken !== liveRunTokenRef.current) {
-      return true;
+    if (rephraseRequestRef.current !== request) {
+      return;
     }
-    setLatestFeedbackRephrase(simplifiedQuestion);
-    if (websocketRef.current) {
+    rephraseRequestRef.current = null;
+    setRephrasingQuestionId(undefined);
+    if (runToken !== liveRunTokenRef.current || latestFeedbackRef.current?.createdAt !== item.createdAt) {
+      return;
+    }
+    setRephrasedQuestion({ questionId: item.createdAt, text: simplifiedQuestion });
+    if (websocketRef.current && voiceEnabledRef.current) {
       void speakWithDeepgramVoice(`${FACULTY_TTS_REPHRASE_OPENER} ${simplifiedQuestion}`).catch(() => undefined);
     }
     setStatus("Rephrased the latest faculty question.");
+  }
+
+  async function rephraseLatestQuestion(requestText: string, runToken: number) {
+    const item = latestFeedbackRef.current;
+    if (!item || !isQuestionRephraseRequest(requestText)) {
+      return false;
+    }
+    await rephraseQuestion(item, runToken);
     return true;
   }
 
-  function queueFacultyQuestionReveal(item: FeedbackItem) {
-    clearDrawerOpenTimer();
-    setDrawerOpen(true);
-    setUnseenCount(0);
-    speakFacultyQuestion(item);
+  function deliverFacultyQuestion(item: FeedbackItem) {
+    latestFeedbackRef.current = item;
+    setQuestionOnStage({ id: item.createdAt, animate: Boolean(websocketRef.current) });
+    if (websocketRef.current) {
+      speakFacultyQuestion(item);
+    }
   }
 
   function acknowledgeResolvedQuestion(requestText: string, resolvedFeedback?: FeedbackItem) {
-    if (!resolvedFeedback || !isQuestionConfirmation(requestText) || typeof window === "undefined") {
+    if (!voiceEnabledRef.current || !resolvedFeedback || !isQuestionConfirmation(requestText) || typeof window === "undefined") {
       return false;
     }
 
@@ -554,7 +585,6 @@ export default function PresentPage() {
     setFeedback((current) =>
       current.map((item) => (item.createdAt === resolvedFeedback.createdAt ? resolvedFeedback : item)),
     );
-    setUnseenCount((current) => Math.max(0, current - 1));
   }
 
   function resetRunState() {
@@ -566,16 +596,17 @@ export default function PresentPage() {
     transcriptRef.current = [];
     setFeedback([]);
     setQueuedFeedback(undefined);
-    setLatestFeedbackRephrase(undefined);
+    setQuestionOnStage(undefined);
+    setRephrasedQuestion(undefined);
+    rephraseRequestRef.current = null;
+    setRephrasingQuestionId(undefined);
+    setFeedbackError("");
     studentCoverageRef.current = {};
     latestFeedbackRef.current = undefined;
     spokenFeedbackIdsRef.current = new Set();
     stopSpeaking();
     setActiveChunk("");
     setLivePreview("");
-    setDrawerOpen(false);
-    clearDrawerOpenTimer();
-    setUnseenCount(0);
     setLiveErrorMessage("");
     liveErrorMessageRef.current = "";
     lastForcedTurnWordCountRef.current = 0;
@@ -678,10 +709,6 @@ export default function PresentPage() {
   }, [slideMode]);
 
   useEffect(() => {
-    voiceEnabledRef.current = voiceEnabled;
-  }, [voiceEnabled]);
-
-  useEffect(() => {
     liveStateRef.current = { connected: liveConnected, connecting: liveConnecting };
   }, [liveConnected, liveConnecting]);
 
@@ -744,19 +771,24 @@ export default function PresentPage() {
       return;
     }
 
-    const result = await analyzeChunk({
-      sessionId: id,
-      transcriptChunk: nextChunk,
-      recentTranscript: previousTranscript.slice(-4),
-      recentFeedback: recentFeedbackRef.current,
-      projectContext: projectContextRef.current,
-      currentSlide: currentSlideRef.current ? compactSlideForAnalysis(currentSlideRef.current) : undefined,
-      slideMode: slideModeRef.current,
-      presentationSlides: slidesForAnalysis(),
-      preparedQuestions: questionsForAnalysis(currentSlideRef.current),
-      studentCoverage: studentCoverageRef.current,
+    const result = await queueRehearsalUpdate(id, async () => {
+      if (runToken !== liveRunTokenRef.current) {
+        return;
+      }
+      return analyzeChunk({
+        sessionId: id,
+        transcriptChunk: nextChunk,
+        recentTranscript: previousTranscript.slice(-4),
+        recentFeedback: recentFeedbackRef.current,
+        projectContext: projectContextRef.current,
+        currentSlide: currentSlideRef.current ? compactSlideForAnalysis(currentSlideRef.current) : undefined,
+        slideMode: slideModeRef.current,
+        presentationSlides: slidesForAnalysis(),
+        preparedQuestions: questionsForAnalysis(currentSlideRef.current),
+        studentCoverage: studentCoverageRef.current,
+      });
     });
-    if (runToken !== liveRunTokenRef.current) {
+    if (!result || runToken !== liveRunTokenRef.current) {
       return;
     }
 
@@ -778,19 +810,16 @@ export default function PresentPage() {
     }
 
     if (result.trigger && result.feedback) {
-      setLatestFeedbackRephrase(undefined);
-      if (result.feedback.targetStudent) {
+      const deliveredQuestion = result.feedback;
+      setRephrasedQuestion(undefined);
+      if (deliveredQuestion.targetStudent) {
         studentCoverageRef.current = {
           ...studentCoverageRef.current,
-          [result.feedback.targetStudent]: (studentCoverageRef.current[result.feedback.targetStudent] ?? 0) + 1,
+          [deliveredQuestion.targetStudent]: (studentCoverageRef.current[deliveredQuestion.targetStudent] ?? 0) + 1,
         };
       }
-      setFeedback((current) => [...current, result.feedback as FeedbackItem]);
-      if (websocketRef.current) {
-        queueFacultyQuestionReveal(result.feedback);
-      } else {
-        setDrawerOpen(true);
-      }
+      setFeedback((current) => [...current, deliveredQuestion]);
+      deliverFacultyQuestion(deliveredQuestion);
       setStatus("Faculty question triggered.");
       return;
     }
@@ -919,10 +948,8 @@ export default function PresentPage() {
       clearTimeout(silenceTimerRef.current);
       silenceTimerRef.current = null;
     }
-    clearDrawerOpenTimer();
     stopSpeaking();
     setLivePreview("");
-    setMode("idle");
     if (!liveErrorMessageRef.current || nextLiveStatus !== "error") {
       setStatus(reason);
     }
@@ -935,18 +962,18 @@ export default function PresentPage() {
     }
 
     if (!navigator.mediaDevices?.getUserMedia) {
-      setStatus("This browser does not support microphone capture.");
+      setLiveErrorMessage("This browser does not support microphone capture.");
+      setLiveStatus("error");
       return;
     }
 
     resetRunState();
     liveRunTokenRef.current += 1;
     const runToken = liveRunTokenRef.current;
-    setMode("live");
     setLiveConnecting(true);
     setLiveStatus("connecting");
     try {
-      await ensureSession(runToken);
+      const rehearsalId = await ensureSession(runToken);
       if (runToken !== liveRunTokenRef.current) {
         return;
       }
@@ -1039,6 +1066,7 @@ export default function PresentPage() {
         }
 
         if (data.type === "proxy_open") {
+          rememberRehearsal(rehearsalId);
           return;
         }
 
@@ -1186,185 +1214,228 @@ export default function PresentPage() {
     setCurrentSlideIndex(0);
     setTrackingMode("auto");
     setUploadedFilename(undefined);
+    setUploadError("");
+    setDetailPanel(undefined);
     stopLiveSpeech("Ready for live presentation mode.");
-    setMode("idle");
-    setStatus("Ready for live presentation mode.");
-  }
-
-  function openDrawer() {
-    clearDrawerOpenTimer();
-    setDrawerOpen(true);
-    setUnseenCount(0);
-    if (latestFeedback) {
-      speakFacultyQuestion(latestFeedback);
-    }
   }
 
   function toggleVoice() {
-    setVoiceEnabled((enabled) => {
-      if (enabled) {
-        stopSpeaking();
-      }
-      return !enabled;
-    });
+    const enabled = !voiceEnabledRef.current;
+    voiceEnabledRef.current = enabled;
+    setVoiceEnabled(enabled);
+    if (!enabled) {
+      stopSpeaking();
+    }
   }
 
-  async function handleFeedbackResolution(item: FeedbackItem, resolved: boolean) {
+  async function handleFeedbackResolution(item: FeedbackItem, resolved: boolean, source?: "stage" | "advance") {
     const activeSessionId = sessionIdRef.current;
-    if (!activeSessionId) {
+    const pending = pendingResolutionRef.current;
+    if (!activeSessionId || pending.has(item.createdAt)) {
       return;
     }
 
+    pending.add(item.createdAt);
+    setFeedbackError("");
+    const activeElement = document.activeElement;
+    const reason = source === "advance"
+      ? "Presenter advanced to a later slide in manual mode."
+      : "Presenter addressed this faculty question.";
     try {
-      const updated = await updateFeedbackResolution({
+      const updated = await queueRehearsalUpdate(activeSessionId, () => updateFeedbackResolution({
         sessionId: activeSessionId,
         createdAt: item.createdAt,
         resolved,
-        resolutionReason: resolved ? "Presenter addressed this faculty question." : undefined,
+        resolutionReason: resolved ? reason : undefined,
         sourceQuestionId: item.sourceQuestionId,
         message: item.message,
-      });
+      }));
       if (sessionIdRef.current !== activeSessionId) {
         return;
       }
-      setFeedback(updated);
-      if (latestFeedback?.createdAt === item.createdAt) {
-        setLatestFeedbackRephrase(undefined);
+      const updatedItem = updated.find((entry) => entry.createdAt === item.createdAt);
+      if (updatedItem) {
+        setFeedback((current) => current.map((entry) => entry.createdAt === item.createdAt ? updatedItem : entry));
       }
+      setRephrasedQuestion((current) => current?.questionId === item.createdAt ? undefined : current);
       if (resolved) {
         setQueuedFeedback((queued) => queued?.followUpToQuestionId === (item.sourceQuestionId || item.createdAt) ? undefined : queued);
-        stopSpeaking();
+        if (latestFeedbackRef.current?.createdAt === item.createdAt) {
+          stopSpeaking();
+        }
+        if (source === "stage" && document.activeElement === activeElement) {
+          feedbackToggleRef.current?.focus();
+        }
+      } else {
+        setQuestionOnStage({ id: item.createdAt, animate: false });
       }
-      setUnseenCount((current) => (resolved ? Math.max(0, current - 1) : current + 1));
       setStatus(resolved ? "Faculty question marked addressed." : "Faculty question reopened.");
     } catch (error) {
-      setStatus(error instanceof Error ? error.message : "Unable to update faculty question.");
+      if (sessionIdRef.current === activeSessionId) {
+        const message = error instanceof Error ? error.message : "Unable to update faculty question.";
+        setFeedbackError(message);
+        setStatus(message);
+      }
+    } finally {
+      pending.delete(item.createdAt);
     }
   }
 
   async function handleUpload(file: File) {
     setBusy(true);
+    setUploadError("");
     try {
       const result = await uploadPresentation(file);
+      if (uploadedFilename) {
+        stopLiveSpeech("Deck replaced.");
+        resetRunState();
+      }
       setSlides(result.slides);
+      currentSlideRef.current = result.slides[0];
       setPreparedQuestions(result.preparedQuestions);
       setQuestionSource(result.questionSource);
       setQuestionCacheHit(result.cacheHit);
       setCurrentSlideIndex(0);
       setTrackingMode("auto");
       setUploadedFilename(file.name);
+      setDetailPanel(undefined);
       setStatus(
         `Prepared ${result.preparedQuestions.length} faculty questions from ${result.slides.length} slides using ${result.questionSource}${result.cacheHit ? " (cached)" : ""}.`
       );
     } catch (error) {
-      setStatus(error instanceof Error ? error.message : "Unable to upload presentation.");
+      const message = error instanceof Error ? error.message : "Unable to upload presentation.";
+      setUploadError(message);
+      setStatus(message);
     } finally {
       setBusy(false);
     }
   }
 
   useEffect(() => () => {
-    clearDrawerOpenTimer();
     stopLiveSpeech("Live microphone stopped.");
     void ttsAudioContextRef.current?.close().catch(() => undefined);
   }, []);
 
+  const error = feedbackError || (liveStatus === "error" ? liveErrorMessage || status : "");
+
   return (
-    <main className="app-shell">
-      <header className="topbar">
-        <div className="topbar-title">
-          <p className="eyebrow">Faculty-AI</p>
-          <h1>Presentation cockpit</h1>
-          <p>Run live Q&A support without crowding the presenter view.</p>
-        </div>
-        <div className={`topbar-status ${liveStatus}`}>
-          <span aria-hidden="true" />
-          <p>{status}</p>
-        </div>
-      </header>
+    <main className={styles.cockpit}>
+      <div className={styles.surface}>
+        <RehearsalNav current="present" />
+        <SessionControls
+          disabled={busy || !currentSlide}
+          liveConnected={liveConnected}
+          liveConnecting={liveConnecting}
+          liveStatus={liveStatus}
+          voiceEnabled={voiceEnabled}
+          onStartLive={() => void startLiveSpeech()}
+          onStopLive={() => stopLiveSpeech(undefined, true, "idle", liveConnected)}
+          onToggleVoice={toggleVoice}
+        />
+        {error ? <p className={styles.notice} role="alert">{error}</p> : null}
 
-      <section className="session-summary" aria-label="Presentation setup summary">
-        <div>
-          <span>Deck</span>
-          <strong>{uploadedFilename ? uploadedFilename : "Not uploaded"}</strong>
-        </div>
-        <div>
-          <span>Questions</span>
-          <strong>{preparedQuestions.length}</strong>
-        </div>
-        <div>
-          <span>Mode</span>
-          <strong>{mode === "idle" ? "Ready" : "Live"}</strong>
-        </div>
-        <div>
-          <span>Open issues</span>
-          <strong>{feedback.filter((item) => !item.resolved).length}</strong>
-        </div>
-      </section>
-
-      <div className="workspace">
-        <div className="left-rail">
-          <PresentationUpload disabled={busy} filename={uploadedFilename} onUpload={(file) => void handleUpload(file)} />
-          <SessionControls
-            disabled={busy}
-            liveConnected={liveConnected}
-            liveConnecting={liveConnecting}
-            liveStatus={liveStatus}
-            sessionId={sessionId}
-            voiceEnabled={voiceEnabled}
-            onReset={resetPresentation}
-            onStartLive={() => void startLiveSpeech()}
-            onStopLive={() => stopLiveSpeech(undefined, true, "idle", true)}
-            onToggleVoice={toggleVoice}
-          />
-          <section className="quiet-panel">
-            <p className="eyebrow">Rubric</p>
-            <p>{professorConfig?.assignmentName ?? "Project Presentation"}</p>
-            <small>{(professorConfig?.rubric ?? projectContext.rubric).join(", ")}</small>
-            {questionSource ? <small>Questions: {questionSource}{questionCacheHit ? " cached" : ""}</small> : null}
-          </section>
-        </div>
-
-        <div className="main-stage">
+        {currentSlide ? (
           <SlideTracker
             currentSlideIndex={currentSlideIndex}
-            preparedQuestions={preparedQuestions}
             slideMode={slideMode}
             slides={slides}
-            onModeChange={(mode) => {
-              setTrackingMode(mode);
-              setStatus(mode === "manual" ? "Manual slide mode enabled." : "Auto slide mode enabled.");
+            caption={livePreview || activeChunk}
+            onModeChange={(nextMode) => {
+              setTrackingMode(nextMode);
+              setStatus(nextMode === "manual" ? "Manual slide mode enabled." : "Auto slide mode enabled.");
             }}
             onJumpToSlide={jumpToSlide}
-            onPrevious={() => {
-              setTrackingMode("manual");
-              goToSlideIndex(currentSlideIndex - 1);
-            }}
-            onNext={() => {
-              setTrackingMode("manual");
-              goToSlideIndex(currentSlideIndex + 1);
-            }}
-          />
-          <TranscriptPanel
-            activeChunk={activeChunk}
-            debugStats={debugStats}
-            livePreview={livePreview}
-            liveStatus={liveStatus}
-            transcript={transcript}
-          />
-        </div>
-      </div>
+          >
+            <div className={styles.questionSlot}>
+              {activeQuestion ? (
+                <FacultyQuestion
+                  key={activeQuestion.createdAt}
+                  question={activeQuestion}
+                  animate={Boolean(questionOnStage?.animate)}
+                  rephrasedQuestion={currentRephrase}
+                  rephrasing={rephrasingQuestionId === activeQuestion.createdAt}
+                  voiceEnabled={voiceEnabled}
+                  onRepeat={() => repeatQuestion(activeQuestion)}
+                  onRephrase={() => void rephraseQuestion(activeQuestion, liveRunTokenRef.current)}
+                  onResolve={() => void handleFeedbackResolution(activeQuestion, true, "stage")}
+                />
+              ) : null}
+            </div>
+          </SlideTracker>
+        ) : (
+          <section className={styles.stage} aria-labelledby="upload-deck-heading">
+            <PresentationUpload busy={busy} error={uploadError} onUpload={(file) => void handleUpload(file)} />
+          </section>
+        )}
 
-      <FeedbackDrawer
-        feedback={feedback}
-        queuedFeedback={queuedFeedback}
-        latestFeedback={latestFeedback}
-        latestFeedbackRephrase={latestFeedback && !latestFeedback.resolved ? latestFeedbackRephrase : undefined}
-        open={drawerOpen}
-        onClose={() => setDrawerOpen(false)}
-        onResolve={(item, resolved) => void handleFeedbackResolution(item, resolved)}
-      />
-      <FacultyAlert latestFeedback={latestFeedback} open={drawerOpen} unseenCount={unseenCount} onOpen={openDrawer} />
+        <div className={styles.srOnly} role="status" aria-live="polite">
+          {activeQuestion ? `Faculty question. ${currentRephrase ?? activeQuestion.message}` : ""}
+        </div>
+
+        <footer className={styles.footer}>
+          {currentSlide ? (
+            <nav className={styles.controls} aria-label="Slide controls">
+              <button aria-label="Previous slide" disabled={currentSlideIndex === 0} onClick={() => moveSlide(-1)} type="button">←</button>
+              <button aria-label="Next slide" disabled={currentSlideIndex >= slides.length - 1} onClick={() => moveSlide(1)} type="button">→</button>
+            </nav>
+          ) : null}
+          <nav className={`${styles.controls} ${styles.footerTools}`} aria-label="Rehearsal details">
+            {DETAIL_PANELS.map(({ id, label }) => (
+              <button
+                key={id}
+                ref={id === "feedback" ? feedbackToggleRef : undefined}
+                type="button"
+                aria-expanded={detailPanel === id}
+                aria-controls={`cockpit-${id}`}
+                onClick={() => setDetailPanel((current) => current === id ? undefined : id)}
+              >
+                {label}{id === "feedback" && openFeedbackCount > 0 ? ` (${openFeedbackCount})` : ""}
+              </button>
+            ))}
+          </nav>
+        </footer>
+
+        <section className={styles.details} id="cockpit-transcript" aria-labelledby="transcript-heading" hidden={detailPanel !== "transcript"}>
+          <div className={styles.detailHeader}>
+            <h2 id="transcript-heading">Transcript</h2>
+            <small className={styles.secondary}>{transcript.length} chunks</small>
+          </div>
+          {detailPanel === "transcript" ? (
+            <TranscriptPanel activeChunk={activeChunk} livePreview={livePreview} transcript={transcript} />
+          ) : null}
+        </section>
+        <section className={styles.details} id="cockpit-feedback" aria-labelledby="feedback-heading" hidden={detailPanel !== "feedback"}>
+          <div className={styles.detailHeader}>
+            <h2 id="feedback-heading">Feedback</h2>
+            {openFeedbackCount > 0 ? <small className={styles.secondary}>{openFeedbackCount} open</small> : null}
+          </div>
+          {detailPanel === "feedback" ? (
+            <FeedbackPanel feedback={feedback} queuedFeedback={queuedFeedback} onResolve={(item, resolved) => void handleFeedbackResolution(item, resolved)} />
+          ) : null}
+        </section>
+        <section className={styles.details} id="cockpit-session" aria-labelledby="session-heading" hidden={detailPanel !== "session"}>
+          <div className={styles.detailHeader}><h2 id="session-heading">Session</h2></div>
+          {detailPanel === "session" ? (
+            <SessionDetails
+              filename={uploadedFilename}
+              busy={busy}
+              uploadError={uploadError}
+              live={liveConnected || liveConnecting}
+              sessionId={sessionId}
+              assignmentName={professorConfig?.assignmentName ?? "Project Presentation"}
+              rubric={professorConfig?.rubric ?? projectContext.rubric}
+              currentSlide={currentSlide}
+              preparedQuestions={preparedQuestions}
+              questionSource={questionSource}
+              questionCacheHit={questionCacheHit}
+              status={status}
+              debugStats={debugStats}
+              onUpload={(file) => void handleUpload(file)}
+              onReset={resetPresentation}
+            />
+          ) : null}
+        </section>
+      </div>
     </main>
   );
 }

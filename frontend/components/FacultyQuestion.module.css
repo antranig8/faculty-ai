@@ -1,0 +1,148 @@
+.question {
+  --entrance-x: 9rem;
+  --entrance-y: 0rem;
+  display: grid;
+  grid-template-columns: clamp(3.5rem, 10vw, 5.375rem) minmax(0, 1fr);
+  align-items: end;
+  justify-self: end;
+  inline-size: min(100%, 37rem);
+  isolation: isolate;
+}
+
+.professor {
+  --cutout-paper: #fff3db;
+  --cutout-ink: #27282b;
+  --cutout-face: #ce8a61;
+  --cutout-coat: #a04027;
+  position: relative;
+  z-index: 1;
+  inline-size: var(--cutout-width, 110%);
+  aspect-ratio: 1 / 1.17;
+  transform: rotate(-7deg);
+  filter: drop-shadow(1px 0 var(--cutout-paper))
+    drop-shadow(-1px -1px var(--cutout-paper))
+    drop-shadow(2px 4px 2px rgb(23 19 13 / 27%));
+  pointer-events: none;
+}
+
+.professor span {
+  position: absolute;
+  display: block;
+}
+
+.coat {
+  inset: 56% 2% 1%;
+  background: var(--cutout-coat);
+  clip-path: polygon(0 100%, 5% 39%, 16% 21%, 40% 4%, 67% 0, 89% 23%, 98% 56%, 100% 100%);
+}
+
+.lapels {
+  inset: 59% 26% 0 27%;
+  background: var(--cutout-paper);
+  clip-path: polygon(0 5%, 47% 22%, 100% 0, 59% 100%, 43% 100%);
+}
+
+.lapels::after {
+  position: absolute;
+  inset: 26% 29% 0 30%;
+  background: var(--cutout-ink);
+  clip-path: polygon(31% 0, 66% 0, 75% 21%, 61% 39%, 100% 100%, 0 100%, 42% 40%, 22% 21%);
+  content: "";
+}
+
+.neck {
+  inset: 47% 34% 33% 41%;
+  background: var(--cutout-face);
+  clip-path: polygon(9% 0, 84% 0, 100% 78%, 50% 100%, 0 78%);
+}
+
+.hair {
+  inset: 5% 17% 44% 23%;
+  background: var(--cutout-ink);
+  clip-path: polygon(0 27%, 12% 6%, 43% 0, 74% 4%, 91% 18%, 100% 49%, 88% 82%, 73% 100%, 19% 92%, 7% 70%);
+}
+
+.face {
+  inset: 19% 15% 40% 33%;
+  background: var(--cutout-face);
+  clip-path: polygon(8% 5%, 67% 0, 86% 15%, 87% 41%, 100% 55%, 88% 61%, 85% 86%, 66% 100%, 39% 96%, 21% 82%, 2% 65%, 0 42%);
+}
+
+.fringe {
+  inset: 9% 20% 61% 26%;
+  background: var(--cutout-ink);
+  clip-path: polygon(3% 23%, 24% 4%, 75% 0, 98% 23%, 100% 50%, 83% 38%, 57% 50%, 29% 69%, 25% 100%, 8% 89%, 0 59%);
+}
+
+.professor .glasses {
+  inset: 34% 18% 56% 41%;
+  display: flex;
+  align-items: center;
+  gap: 13%;
+  transform: rotate(-3deg);
+  background: linear-gradient(var(--cutout-ink), var(--cutout-ink)) center / 100% 15% no-repeat;
+}
+
+.glasses::before,
+.glasses::after {
+  inline-size: 37%;
+  block-size: 84%;
+  border: 1.5px solid var(--cutout-ink);
+  border-radius: 35% 29% 42% 38%;
+  background: var(--cutout-face);
+  content: "";
+}
+
+.mouth {
+  inset: 50% 25% 46% 61%;
+  border-block-end: 1.5px solid var(--cutout-ink);
+  border-radius: 0 0 60% 60%;
+}
+
+.enter {
+  animation: arrive 350ms cubic-bezier(0.18, 0.76, 0.27, 1) both;
+}
+
+.enter .professor {
+  animation: settle 420ms cubic-bezier(0.24, 0.62, 0.38, 1) both;
+}
+
+@keyframes arrive {
+  from { opacity: 0; transform: translate(var(--entrance-x), var(--entrance-y)); }
+  to { opacity: 1; transform: translate(0, 0); }
+}
+
+@keyframes settle {
+  from { transform: rotate(-17deg); }
+  75% { transform: rotate(-4deg); }
+  to { transform: rotate(-7deg); }
+}
+
+@media (max-width: 36rem) {
+  .question {
+    --entrance-x: 0rem;
+    --entrance-y: 6rem;
+  }
+}
+
+@media (max-width: 30rem) {
+  .question {
+    position: relative;
+    grid-template-columns: minmax(0, 1fr);
+    padding-block-start: 1.55rem;
+  }
+
+  .question .professor {
+    position: absolute;
+    inset-block-start: 0;
+    inset-inline-end: 0.65rem;
+    inline-size: 2.9rem;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .enter,
+  .enter .professor {
+    animation: none;
+  }
+}

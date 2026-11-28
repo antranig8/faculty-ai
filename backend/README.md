@@ -37,4 +37,4 @@ Run the backend regression suite with `python -m unittest discover -s tests` fro
 - `app/services/`: decision engine (`faculty_brain.py`, `feedback_engine.py`), deck parsing and question preparation, answer evaluation, student profiles, and the eval runner
 - `app/prompts/`: LLM prompts and the default professor rubric
 - `app/state.py`: in-memory state backed by SQLite (`faculty_ai.db` at the repo root)
-- `eval_scenarios/`: sample deck, replay scenarios, and reports; see [docs/eval-harness.md](../docs/eval-harness.md)
+- `eval_scenarios/` contains replay scenarios and a sample report. The deck is shared with the main README. [Eval harness](../docs/eval-harness.md)

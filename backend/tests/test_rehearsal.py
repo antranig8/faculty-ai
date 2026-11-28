@@ -96,6 +96,19 @@ class RehearsalTests(unittest.TestCase):
         self.assertIsNone(result.resolvedFeedback)
         self.assertEqual(result.answerEvaluation.answerQuality, "weak")
 
+    def test_answer_quality_is_saved_when_a_duplicate_question_is_suppressed(self):
+        session_id, session = self._start_with_question()
+        candidate = session["feedback"][-1]
+        with patch("app.routes.analyze.generate_slide_handoff_feedback", return_value=(candidate, "Test duplicate")):
+            result = self._analyze(session_id, "We are still thinking about this point.")
+
+        self.assertFalse(result.trigger)
+        self.assertEqual(result.answerEvaluation.answerQuality, "weak")
+        self.state.sessions.pop(session_id)
+        saved_feedback = self.state.get_session(session_id)["feedback"][-1]
+        self.assertEqual(saved_feedback.answerQuality, "weak")
+        self.assertFalse(saved_feedback.resolved)
+
     def test_strong_answer_cancels_its_queued_follow_up(self):
         session_id, _ = self._start_with_question()
         partial = self._analyze(session_id, "We saw reports from a few people nearby.")

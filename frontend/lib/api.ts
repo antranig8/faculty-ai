@@ -162,11 +162,15 @@ export async function saveProfessorConfig(config: ProfessorConfig): Promise<Prof
   return response.json();
 }
 
-export async function getFeedback(sessionId: string): Promise<FeedbackItem[]> {
-  const response = await fetch(`${API_BASE}/session/${sessionId}/feedback`, {
+export async function getFeedback(sessionId: string): Promise<FeedbackItem[] | null> {
+  const response = await fetch(`${API_BASE}/session/${encodeURIComponent(sessionId)}/feedback`, {
+    cache: "no-store",
     headers: buildHeaders(),
   });
 
+  if (response.status === 404) {
+    return null;
+  }
   if (!response.ok) {
     throw new Error("Unable to load feedback history.");
   }
