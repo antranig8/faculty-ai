@@ -1345,11 +1345,7 @@ export default function PresentPage() {
           </SlideTracker>
         ) : (
           <section className={styles.stage} aria-labelledby="upload-deck-heading">
-            <div className={`${styles.slideContent} ${styles.emptyStage}`}>
-              <h2 id="upload-deck-heading">Upload your deck</h2>
-              <p className={styles.secondary}>Faculty-AI uses your slides and rubric to prepare questions.</p>
-              <PresentationUpload busy={busy} error={uploadError} onUpload={(file) => void handleUpload(file)} />
-            </div>
+            <PresentationUpload busy={busy} error={uploadError} onUpload={(file) => void handleUpload(file)} />
           </section>
         )}
 
