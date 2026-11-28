@@ -22,7 +22,8 @@ _FALLBACK_PROMPT = (
     "Use prepared slide concerns as strong anchors, but allow one concise freeform question when it is better.\n"
     "Return strict JSON only."
 )
-LIVE_FACULTY_MAX_COMPLETION_TOKENS = 170
+# Leave room for reasoning tokens before the model emits the JSON decision.
+LIVE_FACULTY_MAX_COMPLETION_TOKENS = 640
 MAX_TEXT_CHARS = 220
 
 
@@ -328,6 +329,7 @@ def decide_faculty_feedback(
         ),
         temperature=0.1,
         max_completion_tokens=LIVE_FACULTY_MAX_COMPLETION_TOKENS,
+        response_format={"type": "json_object"},
         top_p=1,
         reasoning_effort=groq_reasoning_effort(settings.faculty_ai_llm_model),
         stream=True,

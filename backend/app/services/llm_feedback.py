@@ -13,7 +13,7 @@ from app.services.rubric_loader import load_professor_config_from_template
 from app.services.section_tracker import infer_section
 from app.services.transcript_evidence import extract_transcript_evidence
 
-LIVE_FALLBACK_MAX_COMPLETION_TOKENS = 160
+LIVE_FALLBACK_MAX_COMPLETION_TOKENS = 640
 MAX_PROMPT_TEXT_CHARS = 220
 
 
@@ -97,6 +97,7 @@ def generate_llm_feedback(payload: AnalyzeChunkRequest) -> tuple[FeedbackItem | 
         ],
         temperature=0.2,
         max_completion_tokens=LIVE_FALLBACK_MAX_COMPLETION_TOKENS,
+        response_format={"type": "json_object"},
         top_p=1,
         reasoning_effort=groq_reasoning_effort(settings.faculty_ai_llm_model),
         stream=True,

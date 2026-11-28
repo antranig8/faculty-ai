@@ -6,6 +6,7 @@ import urllib.request
 from urllib.parse import urlencode
 
 from fastapi import APIRouter, HTTPException, Response, WebSocket, WebSocketDisconnect
+from groq import APIError
 from starlette.websockets import WebSocketState
 from websockets.asyncio.client import connect
 from websockets.exceptions import ConnectionClosed
@@ -116,7 +117,11 @@ async def _safe_deepgram_send(deepgram_ws, payload) -> bool:
 
 @router.post("/rephrase-question", response_model=QuestionRephraseResponse)
 async def rephrase_faculty_question(payload: QuestionRephraseRequest) -> QuestionRephraseResponse:
-    rewritten = await asyncio.to_thread(rephrase_question, payload.question)
+    try:
+        rewritten = await asyncio.to_thread(rephrase_question, payload.question)
+    except APIError as exc:
+        logger.warning("Groq question rephrase failed: %s", type(exc).__name__)
+        raise HTTPException(status_code=503, detail="Question rephrase is not available.") from exc
     if not rewritten:
         raise HTTPException(status_code=503, detail="Question rephrase is not available.")
     return QuestionRephraseResponse(rephrasedQuestion=rewritten)

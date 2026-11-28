@@ -514,14 +514,12 @@ def _coerce_prepared_questions(parsed: list, project_context: ProjectContext, sl
 
 def prepare_questions_with_llm(project_context: ProjectContext, slides: list[Slide]) -> list[PreparedQuestion] | None:
     settings = get_settings()
-    if settings.faculty_ai_llm_provider not in {"groq", "openai"}:
-        return None
-    if not settings.groq_api_key or not slides:
+    if not settings.uses_groq or not slides:
         return None
 
     # Stream the provider response, parse it as JSON, and repair it once if the
     # model drifts slightly off schema.
-    client = build_groq_client(settings.groq_api_key)
+    client = build_groq_client(settings.groq_api_key, timeout=30.0)
     completion = client.chat.completions.create(
         model=settings.faculty_ai_llm_model,
         messages=[

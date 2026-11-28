@@ -2,6 +2,8 @@ from dataclasses import dataclass
 import os
 from pathlib import Path
 
+from dotenv import dotenv_values
+
 
 _ENV_LOADED = False
 
@@ -22,12 +24,9 @@ def _load_dotenv() -> None:
         if not env_path.exists():
             continue
 
-        for raw_line in env_path.read_text(encoding="utf-8").splitlines():
-            line = raw_line.strip()
-            if not line or line.startswith("#") or "=" not in line:
-                continue
-            key, value = line.split("=", 1)
-            os.environ.setdefault(key.strip(), value.strip().strip('"').strip("'"))
+        for key, value in dotenv_values(env_path, encoding="utf-8-sig", interpolate=False).items():
+            if value is not None:
+                os.environ.setdefault(key, value)
 
     _ENV_LOADED = True
 
@@ -43,6 +42,11 @@ class Settings:
     faculty_ai_rephrase_model: str
     deepgram_model: str
     deepgram_language: str
+    faculty_ai_db_path: Path
+
+    @property
+    def uses_groq(self) -> bool:
+        return self.faculty_ai_llm_provider in {"groq", "openai"} and bool(self.groq_api_key)
 
 
 def get_settings() -> Settings:
@@ -61,8 +65,9 @@ def get_settings() -> Settings:
         faculty_ai_app_api_key=os.getenv("FACULTY_AI_APP_API_KEY"),
         faculty_ai_allowed_origins=allowed_origins,
         faculty_ai_llm_provider=os.getenv("FACULTY_AI_LLM_PROVIDER", "heuristic"),
-        faculty_ai_llm_model=os.getenv("FACULTY_AI_LLM_MODEL", "qwen/qwen3-32b"),
-        faculty_ai_rephrase_model=os.getenv("FACULTY_AI_REPHRASE_MODEL", "qwen/qwen3-8b"),
+        faculty_ai_llm_model=os.getenv("FACULTY_AI_LLM_MODEL", "openai/gpt-oss-120b"),
+        faculty_ai_rephrase_model=os.getenv("FACULTY_AI_REPHRASE_MODEL", "qwen/qwen3.8-27b"),
         deepgram_model=os.getenv("DEEPGRAM_MODEL", "flux-general-en"),
         deepgram_language=os.getenv("DEEPGRAM_LANGUAGE", "en-US"),
+        faculty_ai_db_path=Path(os.getenv("FACULTY_AI_DB_PATH") or Path(__file__).resolve().parents[2] / "faculty_ai.db"),
     )
