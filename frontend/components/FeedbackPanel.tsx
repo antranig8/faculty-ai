@@ -32,11 +32,11 @@ export function FeedbackPanel({ feedback, queuedFeedback, onResolve }: Props) {
                 {item.slideNumber ? ` · Slide ${item.slideNumber}` : ""}
               </small>
               <p>{item.message}</p>
+              {item.answerQuality ? <small className={styles.secondary}>Answer quality · {item.answerQuality}</small> : null}
               <details className={styles.secondary}>
                 <summary>Question details</summary>
                 <p>{item.reason}</p>
                 {item.targetStudent ? <p>For {item.targetStudent}</p> : null}
-                {item.answerQuality ? <p>Answer quality · {item.answerQuality}</p> : null}
                 {item.resolutionReason ? <p>{item.resolutionReason}</p> : null}
               </details>
               {onResolve ? (
