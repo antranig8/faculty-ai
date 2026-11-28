@@ -47,7 +47,7 @@ The possible moves are:
 3. **Has the presenter said enough yet?** Faculty-AI does not interrupt right as a slide starts or while the speaker is still framing the topic.
 4. **What is still missing?** It looks for gaps: unclear justification, unsupported claims, missing examples, missing application, missing tradeoffs.
 5. **Prepared or freeform?** It ranks the best prepared concern against the best freeform question for this exact moment and picks the stronger one.
-6. **Is now a good time?** Cooldowns, a one-question-per-slide rule, and a short answer window after each question keep it from piling on.
+6. **Is now a good time?** Cooldowns and a short answer window keep interruptions spaced out. Each slide can receive one initial question and, after a partial answer, one follow-up once the timing allows it.
 7. **Has this been asked already?** Similar questions and covered topics are deduplicated.
 
 ## Evaluating Answers
@@ -80,7 +80,7 @@ When `FACULTY_AI_LLM_PROVIDER=groq` is set, an LLM is added where judgment helps
 - arbitrating when several moves are plausible
 - writing a better freeform question for the live moment
 
-Without an LLM, each of these falls back to the heuristic path, so the app stays fully usable. The one exception is "rephrase the question", which uses Groq whenever `GROQ_API_KEY` is set and is unavailable without it.
+Without an LLM, each of these uses the heuristic path. The browser also has a basic rephrase fallback when Groq is unavailable.
 
 ## Guardrails
 

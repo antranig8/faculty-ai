@@ -87,6 +87,9 @@ def update_feedback_resolution(session_id: str, created_at: str, payload: Feedba
     target.deliveryStatus = "resolved" if payload.resolved else "active"
     target.resolvedAt = state.utc_now_iso() if payload.resolved else None
     target.resolutionReason = payload.resolutionReason if payload.resolved else None
+    queued = session.get("queued_feedback")
+    if payload.resolved and queued and queued.followUpToQuestionId == (target.sourceQuestionId or target.createdAt):
+        session["queued_feedback"] = None
 
     state.save_session(session_id, session)
     return feedback

@@ -39,7 +39,7 @@ def too_similar(message: str, existing_messages: List[str], threshold: float = 0
     return False
 
 
-def can_emit_feedback(session: Dict, candidate_message: str) -> tuple[bool, str]:
+def can_emit_feedback(session: Dict, candidate_message: str, *, follow_up_to: str | None = None) -> tuple[bool, str]:
     if len(session["feedback"]) >= MAX_ALERTS_PER_SESSION:
         return False, "Maximum feedback count reached for this session."
 
@@ -47,7 +47,10 @@ def can_emit_feedback(session: Dict, candidate_message: str) -> tuple[bool, str]
     if elapsed < MIN_SECONDS_BETWEEN_ALERTS:
         return False, f"Cooldown active. Wait {round(MIN_SECONDS_BETWEEN_ALERTS - elapsed)} more seconds."
 
-    previous_messages = [item.message for item in session["feedback"]]
+    previous_messages = [
+        item.message for item in session["feedback"]
+        if (item.sourceQuestionId or item.createdAt) != follow_up_to
+    ]
     if too_similar(candidate_message, previous_messages):
         return False, "Similar feedback was already shown recently."
 

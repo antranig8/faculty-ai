@@ -112,11 +112,13 @@ def evaluate_latest_feedback_answer(
     prepared_questions: list[PreparedQuestion],
     follow_up_attempts: dict[str, int],
 ) -> tuple[FeedbackItem | None, AnswerEvaluation | None, FeedbackItem | None]:
-    unresolved = [item for item in feedback_items if not item.resolved and item.deliveryStatus == "active"]
-    if not unresolved:
+    if not feedback_items:
         return None, None, None
 
-    latest = unresolved[-1]
+    latest = feedback_items[-1]
+    if latest.resolved or latest.deliveryStatus != "active":
+        return None, None, None
+
     answer_text = " ".join([*recent_transcript[-2:], transcript_chunk])
     score, matched_terms, missing_terms = _answer_quality_score(answer_text, latest, prepared_questions)
     is_follow_up = bool(latest.followUpToQuestionId)
@@ -148,6 +150,8 @@ def evaluate_latest_feedback_answer(
         follow_up_message = None
         if should_follow_up:
             follow_up_message = _follow_up_message(latest, missing_terms)
+            if _normalize_message(follow_up_message) == _normalize_message(latest.message):
+                follow_up_message = f"What specifically can you add about {missing_terms[0]}?"
             follow_up = FeedbackItem(
                 type="clarification",
                 priority=latest.priority,

@@ -55,7 +55,6 @@ const FACULTY_TTS_REPHRASE_OPENER = "Let me rephrase that.";
 const LIVE_MAX_TURN_WORDS = 55;
 const LIVE_FORCED_CHUNK_MIN_NEW_WORDS = 18;
 const FACULTY_ACKNOWLEDGMENT = "Yes, thank you.";
-const FACULTY_UNRESOLVED_ACKNOWLEDGMENT = "I think I can see your idea and where you're coming from with that.";
 type SlideMode = "auto" | "manual";
 
 function normalizeTextForSpeech(text: string) {
@@ -168,8 +167,8 @@ export default function PresentPage() {
   const liveStateRef = useRef({ connected: false, connecting: false });
   const voiceEnabledRef = useRef(true);
   const silenceTimerRef = useRef<NodeJS.Timeout | null>(null);
-  const pendingChunkRef = useRef<string | null>(null);
-  const pendingTimerRef = useRef<NodeJS.Timeout | null>(null);
+  const pendingChunksRef = useRef<string[]>([]);
+  const drainingRunRef = useRef<number | null>(null);
   const drawerOpenTimerRef = useRef<NodeJS.Timeout | null>(null);
   const spokenFeedbackIdsRef = useRef<Set<string>>(new Set());
   const speechAudioRef = useRef<HTMLAudioElement | null>(null);
@@ -181,7 +180,6 @@ export default function PresentPage() {
   const ttsSourceNodesRef = useRef<Set<AudioBufferSourceNode>>(new Set());
   const lastAnalyzeAtRef = useRef(0);
   const liveErrorMessageRef = useRef("");
-  const intentionalLiveStopRef = useRef(false);
   const lastForcedTurnWordCountRef = useRef(0);
   const liveRunTokenRef = useRef(0);
 
@@ -229,13 +227,20 @@ export default function PresentPage() {
     if (slides.length === 0) {
       return;
     }
-    setCurrentSlideIndex(Math.max(0, Math.min(slides.length - 1, index)));
+    const nextIndex = Math.max(0, Math.min(slides.length - 1, index));
+    currentSlideRef.current = slides[nextIndex];
+    setCurrentSlideIndex(nextIndex);
+  }
+
+  function setTrackingMode(mode: SlideMode) {
+    slideModeRef.current = mode;
+    setSlideMode(mode);
   }
 
   function jumpToSlide(slideNumber: number) {
     const targetIndex = slides.findIndex((slide) => slide.slideNumber === slideNumber);
     if (targetIndex >= 0) {
-      setSlideMode("manual");
+      setTrackingMode("manual");
       goToSlideIndex(targetIndex);
       setStatus(`Locked to slide ${slideNumber} in manual mode.`);
     }
@@ -483,7 +488,7 @@ export default function PresentPage() {
     return true;
   }
 
-  async function rephraseLatestQuestion(requestText: string) {
+  async function rephraseLatestQuestion(requestText: string, runToken: number) {
     if (!isQuestionRephraseRequest(requestText)) {
       return false;
     }
@@ -512,8 +517,13 @@ export default function PresentPage() {
       // Fall back to the local rewrite when the lightweight LLM rephrase path is unavailable.
     }
 
+    if (runToken !== liveRunTokenRef.current) {
+      return true;
+    }
     setLatestFeedbackRephrase(simplifiedQuestion);
-    void speakWithDeepgramVoice(`${FACULTY_TTS_REPHRASE_OPENER} ${simplifiedQuestion}`).catch(() => undefined);
+    if (websocketRef.current) {
+      void speakWithDeepgramVoice(`${FACULTY_TTS_REPHRASE_OPENER} ${simplifiedQuestion}`).catch(() => undefined);
+    }
     setStatus("Rephrased the latest faculty question.");
     return true;
   }
@@ -536,37 +546,6 @@ export default function PresentPage() {
     return true;
   }
 
-  async function acknowledgeUnresolvedQuestion(requestText: string) {
-    if (!isQuestionConfirmation(requestText) || !latestFeedbackRef.current || typeof window === "undefined") {
-      return false;
-    }
-
-    const activeSessionId = sessionIdRef.current;
-    if (!activeSessionId) {
-      return false;
-    }
-
-    const latestUnresolvedFeedback = latestFeedbackRef.current;
-    try {
-      const updated = await updateFeedbackResolution({
-        sessionId: activeSessionId,
-        createdAt: latestUnresolvedFeedback.createdAt,
-        resolved: true,
-        resolutionReason: "Presenter asked whether the response answered the question, and Faculty-AI accepted the response.",
-        sourceQuestionId: latestUnresolvedFeedback.sourceQuestionId,
-        message: latestUnresolvedFeedback.message,
-      });
-      setFeedback(updated);
-    } catch {
-      return false;
-    }
-
-    stopSpeaking();
-    void speakWithDeepgramVoice(FACULTY_UNRESOLVED_ACKNOWLEDGMENT).catch(() => undefined);
-    setStatus("Faculty accepted the presenter response and closed the question.");
-    return true;
-  }
-
   function applyResolvedFeedback(resolvedFeedback?: FeedbackItem) {
     if (!resolvedFeedback) {
       return;
@@ -579,6 +558,8 @@ export default function PresentPage() {
   }
 
   function resetRunState() {
+    pendingChunksRef.current = [];
+    lastAnalyzeAtRef.current = 0;
     setSessionId(undefined);
     sessionIdRef.current = undefined;
     setTranscript([]);
@@ -616,6 +597,9 @@ export default function PresentPage() {
   function resetSilenceTimer() {
     if (silenceTimerRef.current) {
       clearTimeout(silenceTimerRef.current);
+    }
+    if (!websocketRef.current) {
+      return;
     }
     silenceTimerRef.current = setTimeout(() => {
       if (liveStateRef.current.connected) {
@@ -718,48 +702,52 @@ export default function PresentPage() {
       .catch((error) => setStatus(error instanceof Error ? error.message : "Unable to load professor setup."));
   }, []);
 
-  async function ensureSession(): Promise<string> {
+  async function ensureSession(runToken: number): Promise<string> {
     if (sessionIdRef.current) {
       return sessionIdRef.current;
     }
     const id = await startSession(projectContextRef.current);
-    sessionIdRef.current = id;
-    setSessionId(id);
+    if (runToken === liveRunTokenRef.current) {
+      sessionIdRef.current = id;
+      setSessionId(id);
+    }
     return id;
   }
 
-  async function analyzeTranscriptChunk(nextChunk: string, runToken = liveRunTokenRef.current) {
-    setLiveStatus("analyzing");
+  async function analyzeTranscriptChunk(nextChunk: string, runToken: number) {
+    if (websocketRef.current) {
+      setLiveStatus("analyzing");
+    }
     setDebugStats((current) => ({
       ...current,
       finalChunksAnalyzed: current.finalChunksAnalyzed + 1,
     }));
-    const id = await ensureSession();
+    const id = await ensureSession(runToken);
     if (runToken !== liveRunTokenRef.current) {
       return;
     }
-    const nextTranscript = [...transcriptRef.current, nextChunk];
+    const previousTranscript = transcriptRef.current;
+    const nextTranscript = [...previousTranscript, nextChunk];
     setTranscript(nextTranscript);
     transcriptRef.current = nextTranscript;
     setActiveChunk(nextChunk);
     setLivePreview("");
 
-    if (repeatLatestQuestion(nextChunk)) {
-      setLiveStatus("listening");
-      resetSilenceTimer();
+    if (websocketRef.current && (repeatLatestQuestion(nextChunk) || await rephraseLatestQuestion(nextChunk, runToken))) {
+      if (runToken === liveRunTokenRef.current && websocketRef.current) {
+        setLiveStatus("listening");
+        resetSilenceTimer();
+      }
       return;
     }
-
-    if (await rephraseLatestQuestion(nextChunk)) {
-      setLiveStatus("listening");
-      resetSilenceTimer();
+    if (runToken !== liveRunTokenRef.current) {
       return;
     }
 
     const result = await analyzeChunk({
       sessionId: id,
       transcriptChunk: nextChunk,
-      recentTranscript: nextTranscript.slice(-4),
+      recentTranscript: previousTranscript.slice(-4),
       recentFeedback: recentFeedbackRef.current,
       projectContext: projectContextRef.current,
       currentSlide: currentSlideRef.current ? compactSlideForAnalysis(currentSlideRef.current) : undefined,
@@ -775,16 +763,18 @@ export default function PresentPage() {
     if (slideModeRef.current === "auto" && result.inferredCurrentSlide) {
       const inferredIndex = slides.findIndex((slide) => slide.slideNumber === result.inferredCurrentSlide?.slideNumber);
       if (inferredIndex >= 0) {
+        currentSlideRef.current = slides[inferredIndex];
         setCurrentSlideIndex(inferredIndex);
       }
     }
 
     setQueuedFeedback(result.queuedFeedback);
     applyResolvedFeedback(result.resolvedFeedback);
-    const acknowledgedResolution = acknowledgeResolvedQuestion(nextChunk, result.resolvedFeedback);
-    const acknowledgedUnresolved = !result.resolvedFeedback && await acknowledgeUnresolvedQuestion(nextChunk);
-    if (runToken !== liveRunTokenRef.current) {
-      return;
+    const acknowledgedResolution = websocketRef.current && acknowledgeResolvedQuestion(nextChunk, result.resolvedFeedback);
+
+    if (websocketRef.current) {
+      setLiveStatus("listening");
+      resetSilenceTimer();
     }
 
     if (result.trigger && result.feedback) {
@@ -796,20 +786,18 @@ export default function PresentPage() {
         };
       }
       setFeedback((current) => [...current, result.feedback as FeedbackItem]);
-      queueFacultyQuestionReveal(result.feedback as FeedbackItem);
-      setStatus("Live faculty question triggered.");
-      setLiveStatus("listening");
-      resetSilenceTimer();
+      if (websocketRef.current) {
+        queueFacultyQuestionReveal(result.feedback);
+      } else {
+        setDrawerOpen(true);
+      }
+      setStatus("Faculty question triggered.");
       return;
     }
 
-    setLiveStatus("listening");
-    resetSilenceTimer();
     setStatus(
       result.resolvedFeedback
         ? (acknowledgedResolution ? "Faculty acknowledged the presenter response." : "Faculty question auto-marked addressed.")
-        : acknowledgedUnresolved
-          ? "Faculty accepted the presenter response and closed the question."
         : result.queuedFeedback
           ? (
             result.answerEvaluation?.shouldAskFollowUp
@@ -820,53 +808,54 @@ export default function PresentPage() {
     );
   }
 
+  async function drainLiveChunks(runToken: number) {
+    drainingRunRef.current = runToken;
+    try {
+      while (runToken === liveRunTokenRef.current && pendingChunksRef.current.length > 0) {
+        const delay = LIVE_ANALYZE_MIN_GAP_MS - (Date.now() - lastAnalyzeAtRef.current);
+        if (delay > 0) {
+          await new Promise<void>((resolve) => setTimeout(resolve, delay));
+        }
+        if (runToken !== liveRunTokenRef.current) {
+          return;
+        }
+        const chunk = pendingChunksRef.current.shift();
+        if (chunk === undefined) {
+          return;
+        }
+        lastAnalyzeAtRef.current = Date.now();
+        try {
+          await analyzeTranscriptChunk(chunk, runToken);
+        } catch (error: unknown) {
+          if (runToken !== liveRunTokenRef.current) {
+            return;
+          }
+          setLiveStatus("error");
+          setStatus(
+            error instanceof Error && error.message === "Failed to fetch"
+              ? "Failed to fetch from the backend while analyzing live speech."
+              : error instanceof Error
+                ? error.message
+                : "Unable to analyze live transcript.",
+          );
+        }
+      }
+    } finally {
+      if (drainingRunRef.current === runToken) {
+        drainingRunRef.current = null;
+      }
+    }
+  }
+
   function scheduleLiveChunk(nextChunk: string) {
     const normalized = nextChunk.trim();
-    if (!normalized) {
-      return;
-    }
-
-    const elapsed = Date.now() - lastAnalyzeAtRef.current;
-    if (elapsed >= LIVE_ANALYZE_MIN_GAP_MS && !pendingTimerRef.current) {
-      lastAnalyzeAtRef.current = Date.now();
-      void analyzeTranscriptChunk(normalized, liveRunTokenRef.current).catch((error: unknown) => {
-        setLiveStatus("error");
-        setStatus(
-          error instanceof Error && error.message === "Failed to fetch"
-            ? "Failed to fetch from the backend while analyzing live speech."
-            : error instanceof Error
-              ? error.message
-              : "Unable to analyze live transcript.",
-        );
-      });
-      return;
-    }
-
-    pendingChunkRef.current = normalized;
-    if (pendingTimerRef.current) {
-      return;
-    }
-
-    const delay = Math.max(200, LIVE_ANALYZE_MIN_GAP_MS - elapsed);
-    pendingTimerRef.current = setTimeout(() => {
-      pendingTimerRef.current = null;
-      const queuedChunk = pendingChunkRef.current;
-      pendingChunkRef.current = null;
-      if (!queuedChunk) {
-        return;
+    if (normalized) {
+      pendingChunksRef.current.push(normalized);
+      const runToken = liveRunTokenRef.current;
+      if (drainingRunRef.current !== runToken) {
+        void drainLiveChunks(runToken);
       }
-      lastAnalyzeAtRef.current = Date.now();
-      void analyzeTranscriptChunk(queuedChunk, liveRunTokenRef.current).catch((error: unknown) => {
-        setLiveStatus("error");
-        setStatus(
-          error instanceof Error && error.message === "Failed to fetch"
-            ? "Failed to fetch from the backend while analyzing live speech."
-            : error instanceof Error
-              ? error.message
-              : "Unable to analyze live transcript.",
-        );
-      });
-    }, delay);
+    }
   }
 
   function maybeForceAnalyzeLongTurn(transcriptText: string) {
@@ -875,7 +864,8 @@ export default function PresentPage() {
       return;
     }
 
-    const wordCount = normalized.split(/\s+/).filter(Boolean).length;
+    const words = normalized.split(/\s+/);
+    const wordCount = words.length;
     if (wordCount < LIVE_MAX_TURN_WORDS) {
       return;
     }
@@ -885,17 +875,20 @@ export default function PresentPage() {
       return;
     }
 
+    scheduleLiveChunk(words.slice(lastForcedTurnWordCountRef.current).join(" "));
     lastForcedTurnWordCountRef.current = wordCount;
-    scheduleLiveChunk(normalized);
   }
 
   function stopLiveSpeech(
     reason = "Live microphone stopped.",
     closeSocket = true,
     nextLiveStatus: "idle" | "error" = "idle",
+    finishPendingAnalysis = false,
   ) {
-    liveRunTokenRef.current += 1;
-    intentionalLiveStopRef.current = nextLiveStatus === "idle";
+    if (!finishPendingAnalysis) {
+      liveRunTokenRef.current += 1;
+      pendingChunksRef.current = [];
+    }
     setDebugStats((current) => ({
       ...current,
       lastStopReason: reason,
@@ -926,17 +919,10 @@ export default function PresentPage() {
       clearTimeout(silenceTimerRef.current);
       silenceTimerRef.current = null;
     }
-    if (pendingTimerRef.current) {
-      clearTimeout(pendingTimerRef.current);
-      pendingTimerRef.current = null;
-    }
     clearDrawerOpenTimer();
     stopSpeaking();
-    pendingChunkRef.current = null;
     setLivePreview("");
-    if (nextLiveStatus === "idle" && mode === "live") {
-      setMode("idle");
-    }
+    setMode("idle");
     if (!liveErrorMessageRef.current || nextLiveStatus !== "error") {
       setStatus(reason);
     }
@@ -954,25 +940,31 @@ export default function PresentPage() {
     }
 
     resetRunState();
-    intentionalLiveStopRef.current = false;
     liveRunTokenRef.current += 1;
     const runToken = liveRunTokenRef.current;
     setMode("live");
     setLiveConnecting(true);
     setLiveStatus("connecting");
     try {
-      await ensureSession();
+      await ensureSession(runToken);
+      if (runToken !== liveRunTokenRef.current) {
+        return;
+      }
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      if (runToken !== liveRunTokenRef.current) {
+        stream.getTracks().forEach((track) => track.stop());
+        return;
+      }
+      mediaStreamRef.current = stream;
       const audioContext = new AudioContext();
+      audioContextRef.current = audioContext;
       const source = audioContext.createMediaStreamSource(stream);
       const processor = audioContext.createScriptProcessor(2048, 1, 1);
       const muteNode = audioContext.createGain();
       muteNode.gain.value = 0;
       const socket = new WebSocket(getSpeechProxyUrl());
 
-      mediaStreamRef.current = stream;
       websocketRef.current = socket;
-      audioContextRef.current = audioContext;
       audioSourceRef.current = source;
       scriptProcessorRef.current = processor;
       muteNodeRef.current = muteNode;
@@ -990,11 +982,14 @@ export default function PresentPage() {
 
       stream.getAudioTracks().forEach((track) => {
         track.addEventListener("ended", () => {
+          if (runToken !== liveRunTokenRef.current || stream !== mediaStreamRef.current) {
+            return;
+          }
           setDebugStats((current) => ({
             ...current,
             micTrackEnded: current.micTrackEnded + 1,
           }));
-          stopLiveSpeech("Microphone track ended.", false, "error");
+          stopLiveSpeech("Microphone track ended.", true, "error");
         });
       });
 
@@ -1018,7 +1013,7 @@ export default function PresentPage() {
       });
 
       socket.addEventListener("message", (event) => {
-        if (runToken !== liveRunTokenRef.current) {
+        if (runToken !== liveRunTokenRef.current || socket !== websocketRef.current) {
           return;
         }
         setDebugStats((current) => ({
@@ -1069,6 +1064,7 @@ export default function PresentPage() {
               : `Deepgram proxy closed (${data.code ?? 1006}).${data.reason ? ` ${data.reason}` : ""}`,
             false,
             normalClose ? "idle" : "error",
+            normalClose,
           );
           return;
         }
@@ -1079,6 +1075,10 @@ export default function PresentPage() {
           return;
         }
 
+        if (isFluxTurnInfo && data.event === "StartOfTurn") {
+          lastForcedTurnWordCountRef.current = 0;
+          return;
+        }
         const transcriptText = isFluxTurnInfo
           ? data.transcript?.trim()
           : data.channel?.alternatives?.[0]?.transcript?.trim();
@@ -1090,17 +1090,15 @@ export default function PresentPage() {
         setLiveStatus("listening");
         resetSilenceTimer();
 
+        let completedText = transcriptText;
         if (isFluxTurnInfo) {
-          if (data.event === "StartOfTurn") {
-            lastForcedTurnWordCountRef.current = 0;
-            return;
-          }
-
-          if (data.event !== "EndOfTurn" && data.event !== "EagerEndOfTurn") {
+          if (data.event !== "EndOfTurn") {
+            // EagerEndOfTurn can be followed by TurnResumed.
             maybeForceAnalyzeLongTurn(transcriptText);
             return;
           }
 
+          completedText = transcriptText.split(/\s+/).slice(lastForcedTurnWordCountRef.current).join(" ");
           lastForcedTurnWordCountRef.current = 0;
         } else if (!data.is_final) {
           return;
@@ -1110,11 +1108,11 @@ export default function PresentPage() {
           ...current,
           transcriptEvents: current.transcriptEvents + 1,
         }));
-        scheduleLiveChunk(transcriptText);
+        scheduleLiveChunk(completedText);
       });
 
       socket.addEventListener("error", () => {
-        if (runToken !== liveRunTokenRef.current) {
+        if (runToken !== liveRunTokenRef.current || socket !== websocketRef.current) {
           return;
         }
         liveErrorMessageRef.current = "Deepgram connection failed.";
@@ -1123,7 +1121,7 @@ export default function PresentPage() {
       });
 
       socket.addEventListener("close", (event) => {
-        if (runToken !== liveRunTokenRef.current) {
+        if (runToken !== liveRunTokenRef.current || socket !== websocketRef.current) {
           return;
         }
         setDebugStats((current) => ({
@@ -1131,22 +1129,12 @@ export default function PresentPage() {
           wsCloseEvents: current.wsCloseEvents + 1,
           lastCloseCode: event.code,
         }));
-        if (intentionalLiveStopRef.current) {
-          intentionalLiveStopRef.current = false;
-          return;
-        }
         const closeReason = event.reason?.trim();
         const detail = closeReason ? ` ${closeReason}` : "";
-        if (liveStateRef.current.connected || liveStateRef.current.connecting) {
-          const normalClose = event.code === 1000 || event.code === 1001;
-          const message = liveErrorMessageRef.current
-            || (normalClose ? "Live microphone stopped." : `Deepgram connection closed (${event.code}).${detail}`);
-          stopLiveSpeech(
-            message,
-            false,
-            normalClose ? "idle" : "error",
-          );
-        }
+        const normalClose = event.code === 1000 || event.code === 1001;
+        const message = liveErrorMessageRef.current
+          || (normalClose ? "Live microphone stopped." : `Deepgram connection closed (${event.code}).${detail}`);
+        stopLiveSpeech(message, false, normalClose ? "idle" : "error", normalClose);
       });
 
       processor.onaudioprocess = (event) => {
@@ -1175,6 +1163,9 @@ export default function PresentPage() {
         }));
       };
     } catch (error) {
+      if (runToken !== liveRunTokenRef.current) {
+        return;
+      }
       const message = error instanceof Error && error.message === "Failed to fetch"
         ? "Failed to fetch from the backend. Confirm the API is running and NEXT_PUBLIC_API_BASE_URL is correct."
         : error instanceof Error
@@ -1193,7 +1184,7 @@ export default function PresentPage() {
     setQuestionSource(undefined);
     setQuestionCacheHit(false);
     setCurrentSlideIndex(0);
-    setSlideMode("auto");
+    setTrackingMode("auto");
     setUploadedFilename(undefined);
     stopLiveSpeech("Ready for live presentation mode.");
     setMode("idle");
@@ -1233,11 +1224,15 @@ export default function PresentPage() {
         sourceQuestionId: item.sourceQuestionId,
         message: item.message,
       });
+      if (sessionIdRef.current !== activeSessionId) {
+        return;
+      }
       setFeedback(updated);
       if (latestFeedback?.createdAt === item.createdAt) {
         setLatestFeedbackRephrase(undefined);
       }
       if (resolved) {
+        setQueuedFeedback((queued) => queued?.followUpToQuestionId === (item.sourceQuestionId || item.createdAt) ? undefined : queued);
         stopSpeaking();
       }
       setUnseenCount((current) => (resolved ? Math.max(0, current - 1) : current + 1));
@@ -1256,7 +1251,7 @@ export default function PresentPage() {
       setQuestionSource(result.questionSource);
       setQuestionCacheHit(result.cacheHit);
       setCurrentSlideIndex(0);
-      setSlideMode("auto");
+      setTrackingMode("auto");
       setUploadedFilename(file.name);
       setStatus(
         `Prepared ${result.preparedQuestions.length} faculty questions from ${result.slides.length} slides using ${result.questionSource}${result.cacheHit ? " (cached)" : ""}.`
@@ -1319,7 +1314,7 @@ export default function PresentPage() {
             voiceEnabled={voiceEnabled}
             onReset={resetPresentation}
             onStartLive={() => void startLiveSpeech()}
-            onStopLive={() => stopLiveSpeech()}
+            onStopLive={() => stopLiveSpeech(undefined, true, "idle", true)}
             onToggleVoice={toggleVoice}
           />
           <section className="quiet-panel">
@@ -1337,16 +1332,16 @@ export default function PresentPage() {
             slideMode={slideMode}
             slides={slides}
             onModeChange={(mode) => {
-              setSlideMode(mode);
+              setTrackingMode(mode);
               setStatus(mode === "manual" ? "Manual slide mode enabled." : "Auto slide mode enabled.");
             }}
             onJumpToSlide={jumpToSlide}
             onPrevious={() => {
-              setSlideMode("manual");
+              setTrackingMode("manual");
               goToSlideIndex(currentSlideIndex - 1);
             }}
             onNext={() => {
-              setSlideMode("manual");
+              setTrackingMode("manual");
               goToSlideIndex(currentSlideIndex + 1);
             }}
           />

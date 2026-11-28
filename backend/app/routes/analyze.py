@@ -155,7 +155,7 @@ def _queued_feedback_duplicate_reason(session: dict, candidate: FeedbackItem) ->
     if candidate.sourceQuestionId and any(item.sourceQuestionId == candidate.sourceQuestionId for item in session.get("feedback", [])):
         return "This prepared faculty concern is already in the feedback history."
 
-    if _topic_already_covered(session, candidate):
+    if not candidate.followUpToQuestionId and _topic_already_covered(session, candidate):
         return "A faculty question on this same topic was already asked earlier in the session."
 
     return None
@@ -199,7 +199,7 @@ def _queue_feedback(session: dict, candidate: FeedbackItem, queue_reason: str) -
 
     # Keep the stronger pending concern if multiple candidates collide before
     # the presenter reaches a clean moment for delivery.
-    if _priority_rank(queued.priority) > _priority_rank(existing.priority):
+    if queued.followUpToQuestionId or _priority_rank(queued.priority) > _priority_rank(existing.priority):
         session["queued_feedback"] = queued
         return queued
 
@@ -225,12 +225,25 @@ def _activate_queued_feedback(
     if awaiting_answer_until and utc_now() < awaiting_answer_until:
         return None, "Queued faculty question is waiting for the current answer window to finish."
 
-    if _slide_already_has_feedback(session, current_slide_number):
+    if queued.followUpToQuestionId:
+        parent = next(
+            (item for item in reversed(session["feedback"])
+             if (item.sourceQuestionId or item.createdAt) == queued.followUpToQuestionId),
+            None,
+        )
+        if parent is None or parent.resolved:
+            session["queued_feedback"] = None
+            return None, "Dropped queued follow-up because its original question is no longer open."
+    elif _slide_already_has_feedback(session, current_slide_number):
         session["queued_feedback"] = None
         return None, "Dropped queued faculty question because this slide already received its one faculty question."
 
     seconds_on_slide = _seconds_on_current_slide(session)
-    if (slide_chunk_count < NEW_SLIDE_WARMUP_CHUNKS or seconds_on_slide < QUEUED_RELEASE_MIN_SECONDS_ON_SLIDE) and not handoff_detected:
+    if (
+        not queued.followUpToQuestionId
+        and not handoff_detected
+        and (slide_chunk_count < NEW_SLIDE_WARMUP_CHUNKS or seconds_on_slide < QUEUED_RELEASE_MIN_SECONDS_ON_SLIDE)
+    ):
         return None, "Queued faculty question is waiting for enough spoken context and time on the slide."
 
     duplicate_reason = _queued_feedback_duplicate_reason(session, queued)
@@ -238,7 +251,7 @@ def _activate_queued_feedback(
         session["queued_feedback"] = None
         return None, f"Dropped queued faculty question because {duplicate_reason[0].lower()}{duplicate_reason[1:]}"
 
-    allowed, filter_reason = can_emit_feedback(session, queued.message)
+    allowed, filter_reason = can_emit_feedback(session, queued.message, follow_up_to=queued.followUpToQuestionId)
     if not allowed:
         if filter_reason.startswith("Cooldown active."):
             return None, "Queued faculty question is still waiting for the global cooldown to finish."
@@ -255,6 +268,7 @@ def _record_feedback(session: dict, candidate: FeedbackItem, current_slide_numbe
     session["queued_feedback"] = None
     session["feedback"].append(candidate)
     session["last_feedback_at"] = utc_now()
+    session["answer_transcript_start"] = len(session["transcript"])
     session.setdefault("asked_feedback_messages", []).append(_normalize_message(candidate.message))
     if candidate.sourceQuestionId:
         session.setdefault("asked_feedback_question_ids", []).append(candidate.sourceQuestionId)
@@ -388,16 +402,23 @@ def analyze_chunk(payload: AnalyzeChunkRequest) -> AnalyzeChunkResponse:
         latest_feedback_slide_number is not None
         and current_slide_number == latest_feedback_slide_number
     ):
+        # Older sessions may lack the transcript boundary, so start with this chunk.
+        answer_start = session.get("answer_transcript_start")
+        transcript = session["transcript"]
+        previous_answers = transcript[max(answer_start, len(transcript) - 3):-1] if answer_start is not None else []
         resolved_feedback, answer_evaluation, follow_up_feedback = evaluate_latest_feedback_answer(
             feedback_items=session.get("feedback", []),
             transcript_chunk=payload.transcriptChunk,
-            recent_transcript=payload.recentTranscript,
+            recent_transcript=previous_answers,
             prepared_questions=payload.preparedQuestions,
             follow_up_attempts=session.get("follow_up_attempts", {}),
         )
 
     if resolved_feedback:
         session["awaiting_answer_until"] = None
+        queued = session.get("queued_feedback")
+        if queued and queued.followUpToQuestionId == (resolved_feedback.sourceQuestionId or resolved_feedback.createdAt):
+            session["queued_feedback"] = None
         state.save_session(payload.sessionId, session)
         return _response(
             session,
