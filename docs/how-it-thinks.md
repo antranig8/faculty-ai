@@ -18,7 +18,7 @@ browser mic ──audio──▶ FastAPI proxy ──▶ Deepgram STT
 1. **Before the run.** The backend parses the uploaded `.pptx`, classifies each slide, and prepares a small set of slide-specific concerns using the professor's rubric and assignment context. Results are cached by deck content and context.
 2. **During the run.** Audio streams through the backend to Deepgram. Final transcript chunks are sent to the decision engine along with the current slide, recent transcript, and conversation history.
 3. **Each chunk.** The engine decides on one move: ask, queue for later, evaluate an answer, follow up, or stay quiet.
-4. **When it asks.** The question appears in the feedback drawer and is spoken aloud with Deepgram TTS.
+4. **When it asks.** The question appears beside the professor on the rehearsal stage. With voice enabled, Deepgram reads it aloud. Delivered questions remain available in **Feedback**.
 
 ## The Core Question
 

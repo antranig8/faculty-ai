@@ -1,37 +1,34 @@
+import styles from "./presentation.module.css";
+
 type Props = {
   disabled?: boolean;
-  filename?: string;
+  busy?: boolean;
+  replacing?: boolean;
+  error?: string;
   onUpload: (file: File) => void;
 };
 
-export function PresentationUpload({ disabled, filename, onUpload }: Props) {
+export function PresentationUpload({ disabled, busy, replacing, error, onUpload }: Props) {
   return (
-    <section className="deck-card">
-      <div className="deck-card-header">
-        <p className="eyebrow">Deck</p>
-        <h2>{filename ? filename : "Upload slides"}</h2>
-        <p className="muted">{filename ? "Prepared concerns stay attached to this deck during the session." : "Upload the deck first so slide-aware questions are ready before the talk starts."}</p>
-      </div>
-
-      <label className="file-picker">
+    <div className={styles.upload} aria-busy={busy}>
+      <label className={styles.uploadLabel}>
+        <span>{busy ? "Preparing slides…" : replacing ? "Replace deck" : "Choose a .pptx"}</span>
         <input
           accept=".pptx"
-          disabled={disabled}
+          disabled={disabled || busy}
           onChange={(event) => {
-            const file = event.target.files?.[0];
+            const input = event.currentTarget;
+            const file = input.files?.[0];
             if (file) {
               onUpload(file);
+              input.value = "";
             }
           }}
           type="file"
         />
-        <span>{filename ? "Replace deck" : "Choose .pptx"}</span>
       </label>
-      <div className="deck-card-meta">
-        <span>Format: .pptx</span>
-        <span>Limit: 15 MB</span>
-      </div>
-    </section>
+      <small className={styles.secondary}>PowerPoint · 15 MB limit</small>
+      {error ? <p className={styles.error} role="alert">{error}</p> : null}
+    </div>
   );
 }
-
