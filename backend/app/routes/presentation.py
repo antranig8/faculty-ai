@@ -1,18 +1,21 @@
 from fastapi import APIRouter, File, HTTPException, UploadFile
 
 import app.state as state
-from app.models.request_models import PresentationPrepareRequest
-from app.models.response_models import PresentationPrepareResponse
+from app.config import get_settings
+from app.models.request_models import PresentationPrepareRequest, ProjectContext
+from app.models.response_models import PresentationPrepareResponse, Slide
 from app.services.llm_errors import log_llm_exception
 from app.services.presentation_preparer import parse_slide_outline, prepare_questions, prepare_questions_with_llm
-from app.services.pptx_parser import parse_pptx_slides
+from app.services.pptx_parser import InvalidPresentationError, parse_pptx_slides
 
 MAX_UPLOAD_BYTES = 15 * 1024 * 1024
 
 
-def _build_preparation_response(project_context, slides) -> PresentationPrepareResponse:
-    cache_key = state.build_preparation_cache_key(project_context, slides)
-    cached = state.prepared_question_cache.get(cache_key)
+def _build_preparation_response(project_context: ProjectContext, slides: list[Slide]) -> PresentationPrepareResponse:
+    settings = get_settings()
+    groq_model = settings.faculty_ai_llm_model if settings.uses_groq else None
+    cache_key = state.build_preparation_cache_key(project_context, slides, groq_model=groq_model)
+    cached = state.get_prepared_question_cache(cache_key)
     if cached:
         return cached.model_copy(update={"cacheHit": True})
 
@@ -41,7 +44,9 @@ def _build_preparation_response(project_context, slides) -> PresentationPrepareR
         questionSource=question_source,
         cacheHit=False,
     )
-    state.save_prepared_question_cache(cache_key, response)
+    # A transient provider failure must not pin this deck to heuristic questions.
+    if groq_model is None or question_source == "llm":
+        state.save_prepared_question_cache(cache_key, response)
     return response
 
 
@@ -55,11 +60,11 @@ def prepare_presentation(payload: PresentationPrepareRequest) -> PresentationPre
 
 
 @router.post("/upload", response_model=PresentationPrepareResponse)
-async def upload_presentation(file: UploadFile = File(...)) -> PresentationPrepareResponse:
+def upload_presentation(file: UploadFile = File(...)) -> PresentationPrepareResponse:
     if not file.filename or not file.filename.lower().endswith(".pptx"):
         raise HTTPException(status_code=400, detail="Upload a .pptx presentation.")
 
-    file_bytes = await file.read()
+    file_bytes = file.file.read(MAX_UPLOAD_BYTES + 1)
     if not file_bytes:
         raise HTTPException(status_code=400, detail="Uploaded presentation is empty.")
     if len(file_bytes) > MAX_UPLOAD_BYTES:
@@ -67,8 +72,12 @@ async def upload_presentation(file: UploadFile = File(...)) -> PresentationPrepa
 
     try:
         slides = parse_pptx_slides(file_bytes)
+    except InvalidPresentationError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
     except RuntimeError as exc:
         raise HTTPException(status_code=503, detail=str(exc)) from exc
+    if not slides:
+        raise HTTPException(status_code=400, detail="The presentation contains no slides.")
 
     project_context = state.professor_config_to_project_context()
     return _build_preparation_response(project_context, slides)

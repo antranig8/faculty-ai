@@ -1,30 +1,32 @@
+from collections.abc import Iterator
+from contextlib import closing, contextmanager
 from datetime import datetime, timezone
 import hashlib
 import json
-from pathlib import Path
 import sqlite3
 from typing import Any
 
+from app.config import get_settings
 from app.models.request_models import ProjectContext, StudentProfile
 from app.models.response_models import FeedbackItem, PresentationPrepareResponse, ProfessorConfig, Slide
 from app.services.rubric_loader import load_professor_config_from_template
 
-_DB_PATH = Path(__file__).resolve().parents[2] / "faculty_ai.db"
+_DB_PATH = get_settings().faculty_ai_db_path
 PREPARED_QUESTION_CACHE_VERSION = "assignment6-reflective-v2"
 
 sessions: dict[str, dict[str, Any]] = {}
 professor_config = ProfessorConfig()
-prepared_question_cache: dict[str, PresentationPrepareResponse] = {}
 
 
 def utc_now_iso() -> str:
     return datetime.now(timezone.utc).isoformat()
 
 
-def _connection() -> sqlite3.Connection:
-    conn = sqlite3.connect(_DB_PATH)
-    conn.row_factory = sqlite3.Row
-    return conn
+@contextmanager
+def _connection() -> Iterator[sqlite3.Connection]:
+    with closing(sqlite3.connect(_DB_PATH)) as conn, conn:
+        conn.row_factory = sqlite3.Row
+        yield conn
 
 
 def _init_db() -> None:
@@ -155,11 +157,6 @@ def load_persisted_state() -> None:
         if config_row:
             professor_config = ProfessorConfig.model_validate_json(config_row["value"])
 
-        for row in conn.execute("SELECT session_id, payload FROM sessions").fetchall():
-            sessions[row["session_id"]] = _deserialize_session(row["payload"])
-
-        for row in conn.execute("SELECT cache_key, payload FROM prepared_question_cache").fetchall():
-            prepared_question_cache[row["cache_key"]] = _deserialize_preparation(row["payload"])
 
 def persist_professor_config(config: ProfessorConfig) -> None:
     global professor_config
@@ -171,11 +168,14 @@ def persist_professor_config(config: ProfessorConfig) -> None:
         )
 
 
-def build_preparation_cache_key(project_context: ProjectContext, slides: list[Slide]) -> str:
+def build_preparation_cache_key(
+    project_context: ProjectContext, slides: list[Slide], *, groq_model: str | None
+) -> str:
     # Prepared-question generation is expensive enough to cache, so the key is a
     # stable hash over both project context and the extracted slide contents.
     payload = {
         "version": PREPARED_QUESTION_CACHE_VERSION,
+        "groqModel": groq_model,
         "projectContext": project_context.model_dump(mode="json"),
         "slides": [slide.model_dump(mode="json") for slide in slides],
     }
@@ -183,8 +183,15 @@ def build_preparation_cache_key(project_context: ProjectContext, slides: list[Sl
 
 
 def save_prepared_question_cache(cache_key: str, response: PresentationPrepareResponse) -> None:
-    prepared_question_cache[cache_key] = response
     _persist_value("prepared_question_cache", "cache_key", cache_key, _serialize_preparation(response))
+
+
+def get_prepared_question_cache(cache_key: str) -> PresentationPrepareResponse | None:
+    with _connection() as conn:
+        row = conn.execute(
+            "SELECT payload FROM prepared_question_cache WHERE cache_key = ?", (cache_key,)
+        ).fetchone()
+    return _deserialize_preparation(row["payload"]) if row else None
 
 
 def save_session(session_id: str, session: dict[str, Any]) -> None:
