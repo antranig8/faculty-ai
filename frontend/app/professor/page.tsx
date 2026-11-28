@@ -47,7 +47,7 @@ export default function ProfessorPage() {
   return (
     <main className={styles.cockpit}>
       <div className={styles.surface}>
-        <div className={styles.cockpitNav}><RehearsalNav current="professor" /></div>
+        <RehearsalNav current="professor" />
         <header className={styles.pageHeader}>
           <h1>Professor setup</h1>
           <p className={styles.secondary}>Set the rubric and questioning style for rehearsals.</p>

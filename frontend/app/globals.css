@@ -1,29 +1,53 @@
 :root {
-  --bg: #f5f5f2;
-  --surface: rgba(255, 255, 255, 0.96);
+  color-scheme: light;
+  --rehearsal-paper: #f6f3eb;
+  --rehearsal-surface: #fffcf5;
+  --rehearsal-ink: #221f19;
+  --rehearsal-muted: #5c574d;
+  --rehearsal-line: #d7cfc0;
+  --rehearsal-dot: #e2d9cb;
+  --rehearsal-accent: #983a25;
+  --rehearsal-question: #f5dfc9;
+  --rehearsal-listening: #2b7154;
+  --bg: var(--rehearsal-paper);
+  --surface: var(--rehearsal-surface);
   --surface-raised: #f0f0ec;
-  --surface-strong: #ffffff;
-  --ink: #111111;
-  --muted: #626262;
-  --soft-text: #424242;
-  --line: rgba(17, 17, 17, 0.16);
+  --surface-strong: var(--rehearsal-surface);
+  --ink: var(--rehearsal-ink);
+  --muted: var(--rehearsal-muted);
+  --soft-text: var(--rehearsal-muted);
+  --line: var(--rehearsal-line);
   --line-soft: rgba(17, 17, 17, 0.08);
-  --accent: #111111;
-  --accent-dark: #000000;
+  --accent: var(--rehearsal-ink);
+  --accent-dark: var(--rehearsal-accent);
   --accent-soft: #efefef;
   --accent-ink: #111111;
   --blue: #111111;
   --blue-soft: #f1f1f1;
   --warn: #111111;
   --warn-soft: #f3f3f3;
-  --danger: #111111;
-  --danger-soft: #f3f3f3;
+  --danger: var(--rehearsal-accent);
+  --danger-soft: var(--rehearsal-question);
   --good: #111111;
   --good-soft: #f3f3f3;
-  --focus: #111111;
+  --focus: var(--rehearsal-accent);
   --shadow-sm: 0 14px 30px rgba(0, 0, 0, 0.05);
   --shadow: 0 28px 70px rgba(0, 0, 0, 0.08);
   --radius: 18px;
+}
+
+:root[data-theme="dark"],
+:root[data-system-theme="dark"]:not([data-theme]) {
+  color-scheme: dark;
+  --rehearsal-paper: #22211f;
+  --rehearsal-surface: #292724;
+  --rehearsal-ink: #f5efe3;
+  --rehearsal-muted: #c8bdac;
+  --rehearsal-line: #514940;
+  --rehearsal-dot: #413b33;
+  --rehearsal-accent: #ffb195;
+  --rehearsal-question: #3f2c23;
+  --rehearsal-listening: #93d4ae;
 }
 
 * {
@@ -75,6 +99,7 @@ textarea {
   width: 100%;
   border: 1px solid var(--line);
   border-radius: var(--radius);
+  background: var(--bg);
   color: var(--ink);
   padding: 10px 12px;
 }
@@ -145,9 +170,16 @@ h2 {
   margin-top: 6px;
 }
 
+.access-heading {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 0.65rem;
+}
+
 .access-error {
   background: var(--danger-soft);
-  border: 1px solid #fecdca;
+  border: 1px solid var(--line);
   border-radius: 10px;
   color: var(--danger);
   font-size: 0.9rem;
@@ -158,7 +190,7 @@ h2 {
 .primary-button {
   background: var(--accent);
   border-color: var(--accent);
-  color: #fff;
+  color: var(--surface);
   font-weight: 700;
   min-height: 52px;
 }

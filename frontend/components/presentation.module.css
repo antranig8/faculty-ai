@@ -1,14 +1,4 @@
 .cockpit {
-  color-scheme: light dark;
-  --rehearsal-paper: #f6f3eb;
-  --rehearsal-surface: #fffcf5;
-  --rehearsal-ink: #221f19;
-  --rehearsal-muted: #5c574d;
-  --rehearsal-line: #d7cfc0;
-  --rehearsal-dot: #e2d9cb;
-  --rehearsal-accent: #983a25;
-  --rehearsal-question: #f5dfc9;
-  --rehearsal-listening: #2b7154;
   min-block-size: 100vh;
   padding: clamp(0.75rem, 4vw, 3rem);
   background: var(--rehearsal-paper);
@@ -60,6 +50,10 @@
 }
 
 .cockpitNav {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.35rem;
   padding: 0.35rem clamp(0.75rem, 3vw, 1.75rem);
   border-block-end: 1px solid var(--rehearsal-line);
 }
@@ -462,24 +456,20 @@
   }
 }
 
+@media (max-width: 33rem) {
+  .pageNav {
+    gap: 0.125rem;
+  }
+
+  .pageNav a {
+    padding-inline: 0.5rem;
+  }
+}
+
 @media (pointer: coarse) {
   .cockpit :is(button, select),
   .uploadLabel {
     min-block-size: 2.75rem;
-  }
-}
-
-@media (prefers-color-scheme: dark) {
-  .cockpit {
-    --rehearsal-paper: #22211f;
-    --rehearsal-surface: #292724;
-    --rehearsal-ink: #f5efe3;
-    --rehearsal-muted: #c8bdac;
-    --rehearsal-line: #514940;
-    --rehearsal-dot: #413b33;
-    --rehearsal-accent: #ffb195;
-    --rehearsal-question: #3f2c23;
-    --rehearsal-listening: #93d4ae;
   }
 }
 

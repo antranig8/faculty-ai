@@ -1,5 +1,6 @@
 import Link from "next/link";
 
+import { ThemeToggle } from "./ThemeToggle";
 import styles from "./presentation.module.css";
 
 const pages = [
@@ -10,12 +11,15 @@ const pages = [
 
 export function RehearsalNav({ current }: { current: (typeof pages)[number]["id"] }) {
   return (
-    <nav className={styles.pageNav} aria-label="Rehearsal pages">
-      {pages.map(({ id, label }) => (
-        <Link key={id} href={`/${id}`} aria-current={id === current ? "page" : undefined}>
-          {label}
-        </Link>
-      ))}
-    </nav>
+    <div className={styles.cockpitNav}>
+      <nav className={styles.pageNav} aria-label="Rehearsal pages">
+        {pages.map(({ id, label }) => (
+          <Link key={id} href={`/${id}`} aria-current={id === current ? "page" : undefined}>
+            {label}
+          </Link>
+        ))}
+      </nav>
+      <ThemeToggle />
+    </div>
   );
 }

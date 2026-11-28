@@ -1,6 +1,7 @@
 import Link from "next/link";
 
 import { ProfessorCutout } from "@/components/ProfessorCutout";
+import { ThemeToggle } from "@/components/ThemeToggle";
 import rehearsal from "@/components/presentation.module.css";
 import { requireAccess } from "@/lib/requireAccess";
 
@@ -20,8 +21,9 @@ export default async function HomePage() {
   return (
     <main className={rehearsal.cockpit}>
       <div className={rehearsal.surface}>
-        <div className={`${rehearsal.cockpitNav} ${styles.wordmark}`}>
-          Faculty<span className={rehearsal.brandDash}>-</span>AI
+        <div className={rehearsal.cockpitNav}>
+          <span className={styles.wordmark}>Faculty<span className={rehearsal.brandDash}>-</span>AI</span>
+          <ThemeToggle />
         </div>
         <div className={styles.hero}>
           <header className={styles.intro}>

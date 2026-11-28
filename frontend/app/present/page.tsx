@@ -1321,7 +1321,7 @@ export default function PresentPage() {
   return (
     <main className={styles.cockpit}>
       <div className={styles.surface}>
-        <div className={styles.cockpitNav}><RehearsalNav current="present" /></div>
+        <RehearsalNav current="present" />
         <SessionControls
           disabled={busy || !currentSlide}
           liveConnected={liveConnected}

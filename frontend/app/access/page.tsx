@@ -1,5 +1,6 @@
 import { redirect } from "next/navigation";
 
+import { ThemeToggle } from "@/components/ThemeToggle";
 import { getAccessRedirectTarget } from "@/lib/accessSession";
 
 type AccessPageProps = {
@@ -19,9 +20,12 @@ export default async function AccessPage({ searchParams }: AccessPageProps) {
   return (
     <main className="access-screen">
       <form className="access-panel" action="/api/access" method="post">
-        <div>
-          <p className="eyebrow">Faculty-AI</p>
-          <h1>Access required</h1>
+        <div className="access-heading">
+          <div>
+            <p className="eyebrow">Faculty-AI</p>
+            <h1>Access required</h1>
+          </div>
+          <ThemeToggle />
         </div>
         <input type="hidden" name="next" value={next} />
         <label>

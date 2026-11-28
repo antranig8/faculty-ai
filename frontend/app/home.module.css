@@ -1,7 +1,4 @@
 .wordmark {
-  display: flex;
-  align-items: center;
-  min-block-size: 3.25rem;
   font-weight: 750;
 }
 
