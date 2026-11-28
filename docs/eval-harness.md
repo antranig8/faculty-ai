@@ -39,15 +39,16 @@ cd backend
 .\.venv\Scripts\python.exe -m app.services.eval_runner eval_scenarios\faculty_ai_group2_example_scenario.json --out ..\example-report.json
 ```
 
-The report is printed to stdout and, with `--out`, written to a file.
+The report is printed to stdout and, with `--out`, written to a file. Set `FACULTY_AI_LLM_PROVIDER=heuristic` in the replay terminal to keep both preparation and decision-making offline.
 
 ## Included Examples
 
-All in `backend/eval_scenarios/`, using an anonymized sample deck:
+The examples are in `backend/eval_scenarios/`.
 
-- `faculty_ai_group2_example_scenario.json`: a full ENES 104 reflection presentation
+- `faculty_ai_group2_example_scenario.json`: a full ENES 104 reflection presentation using the anonymized sample deck
 - `faculty_ai_group2_profile_scenario.json`: the same run, exercising student-profile memory
 - `faculty_ai_group2_example_report.json`: the generated report for the first scenario
+- `example_assignment6.json`: a six-chunk rehearsal with an inline slide outline
 
 ## What the Report Contains
 

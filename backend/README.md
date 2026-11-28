@@ -1,15 +1,17 @@
 # Faculty-AI Backend
 
-FastAPI service that parses decks, prepares questions, runs the live decision engine, and proxies Deepgram speech. Setup and configuration are in the [root README](../README.md).
+FastAPI service that parses decks, prepares questions, runs the live decision engine, and proxies Deepgram speech. Use `npm run dev` from the repository root to start both services. To run just the backend for debugging, use Python 3.11 or later and run these commands from this directory.
 
 ```powershell
 python -m venv .venv
 .\.venv\Scripts\Activate.ps1
-pip install -r requirements.txt
-uvicorn app.main:app --reload --port 8000
+pip install --upgrade -r requirements.txt
+uvicorn app.main:app --reload --host 127.0.0.1 --port 8000
 ```
 
-Interactive API docs are served at <http://localhost:8000/docs> while the server is running.
+Interactive API docs are served at <http://127.0.0.1:8000/docs> while the server is running.
+
+Run the backend regression suite with `python -m unittest discover -s tests` from `backend/`. The suite uses temporary SQLite storage and does not contact speech or LLM providers.
 
 ## Endpoints
 
