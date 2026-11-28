@@ -2,38 +2,40 @@
 
 import { useEffect, useState } from "react";
 
-import { ProfessorConfigForm } from "@/components/ProfessorConfigForm";
+import { ProfessorConfigForm, type ProfessorConfigDraft } from "@/components/ProfessorConfigForm";
 import { RehearsalNav } from "@/components/RehearsalNav";
+import styles from "@/components/presentation.module.css";
 import { getProfessorConfig, saveProfessorConfig } from "@/lib/api";
-import type { ProfessorConfig } from "@/lib/types";
 
-const fallbackConfig: ProfessorConfig = {
+const fallbackConfig: ProfessorConfigDraft = {
   courseName: "ENES 104",
   assignmentName: "Project Presentation",
-  rubric: ["clarity", "technical justification", "evidence", "evaluation", "feasibility"],
+  rubric: "clarity, technical justification, evidence, evaluation, feasibility",
   questionStyle: "skeptical but fair faculty examiner",
   assignmentContext: "",
 };
 
 export default function ProfessorPage() {
-  const [config, setConfig] = useState<ProfessorConfig>(fallbackConfig);
+  const [config, setConfig] = useState(fallbackConfig);
   const [status, setStatus] = useState("Loading professor setup.");
-  const [busy, setBusy] = useState(false);
+  const [busy, setBusy] = useState(true);
 
   useEffect(() => {
     getProfessorConfig()
       .then((loaded) => {
-        setConfig(loaded);
+        setConfig({ ...loaded, rubric: loaded.rubric.join(", ") });
         setStatus("Professor setup loaded.");
       })
-      .catch((error) => setStatus(error instanceof Error ? error.message : "Unable to load setup."));
+      .catch((error) => setStatus(error instanceof Error ? error.message : "Unable to load setup."))
+      .finally(() => setBusy(false));
   }, []);
 
   async function saveConfig() {
     setBusy(true);
     try {
-      const saved = await saveProfessorConfig(config);
-      setConfig(saved);
+      const rubric = config.rubric.split(",").map((item) => item.trim()).filter(Boolean);
+      const saved = await saveProfessorConfig({ ...config, rubric });
+      setConfig({ ...saved, rubric: saved.rubric.join(", ") });
       setStatus("Professor setup saved.");
     } catch (error) {
       setStatus(error instanceof Error ? error.message : "Unable to save setup.");
@@ -43,18 +45,17 @@ export default function ProfessorPage() {
   }
 
   return (
-    <main className="app-shell">
-      <header className="topbar">
-        <div>
-          <p className="eyebrow">Faculty-AI</p>
+    <main className={styles.cockpit}>
+      <div className={styles.surface}>
+        <div className={styles.cockpitNav}><RehearsalNav current="professor" /></div>
+        <header className={styles.pageHeader}>
           <h1>Professor setup</h1>
+          <p className={styles.secondary}>Set the rubric and questioning style for rehearsals.</p>
+        </header>
+        <div className={styles.details}>
+          <ProfessorConfigForm disabled={busy} value={config} onChange={setConfig} onSave={() => void saveConfig()} />
+          <p className={`${styles.secondary} ${styles.formStatus}`} role="status">{status}</p>
         </div>
-        <RehearsalNav current="professor" />
-      </header>
-
-      <div className="professor-page">
-        <ProfessorConfigForm disabled={busy} value={config} onChange={setConfig} onSave={() => void saveConfig()} />
-        <p className="muted">{status}</p>
       </div>
     </main>
   );

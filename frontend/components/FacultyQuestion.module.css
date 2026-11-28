@@ -16,7 +16,7 @@
   --cutout-coat: #a04027;
   position: relative;
   z-index: 1;
-  inline-size: 110%;
+  inline-size: var(--cutout-width, 110%);
   aspect-ratio: 1 / 1.17;
   transform: rotate(-7deg);
   filter: drop-shadow(1px 0 var(--cutout-paper))
@@ -132,7 +132,7 @@
     padding-block-start: 1.55rem;
   }
 
-  .professor {
+  .question .professor {
     position: absolute;
     inset-block-start: 0;
     inset-inline-end: 0.65rem;

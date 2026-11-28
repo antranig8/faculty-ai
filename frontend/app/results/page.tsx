@@ -51,7 +51,7 @@ export default function ResultsPage() {
     <main className={styles.cockpit}>
       <div className={styles.surface}>
         <div className={styles.cockpitNav}><RehearsalNav current="results" /></div>
-        <header className={styles.resultsHeader}>
+        <header className={styles.pageHeader}>
           <h1>Rehearsal results</h1>
           <p className={styles.secondary}>Faculty feedback from your latest rehearsal.</p>
         </header>

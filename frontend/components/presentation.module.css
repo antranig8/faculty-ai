@@ -387,17 +387,57 @@
   cursor: pointer;
 }
 
-.resultsHeader {
+.pageHeader {
   padding: clamp(1rem, 3vw, 2rem) clamp(0.75rem, 3vw, 1.75rem);
 }
 
-.resultsHeader h1 {
+.pageHeader h1 {
   margin: 0;
   font: 500 clamp(1.8rem, 5vw, 3rem)/1.07 Georgia, "Times New Roman", serif;
 }
 
-.resultsHeader p {
+.pageHeader p {
   margin: 0.5rem 0 0;
+}
+
+.professorFields {
+  display: grid;
+  gap: 1rem;
+  min-inline-size: 0;
+  max-inline-size: 42rem;
+  margin: 0;
+  padding: 0.35rem 0 0;
+  border: 0;
+}
+
+.professorFields label {
+  color: var(--rehearsal-muted);
+  font-weight: 600;
+}
+
+.professorFields :is(input, textarea) {
+  border-color: var(--rehearsal-line);
+  border-radius: 0.45rem;
+  background: var(--rehearsal-paper);
+  color: var(--rehearsal-ink);
+  font-weight: 400;
+}
+
+.professorFields :is(input, textarea):focus-visible {
+  outline: 2px solid var(--rehearsal-accent);
+  outline-offset: 2px;
+}
+
+.professorFields small {
+  margin-block-start: -0.6rem;
+}
+
+.professorFields button {
+  justify-self: start;
+}
+
+.details .formStatus {
+  margin-block: 0.65rem 0.25rem;
 }
 
 .details .resultCounts {

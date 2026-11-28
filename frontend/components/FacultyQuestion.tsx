@@ -1,5 +1,6 @@
 import type { FeedbackItem } from "@/lib/types";
 
+import { ProfessorCutout } from "./ProfessorCutout";
 import cutout from "./FacultyQuestion.module.css";
 import styles from "./presentation.module.css";
 
@@ -29,16 +30,7 @@ export function FacultyQuestion({
       className={animate ? `${cutout.question} ${cutout.enter}` : cutout.question}
       aria-label="Current faculty question"
     >
-      <div className={cutout.professor} aria-hidden="true">
-        <span className={cutout.coat} />
-        <span className={cutout.lapels} />
-        <span className={cutout.neck} />
-        <span className={cutout.hair} />
-        <span className={cutout.face} />
-        <span className={cutout.fringe} />
-        <span className={cutout.glasses} />
-        <span className={cutout.mouth} />
-      </div>
+      <ProfessorCutout />
       <div className={styles.questionBody}>
         <p className={styles.questionLabel}>
           {question.followUpToQuestionId ? "Faculty follow-up" : "Faculty question"}

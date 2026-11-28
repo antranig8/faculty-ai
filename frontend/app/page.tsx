@@ -1,83 +1,58 @@
 import Link from "next/link";
 
+import { ProfessorCutout } from "@/components/ProfessorCutout";
+import rehearsal from "@/components/presentation.module.css";
 import { requireAccess } from "@/lib/requireAccess";
 
+import styles from "./home.module.css";
+
 export const dynamic = "force-dynamic";
+
+const destinations = [
+  { id: "present", label: "Present", description: "Start a live rehearsal" },
+  { id: "professor", label: "Professor setup", description: "Set the rubric and style" },
+  { id: "results", label: "Results", description: "Review saved feedback" },
+];
 
 export default async function HomePage() {
   await requireAccess("/");
 
   return (
-    <main className="home-screen">
-      <section className="hero-shell">
-        <header className="hero-nav">
-          <div>
-            <p className="eyebrow">Faculty-AI</p>
-            <p className="hero-brand-note">AI rehearsal for academic presentations</p>
-          </div>
-          <nav className="hero-nav-links" aria-label="Primary">
-            <Link href="/professor">Professor</Link>
-            <Link href="/present">Present</Link>
-            <Link href="/results">Results</Link>
-          </nav>
-        </header>
-
-        <div className="hero-grid">
-          <div className="hero-copy">
-            <p className="hero-kicker">Live faculty simulation</p>
-            <h1>Practice the defense before the room asks the question.</h1>
-            <p className="hero-summary">
-              Configure faculty expectations, upload a deck, and rehearse with disciplined follow-up questions in one
-              black-and-white workspace.
-            </p>
-            <div className="home-actions">
-              <Link className="hero-primary-link" href="/present">
-                Start rehearsal
-              </Link>
-              <Link className="hero-secondary-link" href="/professor">
-                Configure rubric
-              </Link>
-            </div>
-            <div className="hero-meta">
-              <div>
-                <span>Mode</span>
-                <strong>Professor-defined questioning</strong>
-              </div>
-              <div>
-                <span>Use case</span>
-                <strong>Deck practice before grading</strong>
-              </div>
-              <div>
-                <span>Output</span>
-                <strong>Live critique and final results</strong>
-              </div>
-            </div>
-          </div>
-
-          <aside className="hero-panel" aria-label="Platform preview">
-            <div className="hero-panel-header">
-              <p className="hero-panel-kicker">Session flow</p>
-            </div>
-            <div className="hero-panel-stack">
-              <article>
-                <span>01</span>
-                <strong>Professor setup</strong>
-                <p>Define rubric, expectations, and likely lines of questioning.</p>
-              </article>
-              <article>
-                <span>02</span>
-                <strong>Presentation mode</strong>
-                <p>Advance through slides while the system listens for weak reasoning and unclear claims.</p>
-              </article>
-              <article>
-                <span>03</span>
-                <strong>Results</strong>
-                <p>Review saved faculty questions and see which ones you addressed.</p>
-              </article>
-            </div>
-          </aside>
+    <main className={rehearsal.cockpit}>
+      <div className={rehearsal.surface}>
+        <div className={`${rehearsal.cockpitNav} ${styles.wordmark}`}>
+          Faculty<span className={rehearsal.brandDash}>-</span>AI
         </div>
-      </section>
+        <div className={styles.hero}>
+          <header className={styles.intro}>
+            <h1>Rehearse your presentation.</h1>
+            <p>Upload a PowerPoint and talk through your slides. Faculty-AI listens and asks questions aloud while you present.</p>
+          </header>
+
+          <div className={`${rehearsal.stage} ${styles.scene}`}>
+            <div className={styles.portrait}>
+              <ProfessorCutout />
+            </div>
+            <nav className={styles.destinations} aria-label="Rehearsal pages">
+              {destinations.map(({ id, label, description }) => (
+                <Link
+                  href={`/${id}`}
+                  key={id}
+                  className={styles.bubble}
+                  aria-labelledby={`${id}-label`}
+                  aria-describedby={`${id}-description`}
+                >
+                  <span>
+                    <strong id={`${id}-label`}>{label}</strong>
+                    <small id={`${id}-description`}>{description}</small>
+                  </span>
+                  <span className={styles.arrow} aria-hidden="true">→</span>
+                </Link>
+              ))}
+            </nav>
+          </div>
+        </div>
+      </div>
     </main>
   );
 }
