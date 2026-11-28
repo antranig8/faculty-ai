@@ -43,7 +43,7 @@
   "rows": [
     {
       "index": 0,
-      "chunk": "Today we are presenting our final ENES 104 group reflection. Our group members are Antranig Tatarian, Jordan Reyes, and Sam Okafor.",
+      "chunk": "Today we are presenting our final ENES 104 group reflection. Our group members are Avery Morgan, Jordan Reyes, and Sam Okafor.",
       "currentSlideNumber": 1,
       "decision": "no_trigger",
       "feedback": null,
@@ -138,7 +138,7 @@
             "interactionType": "freeform_question",
             "score": 19,
             "priority": "high",
-            "message": "Antranig, what changed in your view of engineering because of this lesson, and what specific experience caused that change?",
+            "message": "Avery, what changed in your view of engineering because of this lesson, and what specific experience caused that change?",
             "reason": "Generated Assignment 6 feedback for individual application.",
             "sourceQuestionId": null
           }
@@ -147,7 +147,7 @@
           "interactionType": "freeform_question",
           "score": 19,
           "priority": "high",
-          "message": "Antranig, what changed in your view of engineering because of this lesson, and what specific experience caused that change?",
+          "message": "Avery, what changed in your view of engineering because of this lesson, and what specific experience caused that change?",
           "reason": "Generated Assignment 6 feedback for individual application.",
           "sourceQuestionId": null
         }
@@ -170,7 +170,7 @@
             "interactionType": "freeform_question",
             "score": 19,
             "priority": "high",
-            "message": "Antranig, what changed in your view of engineering because of this lesson, and what specific experience caused that change?",
+            "message": "Avery, what changed in your view of engineering because of this lesson, and what specific experience caused that change?",
             "reason": "Generated Assignment 6 feedback for individual application.",
             "sourceQuestionId": null
           }
@@ -179,7 +179,7 @@
           "interactionType": "freeform_question",
           "score": 19,
           "priority": "high",
-          "message": "Antranig, what changed in your view of engineering because of this lesson, and what specific experience caused that change?",
+          "message": "Avery, what changed in your view of engineering because of this lesson, and what specific experience caused that change?",
           "reason": "Generated Assignment 6 feedback for individual application.",
           "sourceQuestionId": null
         }
@@ -202,7 +202,7 @@
             "interactionType": "freeform_question",
             "score": 22,
             "priority": "high",
-            "message": "Antranig, can you give one example of how 'good enough' in industry is different from doing low-quality work?",
+            "message": "Avery, can you give one example of how 'good enough' in industry is different from doing low-quality work?",
             "reason": "Generated Assignment 6 feedback for clarifying the 'good enough' concept.",
             "sourceQuestionId": null
           },
@@ -210,7 +210,7 @@
             "interactionType": "freeform_question",
             "score": 19,
             "priority": "high",
-            "message": "Antranig, what changed in your view of engineering because of this lesson, and what specific experience caused that change?",
+            "message": "Avery, what changed in your view of engineering because of this lesson, and what specific experience caused that change?",
             "reason": "Generated Assignment 6 feedback for individual application.",
             "sourceQuestionId": null
           }
@@ -219,7 +219,7 @@
           "interactionType": "freeform_question",
           "score": 22,
           "priority": "high",
-          "message": "Antranig, can you give one example of how 'good enough' in industry is different from doing low-quality work?",
+          "message": "Avery, can you give one example of how 'good enough' in industry is different from doing low-quality work?",
           "reason": "Generated Assignment 6 feedback for clarifying the 'good enough' concept.",
           "sourceQuestionId": null
         }
@@ -258,7 +258,7 @@
             "interactionType": "freeform_question",
             "score": 19,
             "priority": "high",
-            "message": "Antranig, what changed in your view of engineering because of this lesson, and what specific experience caused that change?",
+            "message": "Avery, what changed in your view of engineering because of this lesson, and what specific experience caused that change?",
             "reason": "Generated Assignment 6 feedback for individual application.",
             "sourceQuestionId": null
           },
@@ -266,7 +266,7 @@
             "interactionType": "freeform_question",
             "score": 18,
             "priority": "high",
-            "message": "Antranig, how does this lesson change the way you would approach a future engineering project or team decision?",
+            "message": "Avery, how does this lesson change the way you would approach a future engineering project or team decision?",
             "reason": "Generated Assignment 6 feedback for future engineering application.",
             "sourceQuestionId": null
           }
@@ -275,7 +275,7 @@
           "interactionType": "freeform_question",
           "score": 19,
           "priority": "high",
-          "message": "Antranig, what changed in your view of engineering because of this lesson, and what specific experience caused that change?",
+          "message": "Avery, what changed in your view of engineering because of this lesson, and what specific experience caused that change?",
           "reason": "Generated Assignment 6 feedback for individual application.",
           "sourceQuestionId": null
         }
